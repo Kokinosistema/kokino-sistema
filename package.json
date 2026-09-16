@@ -1,0 +1,21 @@
+{
+  "name": "kokino-sistema",
+  "version": "1.0.0",
+  "description": "Sistema de gestión propio para la heladería Kokino (San Miguel de Tucumán, Argentina), pensado para reemplazar el POS actual (Fudo). Es el Trabajo de Campo de la carrera.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate:create": "node-pg-migrate create -j sql --",
+    "migrate:up": "node-pg-migrate up --envPath .env",
+    "migrate:down": "node-pg-migrate down --envPath .env"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "dotenv": "^17.4.2",
+    "node-pg-migrate": "^9.0.0",
+    "pg": "^8.23.0"
+  }
+}
