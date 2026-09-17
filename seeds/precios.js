@@ -42,6 +42,16 @@ const PRECIOS = [
   { producto: 'Jarrito',           tipo: 'MINORISTA', precio: 3000 },
   { producto: 'Jarrito y alfajor', tipo: 'MINORISTA', precio: 5000 },
   { producto: 'Affogato',          tipo: 'MINORISTA', precio: 5000 },
+
+  // El precio del palito depende de la familia y no del gusto: los tres
+  // frutales valen igual, igual que los dos de crema. Son productos separados
+  // porque el stock los distingue, aunque el precio los agrupe.
+  { producto: 'Palito frutal limón',       tipo: 'MINORISTA', precio: 3500 },
+  { producto: 'Palito frutal frutilla',    tipo: 'MINORISTA', precio: 3500 },
+  { producto: 'Palito frutal ananá',       tipo: 'MINORISTA', precio: 3500 },
+  { producto: 'Palito de crema americana', tipo: 'MINORISTA', precio: 4000 },
+  { producto: 'Palito de crema vainilla',  tipo: 'MINORISTA', precio: 4000 },
+  { producto: 'Palito bombón',             tipo: 'MINORISTA', precio: 4500 },
 ];
 
 async function cargarPrecio(client, { producto, tipo, precio }) {
