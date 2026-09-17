@@ -22,6 +22,20 @@ const PRECIOS = [
   { producto: 'Cucuruchón doble', tipo: 'MINORISTA', precio: 7500 },
   { producto: 'Cono triple',      tipo: 'MINORISTA', precio: 8000 },
   { producto: 'Barquillo',        tipo: 'MINORISTA', precio: 8000 },
+
+  // El precio del familiar depende del tamaño y no de la combinación: los tres
+  // de 3 litros valen igual. Son productos separados porque el stock los
+  // distingue, aunque el precio los agrupe.
+  { producto: 'Familiar 3 lt americana, vainilla y dulce de leche', tipo: 'MINORISTA', precio: 36000 },
+  { producto: 'Familiar 3 lt chocolate, vainilla y dulce de leche', tipo: 'MINORISTA', precio: 36000 },
+  { producto: 'Familiar 3 lt chocolate, vainilla y frutilla',       tipo: 'MINORISTA', precio: 36000 },
+  { producto: 'Familiar 5 lt americana, vainilla y dulce de leche', tipo: 'MINORISTA', precio: 50000 },
+  { producto: 'Familiar 5 lt chocolate, vainilla y dulce de leche', tipo: 'MINORISTA', precio: 50000 },
+  { producto: 'Familiar 5 lt chocolate, vainilla y frutilla',       tipo: 'MINORISTA', precio: 50000 },
+
+  { producto: 'Diet 250 cc chocolate y vainilla',      tipo: 'MINORISTA', precio: 14000 },
+  { producto: 'Diet 250 cc ananá y durazno',           tipo: 'MINORISTA', precio: 14000 },
+  { producto: 'Diet 250 cc dulce de leche y frutilla', tipo: 'MINORISTA', precio: 14000 },
 ];
 
 async function cargarPrecio(client, { producto, tipo, precio }) {
