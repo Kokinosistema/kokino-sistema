@@ -57,6 +57,30 @@ const PRECIOS = [
   { producto: 'Alfajor marroc',                    tipo: 'MINORISTA', precio: 3000 },
   { producto: 'Alfajor chocolate blanco con nuez', tipo: 'MINORISTA', precio: 3000 },
   { producto: 'Alfajor chocolate',                 tipo: 'MINORISTA', precio: 3000 },
+
+  // Reposteria comprada. El costo de estos productos vive aparte, en
+  // costos_producto, y se carga con seed:costos.
+  { producto: 'Chocotorta',                        tipo: 'MINORISTA', precio: 33000 },
+  { producto: 'Lemon curd',                        tipo: 'MINORISTA', precio: 25000 },
+  { producto: 'Rogel',                             tipo: 'MINORISTA', precio: 25000 },
+  { producto: 'Brownie',                           tipo: 'MINORISTA', precio: 19000 },
+  { producto: 'Leche condensada',                  tipo: 'MINORISTA', precio: 14000 },
+  { producto: 'Crumble de manzana',                tipo: 'MINORISTA', precio: 12000 },
+  { producto: 'Chocotorta pequeña',                tipo: 'MINORISTA', precio: 7500 },
+  { producto: 'Brownie con merengue',              tipo: 'MINORISTA', precio: 7500 },
+  { producto: 'Brownie con helado',                tipo: 'MINORISTA', precio: 6900 },
+  { producto: 'Volcán con helado',                 tipo: 'MINORISTA', precio: 6000 },
+  { producto: 'Lemon curd pequeño',                tipo: 'MINORISTA', precio: 5500 },
+  { producto: 'Volcán',                            tipo: 'MINORISTA', precio: 5000 },
+  { producto: 'Brownie con nuez pequeño',          tipo: 'MINORISTA', precio: 4900 },
+  { producto: 'Tarta de leche condensada pequeña', tipo: 'MINORISTA', precio: 4500 },
+  { producto: 'Coco y dulce de leche',             tipo: 'MINORISTA', precio: 4500 },
+  { producto: 'Cheesecake pequeño',                tipo: 'MINORISTA', precio: 4000 },
+  { producto: 'Alfajores x 5',                     tipo: 'MINORISTA', precio: 3800 },
+  { producto: 'Alfajor grande',                    tipo: 'MINORISTA', precio: 3500 },
+  { producto: 'Rogel chico',                       tipo: 'MINORISTA', precio: 3500 },
+  { producto: 'Crumble de manzana pequeño',        tipo: 'MINORISTA', precio: 3000 },
+  { producto: 'Galletas choco',                    tipo: 'MINORISTA', precio: 2200 },
 ];
 
 async function cargarPrecio(client, { producto, tipo, precio }) {

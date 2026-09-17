@@ -8,7 +8,8 @@
     "migrate:create": "node-pg-migrate create -j sql --",
     "migrate:up": "node-pg-migrate up --envPath .env",
     "migrate:down": "node-pg-migrate down --envPath .env",
-    "seed:precios": "node --env-file=.env seeds/precios.js"
+    "seed:precios": "node --env-file=.env seeds/precios.js",
+    "seed:costos": "node --env-file=.env seeds/costos.js"
   },
   "keywords": [],
   "author": "",
