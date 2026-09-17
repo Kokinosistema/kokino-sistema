@@ -52,6 +52,11 @@ const PRECIOS = [
   { producto: 'Palito de crema americana', tipo: 'MINORISTA', precio: 4000 },
   { producto: 'Palito de crema vainilla',  tipo: 'MINORISTA', precio: 4000 },
   { producto: 'Palito bombón',             tipo: 'MINORISTA', precio: 4500 },
+
+  // Los alfajores de produccion propia valen lo mismo sin importar el sabor.
+  { producto: 'Alfajor marroc',                    tipo: 'MINORISTA', precio: 3000 },
+  { producto: 'Alfajor chocolate blanco con nuez', tipo: 'MINORISTA', precio: 3000 },
+  { producto: 'Alfajor chocolate',                 tipo: 'MINORISTA', precio: 3000 },
 ];
 
 async function cargarPrecio(client, { producto, tipo, precio }) {
