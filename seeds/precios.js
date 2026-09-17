@@ -13,6 +13,15 @@ const PRECIOS = [
   { producto: 'Térmico 1/4 kg', tipo: 'MINORISTA', precio: 10000 },
   { producto: 'Térmico 1/2 kg', tipo: 'MINORISTA', precio: 15000 },
   { producto: 'Térmico 1 kg',   tipo: 'MINORISTA', precio: 25000 },
+
+  { producto: 'Cono simple',      tipo: 'MINORISTA', precio: 4500 },
+  { producto: 'Mini cucuruchón',  tipo: 'MINORISTA', precio: 5000 },
+  { producto: 'Cono americano',   tipo: 'MINORISTA', precio: 6500 },
+  { producto: 'Vasito',           tipo: 'MINORISTA', precio: 6500 },
+  { producto: 'Vaso',             tipo: 'MINORISTA', precio: 7500 },
+  { producto: 'Cucuruchón doble', tipo: 'MINORISTA', precio: 7500 },
+  { producto: 'Cono triple',      tipo: 'MINORISTA', precio: 8000 },
+  { producto: 'Barquillo',        tipo: 'MINORISTA', precio: 8000 },
 ];
 
 async function cargarPrecio(client, { producto, tipo, precio }) {
