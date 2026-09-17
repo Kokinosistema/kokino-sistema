@@ -23,7 +23,7 @@ const COSTOS = [
   { insumo: 'Estabilizante chocolate',  costo: 16000 },
   { insumo: 'Estabilizante mousse',     costo: 18000 },
   { insumo: 'Azúcar',                   costo: 600 },
-  { insumo: 'Leche',                    costo: 6000 },
+  { insumo: 'Leche en polvo',           costo: 6000 },
   { insumo: 'Crema de leche',           costo: 2500 },
   { insumo: 'Dulce de leche heladero',  costo: 2900 },
   { insumo: 'Dulce de leche repostero', costo: 1800 },
