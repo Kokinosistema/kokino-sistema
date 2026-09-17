@@ -8,11 +8,11 @@ Campo de la carrera.
 
 Kokino cuenta con **una fábrica y dos sucursales de venta**:
 
-- **Fábrica**: ubicada en el mismo edificio que la Sucursal 1 (arriba del
-  local), es donde se produce el helado. Desde ahí se reparte a la
-  Sucursal 2.
-- **Sucursal 1**: local de venta, comparte edificio con la fábrica.
-- **Sucursal 2**: local de venta, solo vende (no produce).
+- **Fábrica**: ubicada en el mismo edificio que la sucursal Entre Ríos (arriba
+  del local), es donde se produce el helado. Desde ahí se reparte a Alem.
+- **Entre Ríos** (Entre Ríos 604): local de venta, comparte edificio con la
+  fábrica.
+- **Alem** (Av. Alem y Lavalle): local de venta, solo vende (no produce).
 
 Cada sucursal tiene su propia caja, su propio stock y sus propias ventas —
 no comparten nada operativo entre sí.
@@ -31,7 +31,7 @@ e-commerce.
 
 ## Base de datos
 
-- Motor: PostgreSQL 17.
+- Motor: PostgreSQL 18.
 - Migraciones: [node-pg-migrate](https://github.com/salsita/node-pg-migrate)
   (SQL plano, sin ORM).
 - Base de desarrollo: `kokino_dev`.
@@ -39,10 +39,43 @@ e-commerce.
 ## Requisitos
 
 - Node.js 24 LTS
-- PostgreSQL 17
+- PostgreSQL 18
 
 ## Configuración local
 
-1. Copiar `.env.example` a `.env` y completar los valores reales
-   (nunca se sube `.env` al repositorio).
-2. Instalar dependencias: `npm install`.
+1. Instalar dependencias: `npm install`.
+2. Copiar `.env.example` a `.env` y completar la contraseña real de PostgreSQL.
+   El `.env` no se sube al repositorio, así que cada máquina tiene el suyo: la
+   contraseña de la base es propia del equipo donde se trabaja, no del proyecto.
+3. Crear la base vacía `kokino_dev`, desde pgAdmin o por consola. En Windows,
+   las herramientas de PostgreSQL no suelen quedar en el PATH, así que hay que
+   llamarlas por su ruta completa:
+
+   ```powershell
+   & "C:\Program Files\PostgreSQL\18\bin\createdb.exe" -U postgres kokino_dev
+   ```
+4. Construir el esquema y cargar los datos base: `npm run migrate:up`.
+   Las migraciones corren en orden y dejan la base lista desde cero, así que no
+   hace falta pasarse un backup entre computadoras.
+5. Cargar los precios vigentes: `npm run seed:precios`.
+
+## Migraciones y seeds
+
+Son dos cosas distintas y conviene no mezclarlas:
+
+- **Migraciones** (`migrations/`): cambian la estructura de la base y los datos
+  que el sistema necesita para existir (sucursales, categorías, sabores). Se
+  corren una sola vez y en orden; su historial no se reescribe. Cada una tiene
+  su `up` y su `down` para poder revertirla.
+- **Seeds** (`seeds/`): ponen la base en un estado conocido y se pueden correr
+  las veces que haga falta. Acá van los datos que cambian seguido, como los
+  precios: un aumento no debería agregar un archivo al historial del esquema.
+
+Comandos útiles:
+
+```bash
+npm run migrate:up                  # aplica las migraciones pendientes
+npm run migrate:down                # revierte la última
+npm run migrate:create nombre-corto # crea una migración nueva
+npm run seed:precios                # actualiza los precios de lista
+```
