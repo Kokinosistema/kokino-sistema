@@ -31,7 +31,7 @@ e-commerce.
 
 ## Base de datos
 
-- Motor: PostgreSQL 18.
+- Motor: PostgreSQL 17.
 - Migraciones: [node-pg-migrate](https://github.com/salsita/node-pg-migrate)
   (SQL plano, sin ORM).
 - Base de desarrollo: `kokino_dev`.
@@ -39,7 +39,14 @@ e-commerce.
 ## Requisitos
 
 - Node.js 24 LTS
-- PostgreSQL 18
+- PostgreSQL 17
+
+Todas las computadoras donde se trabaje el proyecto tienen que usar la misma
+versión de PostgreSQL. Si una usa la 17 y otra la 18, algo puede funcionar en
+una y fallar en la otra sin motivo aparente, y el error se termina buscando en
+el lugar equivocado. Cambiar de versión no cuesta nada: se desinstala, se
+instala la que corresponde y se corre `npm run migrate:up`, porque la base se
+reconstruye entera desde las migraciones.
 
 ## Configuración local
 
@@ -52,7 +59,7 @@ e-commerce.
    llamarlas por su ruta completa:
 
    ```powershell
-   & "C:\Program Files\PostgreSQL\18\bin\createdb.exe" -U postgres kokino_dev
+   & "C:\Program Files\PostgreSQL\17\bin\createdb.exe" -U postgres kokino_dev
    ```
 4. Construir el esquema y cargar los datos base: `npm run migrate:up`.
    Las migraciones corren en orden y dejan la base lista desde cero, así que no
