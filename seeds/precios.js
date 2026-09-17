@@ -36,6 +36,12 @@ const PRECIOS = [
   { producto: 'Diet 250 cc chocolate y vainilla',      tipo: 'MINORISTA', precio: 14000 },
   { producto: 'Diet 250 cc ananá y durazno',           tipo: 'MINORISTA', precio: 14000 },
   { producto: 'Diet 250 cc dulce de leche y frutilla', tipo: 'MINORISTA', precio: 14000 },
+
+  // Cafetería. El combo de jarrito con alfajor vale lo mismo que el affogato.
+  { producto: 'Café chico',        tipo: 'MINORISTA', precio: 2500 },
+  { producto: 'Jarrito',           tipo: 'MINORISTA', precio: 3000 },
+  { producto: 'Jarrito y alfajor', tipo: 'MINORISTA', precio: 5000 },
+  { producto: 'Affogato',          tipo: 'MINORISTA', precio: 5000 },
 ];
 
 async function cargarPrecio(client, { producto, tipo, precio }) {
