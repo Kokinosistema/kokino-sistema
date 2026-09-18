@@ -94,6 +94,12 @@ const PRECIOS = [
   { producto: 'Rogel chico',                       tipo: 'MINORISTA', precio: 3500 },
   { producto: 'Crumble de manzana pequeño',        tipo: 'MINORISTA', precio: 3000 },
   { producto: 'Galletas choco',                    tipo: 'MINORISTA', precio: 2200 },
+
+  // Salsas embotelladas. Las dos de 500g valen igual entre si: el precio lo
+  // fija el tamano del envase, no el gusto.
+  { producto: 'Salsa de chocolate x200g', tipo: 'MINORISTA', precio: 6000 },
+  { producto: 'Salsa de frutilla x500g',  tipo: 'MINORISTA', precio: 8000 },
+  { producto: 'Salsa de caramelo x500g',  tipo: 'MINORISTA', precio: 8000 },
 ];
 
 async function cargarPrecio(client, { producto, tipo, precio }) {
