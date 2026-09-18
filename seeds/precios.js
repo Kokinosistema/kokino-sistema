@@ -53,6 +53,12 @@ const PRECIOS = [
   { producto: 'Palito de crema vainilla',  tipo: 'MINORISTA', precio: 4000 },
   { producto: 'Palito bombón',             tipo: 'MINORISTA', precio: 4500 },
 
+  // Los rellenos son otra linea, no un reemplazo de los de crema: conviven en
+  // la carta y por eso repiten gusto a distinto precio.
+  { producto: 'Palito relleno dulce de leche', tipo: 'MINORISTA', precio: 7000 },
+  { producto: 'Palito relleno vainilla',       tipo: 'MINORISTA', precio: 7000 },
+  { producto: 'Palito relleno americana',      tipo: 'MINORISTA', precio: 7000 },
+
   // Los alfajores de produccion propia valen lo mismo sin importar el sabor.
   { producto: 'Alfajor marroc',                    tipo: 'MINORISTA', precio: 3000 },
   { producto: 'Alfajor chocolate blanco con nuez', tipo: 'MINORISTA', precio: 3000 },
