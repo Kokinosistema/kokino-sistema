@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= typeof titulo !== 'undefined' ? titulo : 'Kokino' %></title>
+  <link rel="stylesheet" href="/estilos.css">
+</head>
+<body>
+<% if (usuario) { %>
+  <header class="barra">
+    <span class="marca">Kokino</span>
+    <span class="quien">
+      <%= usuario.nombre %>
+      <span class="etiqueta"><%= usuario.rol %></span>
+      <span class="sucursal"><%= usuario.sucursal || 'las dos sucursales' %></span>
+    </span>
+    <form method="post" action="/logout">
+      <button class="salir" type="submit">Salir</button>
+    </form>
+  </header>
+<% } %>
+<main>
