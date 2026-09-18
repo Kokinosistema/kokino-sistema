@@ -224,3 +224,31 @@ select, textarea {
 .formulario h2 { margin-top: 0; font-size: 1.05rem; }
 .formulario + .formulario { margin-top: 1.5rem; }
 .enlace[disabled] { color: var(--borde); cursor: not-allowed; text-decoration: none; }
+
+/* --- Recetas --- */
+.avance { height: 8px; background: var(--borde); border-radius: 999px; overflow: hidden; margin: 0.5rem 0 1.5rem; max-width: 30rem; }
+.avance-lleno { height: 100%; background: var(--acento); }
+.aviso-atencion {
+  background: #fff6e5;
+  border: 1px solid #f0d9a8;
+  color: #8a5d0f;
+  padding: 0.7rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+.tabla-ingredientes select, .tabla-ingredientes input { margin-top: 0; font-size: 0.9rem; }
+.tabla-ingredientes input.chico { max-width: 7rem; }
+.tabla-ingredientes td { vertical-align: middle; }
+.boton-secundario {
+  background: none;
+  border: 1px dashed var(--borde);
+  color: var(--suave);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  width: auto;
+  margin-top: 0.5rem;
+}
+.boton-secundario:hover { border-color: var(--acento); color: var(--acento); }
+.enlace-a { color: var(--suave); font-size: 0.85rem; }

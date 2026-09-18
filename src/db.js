@@ -16,4 +16,31 @@ function consultar(sql, parametros) {
   return pool.query(sql, parametros);
 }
 
-module.exports = { consultar, pool };
+// Corre varias consultas como una sola operacion: o pasan todas o no pasa
+// ninguna.
+//
+// Hace falta apenas una pantalla escribe en mas de una tabla. Guardar una
+// receta, por ejemplo, borra los ingredientes viejos y escribe los nuevos: si
+// fallara en el medio, la receta quedaria sin ingredientes y nadie se
+// enteraria hasta que alguien fuera a producir con ella.
+//
+// Se toma una conexion del pool y se usa la misma para todo, porque una
+// transaccion vive en una conexion: repartir las consultas entre varias haria
+// que el BEGIN y el COMMIT no se hablen entre si. Siempre se devuelve al pool,
+// haya salido bien o mal.
+async function conTransaccion(tarea) {
+  const cliente = await pool.connect();
+  try {
+    await cliente.query('BEGIN');
+    const resultado = await tarea((sql, parametros) => cliente.query(sql, parametros));
+    await cliente.query('COMMIT');
+    return resultado;
+  } catch (error) {
+    await cliente.query('ROLLBACK');
+    throw error;
+  } finally {
+    cliente.release();
+  }
+}
+
+module.exports = { consultar, conTransaccion, pool };
