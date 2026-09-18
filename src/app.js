@@ -8,6 +8,7 @@ const { exigirLogin, exponerUsuario, exponerAviso } = require('./middleware/sesi
 const rutasAuth = require('./rutas/auth');
 const rutasInicio = require('./rutas/inicio');
 const rutasProveedores = require('./rutas/proveedores');
+const rutasUsuarios = require('./rutas/usuarios');
 
 function crearAplicacion() {
   const app = express();
@@ -44,6 +45,7 @@ function crearAplicacion() {
   app.use(exigirLogin);
   app.use(rutasInicio);
   app.use(rutasProveedores);
+  app.use(rutasUsuarios);
 
   app.use((req, res) => {
     res.status(404).render('error', {

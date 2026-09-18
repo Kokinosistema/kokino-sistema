@@ -1,0 +1,55 @@
+<%- include('../parciales/encabezado', { titulo: 'Usuarios - Kokino' }) %>
+
+<div class="titulo-con-accion">
+  <h1>Usuarios</h1>
+  <% if (hayEmpleadosSinCuenta) { %>
+    <a class="boton" href="/usuarios/nuevo">Crear cuenta</a>
+  <% } %>
+</div>
+
+<% if (usuarios.length === 0) { %>
+  <p class="ayuda">Todavia no hay ninguna cuenta cargada.</p>
+<% } else { %>
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>Persona</th>
+        <th>Usuario</th>
+        <th>Rol</th>
+        <th>Sucursal</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% usuarios.forEach(function (u) { %>
+        <tr class="<%= u.activo ? '' : 'inactiva' %>">
+          <td>
+            <a href="/usuarios/<%= u.id_usuario %>/editar"><%= (u.nombre + ' ' + u.apellido).trim() %></a>
+            <% if (!u.activo) { %><span class="etiqueta">sin acceso</span><% } %>
+            <% if (u.id_usuario === usuario.id_usuario) { %><span class="etiqueta">vos</span><% } %>
+          </td>
+          <td><%= u.username %></td>
+          <td><%= u.nombre_rol %></td>
+          <td><%= u.sucursal %></td>
+          <td class="acciones">
+            <form method="post" action="/usuarios/<%= u.id_usuario %>/baja">
+              <input type="hidden" name="activar" value="<%= u.activo ? '0' : '1' %>">
+              <button class="enlace" type="submit" <%= u.activo && u.id_usuario === usuario.id_usuario ? 'disabled' : '' %>>
+                <%= u.activo ? 'Quitar acceso' : 'Devolver acceso' %>
+              </button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<% } %>
+
+<% if (!hayEmpleadosSinCuenta) { %>
+  <p class="ayuda">
+    Todos los empleados activos ya tienen cuenta. Para crear una nueva, primero
+    hay que cargar al empleado.
+  </p>
+<% } %>
+
+<%- include('../parciales/pie') %>

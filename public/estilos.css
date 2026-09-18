@@ -220,3 +220,7 @@ select, textarea {
 .botonera { display: flex; align-items: center; gap: 1rem; margin-top: 1.5rem; }
 .botonera button { width: auto; margin-top: 0; padding: 0.6rem 1.4rem; }
 .cancelar { color: var(--suave); font-size: 0.9rem; }
+
+.formulario h2 { margin-top: 0; font-size: 1.05rem; }
+.formulario + .formulario { margin-top: 1.5rem; }
+.enlace[disabled] { color: var(--borde); cursor: not-allowed; text-decoration: none; }

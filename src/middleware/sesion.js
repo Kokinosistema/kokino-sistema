@@ -1,9 +1,20 @@
 'use strict';
 
+const { consultar } = require('../db');
+
 // Deja pasar solo a quien inicio sesion. Se aplica a todo menos al login:
 // en un sistema de caja no hay nada publico, porque cada operacion tiene que
 // quedar atada a quien la hizo.
-function exigirLogin(req, res, siguiente) {
+//
+// Ademas vuelve a leer el rol y el estado de la cuenta en cada pedido, en vez
+// de confiar en lo que se guardo al entrar. La diferencia importa: sin esto,
+// quitarle el acceso a alguien o bajarle el rol no tendria efecto hasta que
+// cerrara sesion, y la cookie dura 12 horas. Echar a alguien un sabado a la
+// tarde lo dejaria operando hasta la noche.
+//
+// Es una consulta mas por pedido, pero busca por clave primaria y devuelve una
+// fila: al lado de lo que cuesta pintar la pantalla, no se nota.
+async function exigirLogin(req, res, siguiente) {
   if (!req.session.usuario) {
     // Se recuerda a donde queria ir para devolverlo ahi despues de entrar. Sin
     // esto, una sesion vencida lo deja siempre en la pantalla de inicio y
@@ -11,7 +22,46 @@ function exigirLogin(req, res, siguiente) {
     req.session.destino = req.originalUrl;
     return res.redirect('/login');
   }
-  siguiente();
+
+  try {
+    const { rows } = await consultar(
+      `SELECT u.username,
+              r.nombre_rol            AS rol,
+              e.nombre,
+              e.apellido,
+              e.id_sucursal_asignada,
+              s.nombre                AS sucursal
+         FROM usuarios u
+         JOIN roles r     ON r.id_rol = u.id_rol
+         JOIN empleados e ON e.id_empleado = u.id_empleado
+         LEFT JOIN sucursales s ON s.id_sucursal = e.id_sucursal_asignada
+        WHERE u.id_usuario = $1
+          AND u.activo
+          AND e.activo`,
+      [req.session.usuario.id_usuario]
+    );
+
+    // La cuenta se desactivo, se borro o el empleado se dio de baja mientras
+    // la sesion estaba abierta: se corta ahi mismo.
+    if (rows.length === 0) {
+      return req.session.destroy(() => res.redirect('/login'));
+    }
+
+    const actual = rows[0];
+    req.session.usuario = {
+      id_usuario: req.session.usuario.id_usuario,
+      username: actual.username,
+      nombre: [actual.nombre, actual.apellido].filter(Boolean).join(' '),
+      rol: actual.rol,
+      id_sucursal_asignada: actual.id_sucursal_asignada,
+      sucursal: actual.sucursal,
+    };
+    res.locals.usuario = req.session.usuario;
+
+    siguiente();
+  } catch (error) {
+    siguiente(error);
+  }
 }
 
 // Deja pasar solo a los roles indicados. Se usa para las pantallas que son de
