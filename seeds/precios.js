@@ -58,6 +58,13 @@ const PRECIOS = [
   { producto: 'Alfajor chocolate blanco con nuez', tipo: 'MINORISTA', precio: 3000 },
   { producto: 'Alfajor chocolate',                 tipo: 'MINORISTA', precio: 3000 },
 
+  // Las tortas heladas son de produccion propia y valen lo mismo sin importar
+  // el sabor, igual que los alfajores.
+  { producto: 'Torta súper dulce de leche',        tipo: 'MINORISTA', precio: 32000 },
+  { producto: 'Torta chocolatosa',                 tipo: 'MINORISTA', precio: 32000 },
+  { producto: 'Torta frutos rojos',                tipo: 'MINORISTA', precio: 32000 },
+  { producto: 'Torta chocolate blanco y maracuyá', tipo: 'MINORISTA', precio: 32000 },
+
   // Reposteria comprada. El costo de estos productos vive aparte, en
   // costos_producto, y se carga con seed:costos.
   { producto: 'Chocotorta',                        tipo: 'MINORISTA', precio: 33000 },
