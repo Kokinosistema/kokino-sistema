@@ -4,9 +4,10 @@ const path = require('path');
 const express = require('express');
 const session = require('express-session');
 
-const { exigirLogin, exponerUsuario } = require('./middleware/sesion');
+const { exigirLogin, exponerUsuario, exponerAviso } = require('./middleware/sesion');
 const rutasAuth = require('./rutas/auth');
 const rutasInicio = require('./rutas/inicio');
+const rutasProveedores = require('./rutas/proveedores');
 
 function crearAplicacion() {
   const app = express();
@@ -36,11 +37,13 @@ function crearAplicacion() {
   );
 
   app.use(exponerUsuario);
+  app.use(exponerAviso);
 
   // El login es lo unico que se puede ver sin estar logueado.
   app.use(rutasAuth);
   app.use(exigirLogin);
   app.use(rutasInicio);
+  app.use(rutasProveedores);
 
   app.use((req, res) => {
     res.status(404).render('error', {

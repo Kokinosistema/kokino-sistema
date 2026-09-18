@@ -39,4 +39,17 @@ function exponerUsuario(req, res, siguiente) {
   siguiente();
 }
 
-module.exports = { exigirLogin, exigirRol, exponerUsuario };
+// Mensajes de una sola vez, del estilo "se agrego a tal proveedor".
+//
+// Despues de guardar se redirige en vez de mostrar la pantalla directamente,
+// asi refrescar no vuelve a guardar lo mismo. Pero al redirigir se pierde todo
+// lo que el servidor sabia, incluido el aviso, asi que viaja en la sesion y se
+// borra apenas se lee: si quedara guardado, apareceria de nuevo en la pantalla
+// siguiente sin que nadie hiciera nada.
+function exponerAviso(req, res, siguiente) {
+  res.locals.aviso = req.session.aviso || null;
+  delete req.session.aviso;
+  siguiente();
+}
+
+module.exports = { exigirLogin, exigirRol, exponerUsuario, exponerAviso };

@@ -9,7 +9,14 @@
 <body>
 <% if (usuario) { %>
   <header class="barra">
-    <span class="marca">Kokino</span>
+    <a class="marca" href="/">Kokino</a>
+
+    <nav class="menu">
+      <% if (usuario.rol === 'administrador') { %>
+        <a href="/proveedores">Proveedores</a>
+      <% } %>
+    </nav>
+
     <span class="quien">
       <%= usuario.nombre %>
       <span class="etiqueta"><%= usuario.rol %></span>
@@ -21,3 +28,6 @@
   </header>
 <% } %>
 <main>
+<% if (typeof aviso !== 'undefined' && aviso) { %>
+  <p class="aviso" role="status"><%= aviso %></p>
+<% } %>
