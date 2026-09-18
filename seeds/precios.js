@@ -100,6 +100,9 @@ const PRECIOS = [
   { producto: 'Salsa de chocolate x200g', tipo: 'MINORISTA', precio: 6000 },
   { producto: 'Salsa de frutilla x500g',  tipo: 'MINORISTA', precio: 8000 },
   { producto: 'Salsa de caramelo x500g',  tipo: 'MINORISTA', precio: 8000 },
+
+  // El bano no se vende envasado: se sirve sobre el helado y se cobra aparte.
+  { producto: 'Baño de chocolate',        tipo: 'MINORISTA', precio: 2500 },
 ];
 
 async function cargarPrecio(client, { producto, tipo, precio }) {
