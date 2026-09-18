@@ -3,6 +3,7 @@
 const express = require('express');
 const { consultar } = require('../db');
 const { exigirRol } = require('../middleware/sesion');
+const { normalizarCuit } = require('../cuit');
 
 const router = express.Router();
 
@@ -25,28 +26,6 @@ const FORMAS = [
 // duenos: el rol empleado vende, cobra y carga stock. Darle de alta a un
 // proveedor nuevo es una decision, no una tarea de mostrador.
 router.use(exigirRol('administrador'));
-
-// El CUIT trae digito verificador, asi que se puede saber si esta bien escrito
-// sin preguntarle a nadie. Vale la pena validarlo ahora y no cuando se factura:
-// AFIP rechaza un CUIT invalido, y para entonces el error estaria a meses de
-// distancia de la tecla que lo escribio mal.
-function cuitValido(digitos) {
-  const pesos = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
-  const suma = pesos.reduce((acc, peso, i) => acc + peso * Number(digitos[i]), 0);
-  const resto = suma % 11;
-  const verificador = resto === 0 ? 0 : resto === 1 ? 9 : 11 - resto;
-  return verificador === Number(digitos[10]);
-}
-
-// Se guarda siempre con guiones, para que la columna no termine con la mitad
-// de los CUIT escritos de una forma y la mitad de otra.
-function normalizarCuit(entrada) {
-  const digitos = (entrada || '').replace(/\D/g, '');
-  if (digitos.length === 0) return { cuit: null };
-  if (digitos.length !== 11) return { error: 'El CUIT tiene que tener 11 numeros.' };
-  if (!cuitValido(digitos)) return { error: 'Ese CUIT no existe: el digito verificador no cierra.' };
-  return { cuit: digitos.slice(0, 2) + '-' + digitos.slice(2, 10) + '-' + digitos.slice(10) };
-}
 
 function leerFormulario(cuerpo) {
   const datos = {
@@ -97,7 +76,7 @@ function mostrarDuplicado(error, req, res, esNuevo) {
 // en la base como dato sensible que no debe verse en pantallas de uso general:
 // un CBU solo hace falta cuando se le va a pagar a ese proveedor, no cuando se
 // mira la lista. Se muestra si lo tiene cargado, no cual es.
-router.get('/proveedores', async (req, res, siguiente) => {
+router.get('/', async (req, res, siguiente) => {
   try {
     const mostrarInactivos = req.query.inactivos === '1';
     const { rows } = await consultar(
@@ -115,7 +94,7 @@ router.get('/proveedores', async (req, res, siguiente) => {
   }
 });
 
-router.get('/proveedores/nuevo', (req, res) => {
+router.get('/nuevo', (req, res) => {
   res.render('proveedores/formulario', {
     proveedor: {
       razon_social: '', cuit: '', telefono: '', plazo_pago: '',
@@ -128,7 +107,7 @@ router.get('/proveedores/nuevo', (req, res) => {
   });
 });
 
-router.post('/proveedores', async (req, res, siguiente) => {
+router.post('/', async (req, res, siguiente) => {
   const { datos, errores } = leerFormulario(req.body);
   if (errores.length > 0) {
     return res.status(400).render('proveedores/formulario', {
@@ -152,7 +131,7 @@ router.post('/proveedores', async (req, res, siguiente) => {
   }
 });
 
-router.get('/proveedores/:id/editar', async (req, res, siguiente) => {
+router.get('/:id/editar', async (req, res, siguiente) => {
   try {
     const { rows } = await consultar(
       'SELECT * FROM proveedores WHERE id_proveedor = $1',
@@ -167,7 +146,7 @@ router.get('/proveedores/:id/editar', async (req, res, siguiente) => {
   }
 });
 
-router.post('/proveedores/:id', async (req, res, siguiente) => {
+router.post('/:id', async (req, res, siguiente) => {
   const { datos, errores } = leerFormulario(req.body);
   if (errores.length > 0) {
     return res.status(400).render('proveedores/formulario', {
@@ -197,7 +176,7 @@ router.post('/proveedores/:id', async (req, res, siguiente) => {
 // Baja logica, no borrado. Un proveedor al que se le compro durante anos tiene
 // que seguir existiendo para que las compras viejas sigan diciendo a quien se
 // le compro; lo que se apaga es que aparezca al cargar una compra nueva.
-router.post('/proveedores/:id/baja', async (req, res, siguiente) => {
+router.post('/:id/baja', async (req, res, siguiente) => {
   try {
     const activar = req.body.activar === '1';
     const { rows } = await consultar(

@@ -61,7 +61,7 @@ async function traerRoles() {
   return rows;
 }
 
-router.get('/usuarios', async (req, res, siguiente) => {
+router.get('/', async (req, res, siguiente) => {
   try {
     const { rows } = await consultar(
       `SELECT u.id_usuario,
@@ -114,7 +114,7 @@ async function traerEmpleadosSinCuenta() {
   return rows;
 }
 
-router.get('/usuarios/nuevo', async (req, res, siguiente) => {
+router.get('/nuevo', async (req, res, siguiente) => {
   try {
     res.render('usuarios/nuevo', {
       empleados: await traerEmpleadosSinCuenta(),
@@ -127,7 +127,7 @@ router.get('/usuarios/nuevo', async (req, res, siguiente) => {
   }
 });
 
-router.post('/usuarios', async (req, res, siguiente) => {
+router.post('/', async (req, res, siguiente) => {
   const datos = {
     id_empleado: req.body.id_empleado || '',
     username: (req.body.username || '').trim().toLowerCase(),
@@ -202,7 +202,7 @@ async function traerUsuario(id) {
   return rows[0];
 }
 
-router.get('/usuarios/:id/editar', async (req, res, siguiente) => {
+router.get('/:id/editar', async (req, res, siguiente) => {
   try {
     const usuarioEditado = await traerUsuario(req.params.id);
     if (!usuarioEditado) return siguiente();
@@ -216,7 +216,7 @@ router.get('/usuarios/:id/editar', async (req, res, siguiente) => {
   }
 });
 
-router.post('/usuarios/:id', async (req, res, siguiente) => {
+router.post('/:id', async (req, res, siguiente) => {
   try {
     const editado = await traerUsuario(req.params.id);
     if (!editado) return siguiente();
@@ -279,7 +279,7 @@ router.post('/usuarios/:id', async (req, res, siguiente) => {
 // justamente se usa cuando alguien la olvido. Queda dicho aca porque es una
 // decision, no un olvido: si mas adelante hay una pantalla donde cada uno se
 // cambia la suya, esa si tiene que pedir la vieja.
-router.post('/usuarios/:id/clave', async (req, res, siguiente) => {
+router.post('/:id/clave', async (req, res, siguiente) => {
   try {
     const editado = await traerUsuario(req.params.id);
     if (!editado) return siguiente();
@@ -306,7 +306,7 @@ router.post('/usuarios/:id/clave', async (req, res, siguiente) => {
   }
 });
 
-router.post('/usuarios/:id/baja', async (req, res, siguiente) => {
+router.post('/:id/baja', async (req, res, siguiente) => {
   try {
     const editado = await traerUsuario(req.params.id);
     if (!editado) return siguiente();

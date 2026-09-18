@@ -9,6 +9,7 @@ const rutasAuth = require('./rutas/auth');
 const rutasInicio = require('./rutas/inicio');
 const rutasProveedores = require('./rutas/proveedores');
 const rutasUsuarios = require('./rutas/usuarios');
+const rutasClientes = require('./rutas/clientes');
 
 function crearAplicacion() {
   const app = express();
@@ -43,9 +44,16 @@ function crearAplicacion() {
   // El login es lo unico que se puede ver sin estar logueado.
   app.use(rutasAuth);
   app.use(exigirLogin);
+
+  // Cada router se monta bajo su prefijo, no en la raiz. Importa mas de lo que
+  // parece: adentro de estos routers hay un router.use(exigirRol(...)) que se
+  // aplica a todo lo que pase por ahi, y montados en la raiz pasaba por ahi
+  // todo el sistema. Asi el permiso de cada router queda encerrado en su
+  // propia direccion, y el orden en que se montan deja de importar.
   app.use(rutasInicio);
-  app.use(rutasProveedores);
-  app.use(rutasUsuarios);
+  app.use('/proveedores', rutasProveedores);
+  app.use('/usuarios', rutasUsuarios);
+  app.use('/clientes', rutasClientes);
 
   app.use((req, res) => {
     res.status(404).render('error', {
