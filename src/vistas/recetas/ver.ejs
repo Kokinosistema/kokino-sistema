@@ -1,0 +1,34 @@
+<%- include('../parciales/encabezado', { titulo: 'Formula de ' + receta.nombre_resultado + ' - Kokino' }) %>
+
+<h1>Formula de <%= receta.nombre_resultado %></h1>
+<p class="ayuda">
+  Rinde <strong><%= Number(receta.cantidad_rendimiento) %> <%= receta.unidad_rendimiento %></strong>.
+  Version <%= receta.version %>.
+</p>
+
+<% FASES.forEach(function (f) { %>
+  <% const deLaFase = ingredientes.filter(function (i) { return i.fase === f.valor; }); %>
+  <% if (deLaFase.length > 0) { %>
+    <h2><%= f.texto %></h2>
+    <table class="tabla">
+      <thead>
+        <tr><th>Insumo</th><th>Cantidad</th></tr>
+      </thead>
+      <tbody>
+        <% deLaFase.forEach(function (i) { %>
+          <tr>
+            <td><%= i.insumo %></td>
+            <td><%= Number(i.cantidad_necesaria) %> <%= i.unidad %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+<% }) %>
+
+<p class="ayuda">
+  Las formulas las escriben los duenos. Si algo esta mal, avisales.
+  <a href="/recetas">Volver a las recetas</a>
+</p>
+
+<%- include('../parciales/pie') %>

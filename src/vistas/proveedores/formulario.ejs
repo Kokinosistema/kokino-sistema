@@ -1,0 +1,78 @@
+<%- include('../parciales/encabezado', { titulo: (esNuevo ? 'Nuevo proveedor' : 'Editar proveedor') + ' - Kokino' }) %>
+
+<h1><%= esNuevo ? 'Nuevo proveedor' : 'Editar proveedor' %></h1>
+
+<% if (errores.length > 0) { %>
+  <div class="error" role="alert">
+    <% errores.forEach(function (e) { %>
+      <p><%= e %></p>
+    <% }) %>
+  </div>
+<% } %>
+
+<form method="post"
+      action="<%= esNuevo ? '/proveedores' : '/proveedores/' + proveedor.id_proveedor %>"
+      class="formulario">
+
+  <label for="razon_social">Nombre o razon social <span class="obligatorio">*</span></label>
+  <input id="razon_social" name="razon_social" required autofocus
+         value="<%= proveedor.razon_social || '' %>">
+
+  <div class="fila">
+    <div>
+      <label for="cuit">CUIT</label>
+      <input id="cuit" name="cuit" placeholder="20-12345678-9"
+             value="<%= proveedor.cuit || '' %>">
+      <p class="pista">Se controla el digito verificador. Hace falta para registrar facturas.</p>
+    </div>
+    <div>
+      <label for="telefono">Telefono</label>
+      <input id="telefono" name="telefono" value="<%= proveedor.telefono || '' %>">
+    </div>
+  </div>
+
+  <div class="fila">
+    <div>
+      <label for="plazo_pago">Cuando se le paga</label>
+      <select id="plazo_pago" name="plazo_pago">
+        <option value="">Sin definir</option>
+        <% PLAZOS.forEach(function (p) { %>
+          <option value="<%= p.valor %>" <%= proveedor.plazo_pago === p.valor ? 'selected' : '' %>>
+            <%= p.texto %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label for="forma_pago_habitual">Como se le paga</label>
+      <select id="forma_pago_habitual" name="forma_pago_habitual">
+        <option value="">Sin definir</option>
+        <% FORMAS.forEach(function (f) { %>
+          <option value="<%= f.valor %>" <%= proveedor.forma_pago_habitual === f.valor ? 'selected' : '' %>>
+            <%= f.texto %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+  </div>
+  <p class="pista">
+    Son dos preguntas distintas: a un proveedor se le puede pagar a 30 dias por deposito.
+  </p>
+
+  <label for="datos_cuenta_bancaria">CBU o alias</label>
+  <input id="datos_cuenta_bancaria" name="datos_cuenta_bancaria"
+         value="<%= proveedor.datos_cuenta_bancaria || '' %>">
+  <p class="pista sensible">
+    Dato sensible: no se muestra en la lista de proveedores ni en los reportes.
+  </p>
+
+  <label for="observaciones">Observaciones</label>
+  <textarea id="observaciones" name="observaciones" rows="3"><%= proveedor.observaciones || '' %></textarea>
+
+  <div class="botonera">
+    <button type="submit"><%= esNuevo ? 'Agregar proveedor' : 'Guardar cambios' %></button>
+    <a class="cancelar" href="/proveedores">Cancelar</a>
+  </div>
+</form>
+
+<%- include('../parciales/pie') %>

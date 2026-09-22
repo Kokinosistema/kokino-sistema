@@ -1,0 +1,22 @@
+<%- include('parciales/encabezado', { titulo: 'Entrar - Kokino' }) %>
+
+<div class="caja-login">
+  <h1>Kokino</h1>
+  <p class="ayuda">Entra con tu usuario para operar.</p>
+
+  <% if (error) { %>
+    <p class="error" role="alert"><%= error %></p>
+  <% } %>
+
+  <form method="post" action="/login" autocomplete="off">
+    <label for="username">Usuario</label>
+    <input id="username" name="username" value="<%= username %>" required autofocus>
+
+    <label for="contrasena">Contrasena</label>
+    <input id="contrasena" name="contrasena" type="password" required>
+
+    <button type="submit">Entrar</button>
+  </form>
+</div>
+
+<%- include('parciales/pie') %>

@@ -1,0 +1,68 @@
+<%- include('../parciales/encabezado', { titulo: 'Proveedores - Kokino' }) %>
+
+<div class="titulo-con-accion">
+  <h1>Proveedores</h1>
+  <a class="boton" href="/proveedores/nuevo">Agregar proveedor</a>
+</div>
+
+<% if (proveedores.length === 0) { %>
+  <p class="ayuda">
+    <% if (mostrarInactivos) { %>
+      No hay ningun proveedor cargado todavia.
+    <% } else { %>
+      Todavia no hay proveedores. Agregá el primero con el boton de arriba.
+    <% } %>
+  </p>
+<% } else { %>
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>Proveedor</th>
+        <th>CUIT</th>
+        <th>Telefono</th>
+        <th>Cuando se paga</th>
+        <th>Como se paga</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% proveedores.forEach(function (p) { %>
+        <tr class="<%= p.activo ? '' : 'inactiva' %>">
+          <td>
+            <a href="/proveedores/<%= p.id_proveedor %>/editar"><%= p.razon_social %></a>
+            <% if (!p.activo) { %><span class="etiqueta">dado de baja</span><% } %>
+            <% if (p.tiene_cuenta) { %><span class="marca-cuenta" title="Tiene datos bancarios cargados">banco</span><% } %>
+          </td>
+          <td><%= p.cuit || '—' %></td>
+          <td><%= p.telefono || '—' %></td>
+          <td>
+            <% const plazo = PLAZOS.find(function (x) { return x.valor === p.plazo_pago; }); %>
+            <%= plazo ? plazo.texto : '—' %>
+          </td>
+          <td>
+            <% const forma = FORMAS.find(function (x) { return x.valor === p.forma_pago_habitual; }); %>
+            <%= forma ? forma.texto : '—' %>
+          </td>
+          <td class="acciones">
+            <form method="post" action="/proveedores/<%= p.id_proveedor %>/baja">
+              <input type="hidden" name="activar" value="<%= p.activo ? '0' : '1' %>">
+              <button class="enlace" type="submit">
+                <%= p.activo ? 'Dar de baja' : 'Reactivar' %>
+              </button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<% } %>
+
+<p class="ayuda">
+  <% if (mostrarInactivos) { %>
+    <a href="/proveedores">Ver solo los activos</a>
+  <% } else { %>
+    <a href="/proveedores?inactivos=1">Ver tambien los dados de baja</a>
+  <% } %>
+</p>
+
+<%- include('../parciales/pie') %>

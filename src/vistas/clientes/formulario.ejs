@@ -1,0 +1,82 @@
+<%- include('../parciales/encabezado', { titulo: (esNuevo ? 'Nuevo cliente' : 'Editar cliente') + ' - Kokino' }) %>
+
+<h1><%= esNuevo ? 'Nuevo cliente' : 'Editar cliente' %></h1>
+
+<% if (errores.length > 0) { %>
+  <div class="error" role="alert">
+    <% errores.forEach(function (e) { %>
+      <p><%= e %></p>
+    <% }) %>
+  </div>
+<% } %>
+
+<form method="post"
+      action="<%= esNuevo ? '/clientes' : '/clientes/' + cliente.id_cliente %>"
+      class="formulario">
+
+  <label for="nombre_razon_social">Nombre o razon social <span class="obligatorio">*</span></label>
+  <input id="nombre_razon_social" name="nombre_razon_social" required autofocus
+         value="<%= cliente.nombre_razon_social || '' %>">
+
+  <div class="fila">
+    <div>
+      <label for="tipo_cliente">Tipo</label>
+      <% if (puedeCredito) { %>
+        <select id="tipo_cliente" name="tipo_cliente">
+          <% TIPOS.forEach(function (t) { %>
+            <option value="<%= t.valor %>" <%= cliente.tipo_cliente === t.valor ? 'selected' : '' %>>
+              <%= t.texto %>
+            </option>
+          <% }) %>
+        </select>
+      <% } else { %>
+        <input id="tipo_cliente" value="Minorista" disabled>
+        <input type="hidden" name="tipo_cliente" value="MINORISTA">
+        <p class="pista">Los mayoristas los cargan los duenos.</p>
+      <% } %>
+    </div>
+    <div>
+      <label for="cuit">CUIT</label>
+      <input id="cuit" name="cuit" placeholder="20-12345678-9" value="<%= cliente.cuit || '' %>">
+      <p class="pista">Se controla el digito verificador.</p>
+    </div>
+  </div>
+
+  <div class="fila">
+    <div>
+      <label for="telefono">Telefono</label>
+      <input id="telefono" name="telefono" value="<%= cliente.telefono || '' %>">
+    </div>
+    <div>
+      <label for="direccion">Direccion</label>
+      <input id="direccion" name="direccion" value="<%= cliente.direccion || '' %>">
+    </div>
+  </div>
+
+  <% if (puedeCredito) { %>
+    <h2>Cuenta corriente</h2>
+    <p class="pista">
+      Solo para mayoristas. Dejar vacio significa que el cliente no tiene cuenta
+      corriente habilitada, no que la tenga sin tope.
+    </p>
+    <div class="fila">
+      <div>
+        <label for="limite_cuenta_corriente">Limite de deuda</label>
+        <input id="limite_cuenta_corriente" name="limite_cuenta_corriente" inputmode="decimal"
+               value="<%= cliente.limite_cuenta_corriente === null || cliente.limite_cuenta_corriente === undefined ? '' : cliente.limite_cuenta_corriente %>">
+      </div>
+      <div>
+        <label for="plazo_pago_dias">Dias para pagar</label>
+        <input id="plazo_pago_dias" name="plazo_pago_dias" inputmode="numeric"
+               value="<%= cliente.plazo_pago_dias === null || cliente.plazo_pago_dias === undefined ? '' : cliente.plazo_pago_dias %>">
+      </div>
+    </div>
+  <% } %>
+
+  <div class="botonera">
+    <button type="submit"><%= esNuevo ? 'Agregar cliente' : 'Guardar cambios' %></button>
+    <a class="cancelar" href="/clientes">Cancelar</a>
+  </div>
+</form>
+
+<%- include('../parciales/pie') %>

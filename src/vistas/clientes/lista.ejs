@@ -1,0 +1,77 @@
+<%- include('../parciales/encabezado', { titulo: 'Clientes - Kokino' }) %>
+
+<div class="titulo-con-accion">
+  <h1>Clientes</h1>
+  <a class="boton" href="/clientes/nuevo">Agregar cliente</a>
+</div>
+
+<p class="ayuda">
+  <% if (puedeCredito) { %>
+    La venta de mostrador es anonima y no genera cliente: aca van los mayoristas
+    y los pedidos que hace falta identificar.
+  <% } else { %>
+    Aca van los clientes de pedidos a domicilio o telefonicos. Los mayoristas
+    los manejan los duenos.
+  <% } %>
+</p>
+
+<% if (clientes.length === 0) { %>
+  <p class="ayuda">Todavia no hay clientes cargados.</p>
+<% } else { %>
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>Cliente</th>
+        <th>Tipo</th>
+        <th>CUIT</th>
+        <th>Telefono</th>
+        <% if (puedeCredito) { %>
+          <th>Limite cta. cte.</th>
+          <th>Plazo</th>
+        <% } %>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% clientes.forEach(function (c) { %>
+        <tr class="<%= c.activo ? '' : 'inactiva' %>">
+          <td>
+            <a href="/clientes/<%= c.id_cliente %>/editar"><%= c.nombre_razon_social %></a>
+            <% if (!c.activo) { %><span class="etiqueta">dado de baja</span><% } %>
+          </td>
+          <td><%= c.tipo_cliente === 'MAYORISTA' ? 'Mayorista' : 'Minorista' %></td>
+          <td><%= c.cuit || '—' %></td>
+          <td><%= c.telefono || '—' %></td>
+          <% if (puedeCredito) { %>
+            <td>
+              <% if (c.limite_cuenta_corriente === null) { %>
+                <span class="pista">sin cuenta corriente</span>
+              <% } else { %>
+                $<%= Number(c.limite_cuenta_corriente).toLocaleString('es-AR') %>
+              <% } %>
+            </td>
+            <td><%= c.plazo_pago_dias === null ? '—' : c.plazo_pago_dias + ' dias' %></td>
+          <% } %>
+          <td class="acciones">
+            <form method="post" action="/clientes/<%= c.id_cliente %>/baja">
+              <input type="hidden" name="activar" value="<%= c.activo ? '0' : '1' %>">
+              <button class="enlace" type="submit">
+                <%= c.activo ? 'Dar de baja' : 'Reactivar' %>
+              </button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<% } %>
+
+<p class="ayuda">
+  <% if (mostrarInactivos) { %>
+    <a href="/clientes">Ver solo los activos</a>
+  <% } else { %>
+    <a href="/clientes?inactivos=1">Ver tambien los dados de baja</a>
+  <% } %>
+</p>
+
+<%- include('../parciales/pie') %>

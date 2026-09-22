@@ -1,0 +1,38 @@
+<%- include('parciales/encabezado', { titulo: 'Inicio - Kokino' }) %>
+
+<h1>Hola, <%= usuario.nombre %></h1>
+
+<p class="ayuda">
+  <% if (usuario.rol === 'administrador') { %>
+    Como dueno ves las dos sucursales.
+  <% } else { %>
+    Operas sobre la sucursal <strong><%= usuario.sucursal %></strong>.
+  <% } %>
+</p>
+
+<section class="tarjetas">
+  <% sucursales.forEach(function (s) { %>
+    <article class="tarjeta">
+      <h2><%= s.nombre %></h2>
+      <p><%= s.direccion %></p>
+      <p class="dato"><%= s.empleados %> empleados activos</p>
+    </article>
+  <% }) %>
+</section>
+
+<section class="catalogo">
+  <h2>Catalogo cargado</h2>
+  <ul>
+    <li><strong><%= totales.productos %></strong> productos</li>
+    <li><strong><%= totales.sabores %></strong> sabores</li>
+    <li><strong><%= totales.insumos %></strong> insumos</li>
+    <li>
+      <strong><%= totales.recetas %></strong> recetas
+      <% if (totales.recetas === 0) { %>
+        <span class="pendiente">- las cargan los duenos desde el sistema</span>
+      <% } %>
+    </li>
+  </ul>
+</section>
+
+<%- include('parciales/pie') %>

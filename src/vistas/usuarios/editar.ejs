@@ -1,0 +1,65 @@
+<%- include('../parciales/encabezado', { titulo: 'Editar cuenta - Kokino' }) %>
+
+<h1><%= (editado.nombre + ' ' + editado.apellido).trim() %></h1>
+<p class="ayuda">
+  Sucursal: <%= editado.sucursal %>.
+  <% if (!editado.activo) { %>La cuenta esta sin acceso.<% } %>
+</p>
+
+<% if (errores.length > 0) { %>
+  <div class="error" role="alert">
+    <% errores.forEach(function (e) { %>
+      <p><%= e %></p>
+    <% }) %>
+  </div>
+<% } %>
+
+<form method="post" action="/usuarios/<%= editado.id_usuario %>" class="formulario">
+  <div class="fila">
+    <div>
+      <label for="username">Usuario</label>
+      <input id="username" name="username" required value="<%= editado.username %>">
+    </div>
+    <div>
+      <label for="id_rol">Rol</label>
+      <select id="id_rol" name="id_rol">
+        <% roles.forEach(function (r) { %>
+          <option value="<%= r.id_rol %>" <%= String(editado.id_rol) === String(r.id_rol) ? 'selected' : '' %>>
+            <%= r.nombre_rol %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+  </div>
+
+  <div class="botonera">
+    <button type="submit">Guardar cambios</button>
+    <a class="cancelar" href="/usuarios">Cancelar</a>
+  </div>
+</form>
+
+<form method="post" action="/usuarios/<%= editado.id_usuario %>/clave" class="formulario" autocomplete="off">
+  <h2>Cambiar la contrasena</h2>
+  <p class="pista">
+    No se pide la contrasena anterior: esto se usa justamente cuando alguien la
+    olvido. La nueva se le avisa a la persona y conviene que la cambie ella
+    despues.
+  </p>
+
+  <div class="fila">
+    <div>
+      <label for="clave">Contrasena nueva</label>
+      <input id="clave" name="clave" type="password" required autocomplete="new-password">
+    </div>
+    <div>
+      <label for="repetida">Repetirla</label>
+      <input id="repetida" name="repetida" type="password" required autocomplete="new-password">
+    </div>
+  </div>
+
+  <div class="botonera">
+    <button type="submit">Cambiar contrasena</button>
+  </div>
+</form>
+
+<%- include('../parciales/pie') %>

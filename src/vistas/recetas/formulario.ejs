@@ -1,0 +1,127 @@
+<%- include('../parciales/encabezado', { titulo: 'Formula de ' + candidato.nombre + ' - Kokino' }) %>
+
+<h1>Formula de <%= candidato.nombre %></h1>
+<p class="ayuda">
+  <%= candidato.clase === 'SABOR' ? 'Sabor de helado' : 'Producto elaborado' %>.
+  <% if (!esNueva && receta.version) { %>Version <%= receta.version %>.<% } %>
+</p>
+
+<% if (abreVersion) { %>
+  <p class="aviso-atencion">
+    Esta formula ya se uso para producir. Si la guardas, se cierra como esta y
+    se abre la version siguiente: las producciones viejas tienen que seguir
+    diciendo con que formula se hicieron.
+  </p>
+<% } %>
+
+<% if (errores.length > 0) { %>
+  <div class="error" role="alert">
+    <% errores.forEach(function (e) { %>
+      <p><%= e %></p>
+    <% }) %>
+  </div>
+<% } %>
+
+<form method="post"
+      action="<%= esNueva ? '/recetas' : '/recetas/' + receta.id_receta %>"
+      class="formulario">
+
+  <input type="hidden" name="clase" value="<%= candidato.clase %>">
+  <input type="hidden" name="id" value="<%= candidato.id %>">
+
+  <div class="fila">
+    <div>
+      <label for="cantidad_rendimiento">Cuanto rinde la formula completa <span class="obligatorio">*</span></label>
+      <input id="cantidad_rendimiento" name="cantidad_rendimiento" inputmode="decimal" required
+             value="<%= receta.cantidad_rendimiento || '' %>">
+    </div>
+    <div>
+      <label for="id_unidad_rendimiento">Unidad <span class="obligatorio">*</span></label>
+      <select id="id_unidad_rendimiento" name="id_unidad_rendimiento" required>
+        <option value="">Elegi</option>
+        <% unidades.forEach(function (u) { %>
+          <option value="<%= u.id_unidad %>" <%= String(receta.id_unidad_rendimiento) === String(u.id_unidad) ? 'selected' : '' %>>
+            <%= u.nombre %> (<%= u.abreviatura %>)
+          </option>
+        <% }) %>
+      </select>
+    </div>
+  </div>
+  <p class="pista">
+    Es el total de la tanda, no de un tacho: si la formula hace 10 kilos, va 10 kg.
+  </p>
+
+  <h2>Ingredientes</h2>
+  <p class="pista">
+    La cantidad es la que hay que poner. <strong>Tina</strong> es lo que va en la
+    mezcla que pasa por la maquina; <strong>tacho</strong> es lo que se agrega
+    recien al fraccionar, como las nueces enteras.
+  </p>
+
+  <table class="tabla tabla-ingredientes">
+    <thead>
+      <tr>
+        <th>Insumo</th>
+        <th>Cantidad</th>
+        <th>Unidad</th>
+        <th>Cuando entra</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="cuerpo-ingredientes">
+      <% const filas = ingredientes.length > 0 ? ingredientes : [{ id_insumo: '', cantidad_necesaria: '', id_unidad_medida: '', fase: 'TINA' }]; %>
+      <% filas.forEach(function (ing) { %>
+        <tr class="renglon">
+          <td>
+            <select name="id_insumo">
+              <option value="">Elegi el insumo</option>
+              <% insumos.forEach(function (i) { %>
+                <option value="<%= i.id_insumo %>" data-magnitud="<%= i.magnitud %>"
+                        <%= String(ing.id_insumo) === String(i.id_insumo) ? 'selected' : '' %>>
+                  <%= i.nombre %>
+                </option>
+              <% }) %>
+            </select>
+          </td>
+          <td>
+            <input name="cantidad_necesaria" inputmode="decimal" class="chico"
+                   value="<%= ing.cantidad_necesaria || '' %>">
+          </td>
+          <td>
+            <select name="id_unidad_medida">
+              <% unidades.forEach(function (u) { %>
+                <option value="<%= u.id_unidad %>" data-magnitud="<%= u.magnitud %>"
+                        <%= String(ing.id_unidad_medida) === String(u.id_unidad) ? 'selected' : '' %>>
+                  <%= u.abreviatura %>
+                </option>
+              <% }) %>
+            </select>
+          </td>
+          <td>
+            <select name="fase">
+              <% FASES.forEach(function (f) { %>
+                <option value="<%= f.valor %>" <%= ing.fase === f.valor ? 'selected' : '' %>>
+                  <%= f.texto %>
+                </option>
+              <% }) %>
+            </select>
+          </td>
+          <td class="acciones">
+            <button type="button" class="enlace quitar">Quitar</button>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <button type="button" id="agregar-ingrediente" class="boton-secundario">+ Ingrediente</button>
+
+  <div class="botonera">
+    <button type="submit"><%= abreVersion ? 'Guardar como version nueva' : 'Guardar formula' %></button>
+    <a class="cancelar" href="/recetas">Cancelar</a>
+  </div>
+</form>
+
+<script src="/recetas.js"></script>
+
+<%- include('../parciales/pie') %>

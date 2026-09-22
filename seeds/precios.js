@@ -53,10 +53,23 @@ const PRECIOS = [
   { producto: 'Palito de crema vainilla',  tipo: 'MINORISTA', precio: 4000 },
   { producto: 'Palito bombón',             tipo: 'MINORISTA', precio: 4500 },
 
+  // Los rellenos son otra linea, no un reemplazo de los de crema: conviven en
+  // la carta y por eso repiten gusto a distinto precio.
+  { producto: 'Palito relleno dulce de leche', tipo: 'MINORISTA', precio: 7000 },
+  { producto: 'Palito relleno vainilla',       tipo: 'MINORISTA', precio: 7000 },
+  { producto: 'Palito relleno americana',      tipo: 'MINORISTA', precio: 7000 },
+
   // Los alfajores de produccion propia valen lo mismo sin importar el sabor.
   { producto: 'Alfajor marroc',                    tipo: 'MINORISTA', precio: 3000 },
   { producto: 'Alfajor chocolate blanco con nuez', tipo: 'MINORISTA', precio: 3000 },
   { producto: 'Alfajor chocolate',                 tipo: 'MINORISTA', precio: 3000 },
+
+  // Las tortas heladas son de produccion propia y valen lo mismo sin importar
+  // el sabor, igual que los alfajores.
+  { producto: 'Torta súper dulce de leche',        tipo: 'MINORISTA', precio: 32000 },
+  { producto: 'Torta chocolatosa',                 tipo: 'MINORISTA', precio: 32000 },
+  { producto: 'Torta frutos rojos',                tipo: 'MINORISTA', precio: 32000 },
+  { producto: 'Torta chocolate blanco y maracuyá', tipo: 'MINORISTA', precio: 32000 },
 
   // Reposteria comprada. El costo de estos productos vive aparte, en
   // costos_producto, y se carga con seed:costos.
@@ -81,6 +94,15 @@ const PRECIOS = [
   { producto: 'Rogel chico',                       tipo: 'MINORISTA', precio: 3500 },
   { producto: 'Crumble de manzana pequeño',        tipo: 'MINORISTA', precio: 3000 },
   { producto: 'Galletas choco',                    tipo: 'MINORISTA', precio: 2200 },
+
+  // Salsas embotelladas. Las dos de 500g valen igual entre si: el precio lo
+  // fija el tamano del envase, no el gusto.
+  { producto: 'Salsa de chocolate x200g', tipo: 'MINORISTA', precio: 6000 },
+  { producto: 'Salsa de frutilla x500g',  tipo: 'MINORISTA', precio: 8000 },
+  { producto: 'Salsa de caramelo x500g',  tipo: 'MINORISTA', precio: 8000 },
+
+  // El bano no se vende envasado: se sirve sobre el helado y se cobra aparte.
+  { producto: 'Baño de chocolate',        tipo: 'MINORISTA', precio: 2500 },
 ];
 
 async function cargarPrecio(client, { producto, tipo, precio }) {

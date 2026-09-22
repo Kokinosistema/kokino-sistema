@@ -1,0 +1,59 @@
+<%- include('../parciales/encabezado', { titulo: 'Recetas - Kokino' }) %>
+
+<h1>Recetas</h1>
+
+<p class="ayuda">
+  <strong><%= conReceta %></strong> de <%= total %> formulas cargadas.
+  <% if (conReceta < total) { %>
+    Faltan <strong><%= total - conReceta %></strong>.
+  <% } %>
+</p>
+
+<div class="avance">
+  <div class="avance-lleno" style="width: <%= total === 0 ? 0 : Math.round(conReceta / total * 100) %>%"></div>
+</div>
+
+<table class="tabla">
+  <thead>
+    <tr>
+      <th>Que produce</th>
+      <th>Grupo</th>
+      <th>Rinde</th>
+      <th>Ingredientes</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% filas.forEach(function (f) { %>
+      <tr class="<%= f.id_receta ? '' : 'inactiva' %>">
+        <td>
+          <% if (f.id_receta) { %>
+            <a href="/recetas/<%= f.id_receta %>"><%= f.nombre %></a>
+            <% if (f.version > 1) { %><span class="etiqueta">version <%= f.version %></span><% } %>
+          <% } else { %>
+            <%= f.nombre %>
+          <% } %>
+          <span class="etiqueta"><%= f.clase === 'SABOR' ? 'sabor' : 'producto' %></span>
+        </td>
+        <td><%= f.grupo %></td>
+        <td>
+          <% if (f.id_receta) { %>
+            <%= Number(f.cantidad_rendimiento) %> <%= f.unidad_rendimiento %>
+          <% } else { %>
+            <span class="pista">sin formula</span>
+          <% } %>
+        </td>
+        <td><%= f.id_receta ? f.ingredientes : '—' %></td>
+        <td class="acciones">
+          <% if (f.id_receta) { %>
+            <a class="enlace-a" href="/recetas/<%= f.id_receta %>"><%= puedeEditar ? 'Editar' : 'Ver' %></a>
+          <% } else if (puedeEditar) { %>
+            <a class="enlace-a" href="/recetas/nueva?clase=<%= f.clase %>&id=<%= f.id %>">Cargar formula</a>
+          <% } %>
+        </td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>
+
+<%- include('../parciales/pie') %>

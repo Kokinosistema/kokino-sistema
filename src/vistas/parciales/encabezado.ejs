@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= typeof titulo !== 'undefined' ? titulo : 'Kokino' %></title>
+  <link rel="stylesheet" href="/estilos.css">
+</head>
+<body>
+<% if (usuario) { %>
+  <header class="barra">
+    <a class="marca" href="/">Kokino</a>
+
+    <nav class="menu">
+      <a href="/clientes">Clientes</a>
+      <a href="/recetas">Recetas</a>
+      <% if (usuario.rol === 'administrador') { %>
+        <a href="/proveedores">Proveedores</a>
+        <a href="/usuarios">Usuarios</a>
+      <% } %>
+    </nav>
+
+    <span class="quien">
+      <%= usuario.nombre %>
+      <span class="etiqueta"><%= usuario.rol %></span>
+      <span class="sucursal"><%= usuario.sucursal || 'las dos sucursales' %></span>
+    </span>
+    <form method="post" action="/logout">
+      <button class="salir" type="submit">Salir</button>
+    </form>
+  </header>
+<% } %>
+<main>
+<% if (typeof aviso !== 'undefined' && aviso) { %>
+  <p class="aviso" role="status"><%= aviso %></p>
+<% } %>

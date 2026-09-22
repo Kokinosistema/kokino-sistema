@@ -1,0 +1,254 @@
+/* Estilos minimos. La idea no es que quede lindo todavia, sino que se lea
+   bien en la pantalla del mostrador y que nada distraiga mientras armamos
+   las pantallas de verdad. */
+:root {
+  --tinta: #2a2320;
+  --suave: #6d635d;
+  --fondo: #faf7f4;
+  --papel: #ffffff;
+  --borde: #e6ded8;
+  --acento: #b2452f;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--tinta);
+  background: var(--fondo);
+  line-height: 1.5;
+}
+
+main { max-width: 60rem; margin: 0 auto; padding: 2rem 1rem; }
+
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--papel);
+  border-bottom: 1px solid var(--borde);
+}
+.marca { font-weight: 700; color: var(--acento); font-size: 1.1rem; }
+.quien { margin-left: auto; color: var(--suave); font-size: 0.9rem; }
+.etiqueta {
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  margin-left: 0.4rem;
+  font-size: 0.8rem;
+}
+.sucursal { margin-left: 0.4rem; }
+.salir {
+  background: none;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  color: var(--suave);
+}
+.salir:hover { border-color: var(--acento); color: var(--acento); }
+
+.caja-login {
+  max-width: 22rem;
+  margin: 4rem auto;
+  padding: 2rem;
+  background: var(--papel);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+}
+.caja-login h1 { margin-top: 0; color: var(--acento); }
+
+label { display: block; margin-top: 1rem; font-size: 0.9rem; color: var(--suave); }
+input {
+  width: 100%;
+  padding: 0.6rem;
+  margin-top: 0.25rem;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  font-size: 1rem;
+}
+input:focus { outline: 2px solid var(--acento); outline-offset: 1px; }
+
+button[type="submit"] {
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: 0.7rem;
+  background: var(--acento);
+  color: white;
+  border: 0;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.error {
+  background: #fdecea;
+  border: 1px solid #f5c3bb;
+  color: #9b2c1a;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+.ayuda { color: var(--suave); font-size: 0.95rem; }
+.pendiente { color: var(--suave); font-size: 0.85rem; }
+
+.tarjetas { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+.tarjeta {
+  flex: 1 1 14rem;
+  background: var(--papel);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+.tarjeta h2 { margin: 0 0 0.25rem; font-size: 1.05rem; }
+.tarjeta p { margin: 0.15rem 0; color: var(--suave); font-size: 0.9rem; }
+.dato { color: var(--tinta) !important; }
+
+.catalogo ul { list-style: none; padding: 0; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.catalogo li { color: var(--suave); font-size: 0.95rem; }
+
+/* --- Menu de navegacion --- */
+.menu { display: flex; gap: 1rem; }
+.menu a {
+  color: var(--suave);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 0.3rem 0.1rem;
+  border-bottom: 2px solid transparent;
+}
+.menu a:hover { color: var(--acento); border-bottom-color: var(--acento); }
+a.marca { text-decoration: none; }
+
+/* --- Avisos de una sola vez --- */
+.aviso {
+  background: #eaf6ec;
+  border: 1px solid #b9dfc1;
+  color: #24623a;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+/* --- Listados --- */
+.titulo-con-accion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.boton {
+  background: var(--acento);
+  color: white;
+  text-decoration: none;
+  padding: 0.55rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--papel);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+.tabla th {
+  text-align: left;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--suave);
+  font-weight: 600;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--borde);
+}
+.tabla td { padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--borde); font-size: 0.92rem; }
+.tabla tr:last-child td { border-bottom: 0; }
+.tabla tr.inactiva td { color: var(--suave); background: #fbfafa; }
+.tabla a { color: var(--tinta); }
+.acciones { text-align: right; }
+.marca-cuenta {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--suave);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  margin-left: 0.4rem;
+}
+.enlace {
+  background: none;
+  border: 0;
+  color: var(--suave);
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  padding: 0;
+}
+.enlace:hover { color: var(--acento); }
+
+/* --- Formularios --- */
+.formulario {
+  background: var(--papel);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  max-width: 42rem;
+}
+.formulario .fila { display: flex; gap: 1rem; flex-wrap: wrap; }
+.formulario .fila > div { flex: 1 1 14rem; }
+select, textarea {
+  width: 100%;
+  padding: 0.6rem;
+  margin-top: 0.25rem;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: white;
+}
+.pista { color: var(--suave); font-size: 0.82rem; margin: 0.3rem 0 0; }
+.pista.sensible { color: #9b6a1a; }
+.obligatorio { color: var(--acento); }
+.botonera { display: flex; align-items: center; gap: 1rem; margin-top: 1.5rem; }
+.botonera button { width: auto; margin-top: 0; padding: 0.6rem 1.4rem; }
+.cancelar { color: var(--suave); font-size: 0.9rem; }
+
+.formulario h2 { margin-top: 0; font-size: 1.05rem; }
+.formulario + .formulario { margin-top: 1.5rem; }
+.enlace[disabled] { color: var(--borde); cursor: not-allowed; text-decoration: none; }
+
+/* --- Recetas --- */
+.avance { height: 8px; background: var(--borde); border-radius: 999px; overflow: hidden; margin: 0.5rem 0 1.5rem; max-width: 30rem; }
+.avance-lleno { height: 100%; background: var(--acento); }
+.aviso-atencion {
+  background: #fff6e5;
+  border: 1px solid #f0d9a8;
+  color: #8a5d0f;
+  padding: 0.7rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+.tabla-ingredientes select, .tabla-ingredientes input { margin-top: 0; font-size: 0.9rem; }
+.tabla-ingredientes input.chico { max-width: 7rem; }
+.tabla-ingredientes td { vertical-align: middle; }
+.boton-secundario {
+  background: none;
+  border: 1px dashed var(--borde);
+  color: var(--suave);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  width: auto;
+  margin-top: 0.5rem;
+}
+.boton-secundario:hover { border-color: var(--acento); color: var(--acento); }
+.enlace-a { color: var(--suave); font-size: 0.85rem; }
