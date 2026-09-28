@@ -36,7 +36,14 @@ async function conTransaccion(tarea) {
     await cliente.query('COMMIT');
     return resultado;
   } catch (error) {
-    await cliente.query('ROLLBACK');
+    // El ROLLBACK va en su propio try: si la conexion se cayo, el rollback
+    // tambien falla, y sin esto su excepcion reemplazaria a la original y nos
+    // dejaria sin saber que fue lo que salio mal de verdad.
+    try {
+      await cliente.query('ROLLBACK');
+    } catch (errorAlRevertir) {
+      console.error('Fallo el ROLLBACK:', errorAlRevertir.message);
+    }
     throw error;
   } finally {
     cliente.release();
