@@ -1,0 +1,129 @@
+<%- include('../parciales/encabezado', { titulo: 'Caja - Kokino' }) %>
+
+<h1>Caja</h1>
+
+<% if (sucursales.length > 1) { %>
+  <form class="filtro" method="get" action="/caja">
+    <label>
+      Sucursal
+      <select name="sucursal" onchange="this.form.submit()">
+        <% sucursales.forEach(function (s) { %>
+          <option value="<%= s.id_sucursal %>" <%= s.id_sucursal === elegida ? 'selected' : '' %>>
+            <%= s.nombre %>
+          </option>
+        <% }) %>
+      </select>
+    </label>
+    <noscript><button type="submit">Ver</button></noscript>
+  </form>
+<% } %>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<% if (abierta) { %>
+  <section class="panel">
+    <h2>Turno abierto</h2>
+    <p class="ayuda">
+      Turno de la <%= (TURNOS.find(function (t) { return t.valor === abierta.turno; }) || {}).texto.toLowerCase() %> en <%= abierta.sucursal %>,
+      abierto el <%= abierta.fecha_apertura.toLocaleString('es-AR') %>.
+    </p>
+
+    <table class="tabla">
+      <tbody>
+        <tr>
+          <th>Con lo que se abrió</th>
+          <td class="numero">$<%= Number(abierta.monto_apertura).toFixed(2) %></td>
+        </tr>
+        <tr>
+          <th>Cobrado en efectivo</th>
+          <td class="numero">+ $<%= Number(abierta.cobrado_efectivo).toFixed(2) %></td>
+        </tr>
+        <tr>
+          <th>Salidas en efectivo</th>
+          <td class="numero">− $<%= Number(abierta.egresos_efectivo).toFixed(2) %></td>
+        </tr>
+        <tr class="destacada">
+          <th>Debería haber en el cajón</th>
+          <td class="numero">$<%= esperado.toFixed(2) %></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="ayuda">
+      <%= abierta.ventas %> venta<%= abierta.ventas === 1 ? '' : 's' %> en el turno.
+      Cobrado con tarjeta o transferencia: $<%= Number(abierta.cobrado_electronico).toFixed(2) %>,
+      que no está en el cajón.
+    </p>
+
+    <a class="boton" href="/caja/cerrar?sucursal=<%= elegida %>">Cerrar la caja</a>
+  </section>
+<% } else { %>
+  <section class="panel">
+    <h2>No hay caja abierta</h2>
+    <p class="ayuda">
+      Sin una caja abierta no se pueden registrar ventas en esta sucursal.
+      Contá el efectivo con el que arranca el turno y abrila.
+    </p>
+
+    <form method="post" action="/caja/abrir">
+      <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+
+      <label>
+        Turno
+        <select name="turno" required>
+          <% TURNOS.forEach(function (t) { %>
+            <option value="<%= t.valor %>"><%= t.texto %></option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Efectivo con el que arranca
+        <input type="number" name="monto_apertura" step="0.01" min="0" required
+               placeholder="0.00" autofocus>
+      </label>
+
+      <button class="boton" type="submit">Abrir la caja</button>
+    </form>
+  </section>
+<% } %>
+
+<h2>Últimos cierres</h2>
+
+<% if (ultimas.length === 0) { %>
+  <p class="ayuda">Todavía no se cerró ninguna caja en esta sucursal.</p>
+<% } else { %>
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>Turno</th>
+        <th>Cerrada</th>
+        <th class="numero">Según el sistema</th>
+        <th class="numero">Contado</th>
+        <th class="numero">Diferencia</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% ultimas.forEach(function (c) { %>
+        <% const dif = Number(c.diferencia); %>
+        <tr>
+          <td><%= (TURNOS.find(function (t) { return t.valor === c.turno; }) || {}).texto.toLowerCase() %></td>
+          <td><%= c.fecha_cierre.toLocaleString('es-AR') %></td>
+          <td class="numero">$<%= Number(c.monto_cierre_sistema).toFixed(2) %></td>
+          <td class="numero">$<%= Number(c.monto_cierre_declarado).toFixed(2) %></td>
+          <td class="numero <%= dif === 0 ? '' : 'alerta' %>">
+            <% if (dif === 0) { %>cuadró<% } else { %>
+              <%= dif > 0 ? 'sobró' : 'faltó' %> $<%= Math.abs(dif).toFixed(2) %>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<% } %>
+
+<%- include('../parciales/pie') %>

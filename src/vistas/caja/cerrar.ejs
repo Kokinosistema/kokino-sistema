@@ -1,0 +1,68 @@
+<%- include('../parciales/encabezado', { titulo: 'Cerrar caja - Kokino' }) %>
+
+<h1>Cerrar la caja</h1>
+
+<p class="ayuda">
+  Turno de la <%= (TURNOS.find(function (t) { return t.valor === caja.turno; }) || {}).texto.toLowerCase() %> en <%= caja.sucursal %>,
+  abierto el <%= caja.fecha_apertura.toLocaleString('es-AR') %>.
+</p>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<section class="panel">
+  <h2>Lo que dice el sistema</h2>
+
+  <table class="tabla">
+    <tbody>
+      <tr>
+        <th>Con lo que se abrió</th>
+        <td class="numero">$<%= Number(caja.monto_apertura).toFixed(2) %></td>
+      </tr>
+      <tr>
+        <th>Cobrado en efectivo</th>
+        <td class="numero">+ $<%= Number(caja.cobrado_efectivo).toFixed(2) %></td>
+      </tr>
+      <tr>
+        <th>Salidas en efectivo</th>
+        <td class="numero">− $<%= Number(caja.egresos_efectivo).toFixed(2) %></td>
+      </tr>
+      <tr class="destacada">
+        <th>Debería haber en el cajón</th>
+        <td class="numero">$<%= esperado.toFixed(2) %></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="ayuda">
+    Los $<%= Number(caja.cobrado_electronico).toFixed(2) %> cobrados con tarjeta
+    o transferencia no entran en esta cuenta, porque esa plata no está en el cajón.
+  </p>
+</section>
+
+<section class="panel">
+  <h2>Lo que contaste</h2>
+
+  <p class="ayuda">
+    Contá el efectivo que hay de verdad y ponelo acá, aunque no coincida.
+    Si hay diferencia el sistema la registra: para eso sirve el arqueo.
+  </p>
+
+  <form method="post" action="/caja/cerrar">
+    <input type="hidden" name="id_sucursal" value="<%= caja.id_sucursal %>">
+
+    <label>
+      Efectivo contado en el cajón
+      <input type="number" name="monto_cierre_declarado" step="0.01" min="0" required
+             value="<%= declarado %>" placeholder="0.00" autofocus>
+    </label>
+
+    <button class="boton" type="submit">Cerrar el turno</button>
+    <a class="enlace" href="/caja">Volver sin cerrar</a>
+  </form>
+</section>
+
+<%- include('../parciales/pie') %>
