@@ -1,0 +1,73 @@
+<%- include('../parciales/encabezado', { titulo: 'Anular salida - Kokino' }) %>
+
+<h1>Anular una salida</h1>
+
+<p class="ayuda">
+  La salida no se borra: queda en la lista marcada como anulada, con tu nombre
+  y el motivo. Si estaba mal cargada, después cargala de nuevo bien.
+</p>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<section class="panel">
+  <h2>La salida</h2>
+  <table class="tabla">
+    <tbody>
+      <tr>
+        <th>Tipo</th>
+        <td><%= (TIPOS_EGRESO.find(function (t) { return t.valor === egreso.tipo_egreso; }) || {}).texto %></td>
+      </tr>
+      <% if (egreso.empleado) { %>
+        <tr>
+          <th>Empleado</th>
+          <td><%= egreso.empleado %></td>
+        </tr>
+      <% } %>
+      <% if (egreso.descripcion) { %>
+        <tr>
+          <th>En qué se gastó</th>
+          <td><%= egreso.descripcion %></td>
+        </tr>
+      <% } %>
+      <tr>
+        <th>Cuándo</th>
+        <td><%= egreso.fecha_hora.toLocaleString('es-AR') %></td>
+      </tr>
+      <tr>
+        <th>Con qué se pagó</th>
+        <td><%= egreso.medio %></td>
+      </tr>
+      <tr class="destacada">
+        <th>Monto</th>
+        <td class="numero">$<%= Number(egreso.monto).toFixed(2) %></td>
+      </tr>
+    </tbody>
+  </table>
+  <% if (egreso.afecta_caja_efectivo) { %>
+    <p class="ayuda">
+      Al anularla, el arqueo vuelve a esperar estos $<%= Number(egreso.monto).toFixed(2) %> en el cajón.
+    </p>
+  <% } %>
+</section>
+
+<section class="panel">
+  <h2>Por qué se anula</h2>
+  <form method="post" action="/caja/egresos/<%= egreso.id_egreso %>/anular">
+    <label>
+      Motivo <span class="obligatorio">*</span>
+      <textarea name="motivo" rows="3" maxlength="<%= TEXTO_MAXIMO %>" required
+                placeholder="Por ejemplo: se cargó dos veces" autofocus><%= motivo %></textarea>
+    </label>
+
+    <div class="botonera">
+      <button type="submit">Anular la salida</button>
+      <a class="enlace" href="/caja?sucursal=<%= egreso.id_sucursal %>">Volver sin anular</a>
+    </div>
+  </form>
+</section>
+
+<%- include('../parciales/pie') %>
