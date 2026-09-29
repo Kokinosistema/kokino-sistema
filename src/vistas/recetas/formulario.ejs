@@ -78,7 +78,7 @@
               <% insumos.forEach(function (i) { %>
                 <option value="<%= i.id_insumo %>" data-magnitud="<%= i.magnitud %>"
                         <%= String(ing.id_insumo) === String(i.id_insumo) ? 'selected' : '' %>>
-                  <%= i.nombre %>
+                  <%= i.nombre %><%= i.activo ? '' : ' (dado de baja)' %>
                 </option>
               <% }) %>
             </select>

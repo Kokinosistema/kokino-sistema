@@ -48,7 +48,9 @@ function exigirEdicion(req, res, siguiente) {
 const SQL_CANDIDATOS = `
   SELECT 'SABOR'        AS clase,
          s.id_sabor     AS id,
-         s.nombre       AS nombre,
+         -- Con la linea: Americana y Vainilla existen en las dos, y sin
+         -- esto el dueno ve dos renglones iguales y no sabe cual es cual.
+         s.nombre || ' (' || lower(s.linea) || ')' AS nombre,
          c.nombre       AS grupo
     FROM sabores s
     JOIN categorias c ON c.id_categoria = s.id_categoria
@@ -93,6 +95,7 @@ router.get('/', async (req, res, siguiente) => {
 });
 
 async function traerCandidato(clase, id) {
+  if (!Number.isInteger(Number(id))) return undefined;
   const { rows } = await consultar(
     `WITH candidatos AS (${SQL_CANDIDATOS})
      SELECT * FROM candidatos WHERE clase = $1 AND id = $2`,
@@ -106,13 +109,20 @@ async function traerCandidato(clase, id) {
 // misma familia: pasar de volumen a peso en el helado necesitaria la densidad
 // del sabor, que no es un dato de la unidad. Sin esta restriccion se podria
 // cargar "2 botellas de azucar", que guarda bien y despues no se puede costear.
-async function traerInsumos() {
+//
+// Ademas de los activos, van los que la receta ya usa aunque se hayan dado de
+// baja: si no, una receta con un insumo dado de baja no se podria volver a
+// guardar, ni siquiera para sacarle ese insumo.
+async function traerInsumos(idReceta) {
   const { rows } = await consultar(
-    `SELECT i.id_insumo, i.nombre, u.magnitud, u.abreviatura AS unidad_compra
+    `SELECT i.id_insumo, i.nombre, i.activo, u.magnitud, u.abreviatura AS unidad_compra,
+            i.id_unidad_medida AS id_unidad_compra
        FROM insumos i
        JOIN unidades_medida u ON u.id_unidad = i.id_unidad_medida
       WHERE i.activo
-      ORDER BY i.nombre`
+         OR i.id_insumo IN (SELECT d.id_insumo FROM receta_detalle d WHERE d.id_receta = $1)
+      ORDER BY i.nombre`,
+    [idReceta || null]
   );
   return rows;
 }
@@ -139,9 +149,11 @@ async function yaSeUso(idReceta, ejecutar) {
 }
 
 async function traerReceta(idReceta) {
+  // Una direccion como /recetas/abc no llega a la base: simplemente no existe.
+  if (!Number.isInteger(Number(idReceta))) return undefined;
   const { rows } = await consultar(
     `SELECT r.*, u.abreviatura AS unidad_rendimiento,
-            coalesce(s.nombre, p.nombre) AS nombre_resultado,
+            coalesce(s.nombre || ' (' || lower(s.linea) || ')', p.nombre) AS nombre_resultado,
             CASE WHEN r.id_sabor_resultado IS NOT NULL THEN 'SABOR' ELSE 'PRODUCTO' END AS clase
        FROM recetas r
        JOIN unidades_medida u ON u.id_unidad = r.id_unidad_rendimiento
@@ -165,6 +177,16 @@ async function traerIngredientes(idReceta) {
     [idReceta]
   );
   return rows;
+}
+
+// Una cantidad como la guarda la base: mayor que cero, con tres decimales
+// como mucho y sin pasarse del maximo de la columna. Acepta coma decimal.
+// Devuelve null si no sirve.
+function leerCantidad(valor, maximo) {
+  const texto = String(valor || '').trim().replace(',', '.');
+  if (!/^\d+(\.\d{1,3})?$/.test(texto)) return null;
+  const numero = Number(texto);
+  return numero > 0 && numero <= maximo ? numero : null;
 }
 
 // Los ingredientes llegan como listas paralelas, que es como manda un
@@ -191,9 +213,10 @@ function leerIngredientes(cuerpo, insumos, unidades) {
       continue;
     }
 
-    const cantidad = Number(String(cantidades[i] || '').replace(',', '.'));
-    if (!Number.isFinite(cantidad) || cantidad <= 0) {
-      errores.push('La cantidad de ' + insumo.nombre + ' tiene que ser un numero mayor que cero.');
+    const cantidad = leerCantidad(cantidades[i], 999999999.999);
+    if (cantidad === null) {
+      errores.push('La cantidad de ' + insumo.nombre + ' tiene que ser un número mayor que cero, con tres '
+        + 'decimales como mucho. Si es muy chica, cargala en una unidad menor (gramos en vez de kilos).');
       continue;
     }
 
@@ -206,6 +229,16 @@ function leerIngredientes(cuerpo, insumos, unidades) {
       errores.push(
         insumo.nombre + ' se compra por ' + insumo.unidad_compra + ', asi que no se puede pedir en ' +
         unidad.abreviatura + ': son familias distintas y no hay forma de convertir una en otra.'
+      );
+      continue;
+    }
+    // Contar tampoco convierte entre formas distintas: un paquete no es una
+    // cantidad fija de unidades. Es la misma regla de la base
+    // (convertir_a_unidad_de_compra), dicha antes y con palabras.
+    if (insumo.magnitud === 'CONTEO' && unidad.id_unidad !== insumo.id_unidad_compra) {
+      errores.push(
+        insumo.nombre + ' se compra por ' + insumo.unidad_compra + ', asi que se carga en ' +
+        insumo.unidad_compra + ': no hay equivalencia entre ' + insumo.unidad_compra + ' y ' + unidad.abreviatura + '.'
       );
       continue;
     }
@@ -236,9 +269,9 @@ function leerIngredientes(cuerpo, insumos, unidades) {
 
 function leerCabecera(cuerpo, unidades) {
   const errores = [];
-  const rendimiento = Number(String(cuerpo.cantidad_rendimiento || '').replace(',', '.'));
-  if (!Number.isFinite(rendimiento) || rendimiento <= 0) {
-    errores.push('Poné cuanto rinde la formula completa: un numero mayor que cero.');
+  const rendimiento = leerCantidad(cuerpo.cantidad_rendimiento, 9999999.999);
+  if (rendimiento === null) {
+    errores.push('Poné cuanto rinde la formula completa: un número mayor que cero, con tres decimales como mucho.');
   }
   const unidad = unidades.find((u) => u.id_unidad === Number(cuerpo.id_unidad_rendimiento));
   if (!unidad) errores.push('Elegi en que unidad rinde la formula.');
@@ -365,7 +398,7 @@ router.get('/:id', async (req, res, siguiente) => {
       candidato: { clase: receta.clase, id: receta.id_sabor_resultado || receta.id_producto_resultado, nombre: receta.nombre_resultado },
       receta,
       ingredientes,
-      insumos: await traerInsumos(),
+      insumos: await traerInsumos(receta.id_receta),
       unidades: await traerUnidades(),
       FASES,
       errores: [],
@@ -388,7 +421,7 @@ router.post('/:id', exigirEdicion, async (req, res, siguiente) => {
       });
     }
 
-    const insumos = await traerInsumos();
+    const insumos = await traerInsumos(receta.id_receta);
     const unidades = await traerUnidades();
     const cabecera = leerCabecera(req.body, unidades);
     const detalle = leerIngredientes(req.body, insumos, unidades);

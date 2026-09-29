@@ -1,6 +1,6 @@
 'use strict';
 
-// Lo unico del sistema que corre en el navegador, y por una razon concreta:
+// Corre en el navegador por una razon concreta:
 // una receta tiene una cantidad de ingredientes que no se sabe de antemano, y
 // obligar a guardar para agregar el siguiente haria insoportable cargar una
 // formula de quince renglones.
