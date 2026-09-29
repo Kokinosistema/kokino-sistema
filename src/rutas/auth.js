@@ -15,7 +15,7 @@ const HASH_SENUELO = bcrypt.hashSync('usuario inexistente', 12);
 
 // Un solo mensaje para los dos casos, por lo mismo: no decirle a nadie si
 // acerto el usuario. Al empleado le da igual, sabe cual es el suyo.
-const ERROR_CREDENCIALES = 'Usuario o contrasena incorrectos.';
+const ERROR_CREDENCIALES = 'Usuario o contraseña incorrectos. Probá de nuevo.';
 
 router.get('/login', (req, res) => {
   // Si ya entro, no tiene sentido mostrarle el formulario otra vez.

@@ -1,8 +1,11 @@
-<%- include('parciales/encabezado', { titulo: 'Entrar - Kokino' }) %>
+<%- include('parciales/encabezado', { titulo: 'Ingresar - Kokino' }) %>
 
 <div class="caja-login">
-  <h1>Kokino</h1>
-  <p class="ayuda">Entra con tu usuario para operar.</p>
+  <div class="sello-grande">
+    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10a4 4 0 1 1 8 0"/><path d="M8 10h8l-4 10z"/></svg>
+  </div>
+  <p class="marca">Kokino</p>
+  <p class="ayuda">Sistema de gestión</p>
 
   <% if (error) { %>
     <p class="error" role="alert"><%= error %></p>
@@ -12,10 +15,10 @@
     <label for="username">Usuario</label>
     <input id="username" name="username" value="<%= username %>" required autofocus>
 
-    <label for="contrasena">Contrasena</label>
+    <label for="contrasena">Contraseña</label>
     <input id="contrasena" name="contrasena" type="password" required>
 
-    <button type="submit">Entrar</button>
+    <button type="submit">Ingresar</button>
   </form>
 </div>
 

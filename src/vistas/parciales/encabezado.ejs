@@ -7,31 +7,61 @@
   <link rel="stylesheet" href="/estilos.css">
 </head>
 <body>
+<%
+  // Iconos de trazo redondeado, como pide el diseño. Van en linea para no
+  // depender de una libreria ni de internet.
+  const iconos = {
+    cono: '<path d="M8 10a4 4 0 1 1 8 0"/><path d="M8 10h8l-4 10z"/>',
+    inicio: '<path d="M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>',
+    caja: '<rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="2.5"/><path d="M7 7V5h10v2"/>',
+    clientes: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5a3 3 0 0 1 0 6M18 20c0-2-1-3.7-2.5-4.8"/>',
+    recetas: '<path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6M9 7h3"/>',
+    proveedores: '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>',
+    usuarios: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/>',
+  };
+  const svg = (nombre) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + iconos[nombre] + '</svg>';
+  const ruta = typeof rutaActual !== 'undefined' ? rutaActual : '';
+  const activo = (prefijo) => (prefijo === '/' ? ruta === '/' : ruta.startsWith(prefijo)) ? 'activo' : '';
+%>
 <% if (usuario) { %>
-  <header class="barra">
-    <a class="marca" href="/">Kokino</a>
+<div class="app">
+  <aside class="lateral">
+    <a class="logo" href="/">
+      <span class="sello"><%- svg('cono') %></span>
+      <span class="nombre">Kokino</span>
+    </a>
 
     <nav class="menu">
-      <a href="/caja">Caja</a>
-      <a href="/clientes">Clientes</a>
-      <a href="/recetas">Recetas</a>
+      <a class="<%= activo('/') %>" href="/"><%- svg('inicio') %> Inicio</a>
+      <a class="<%= activo('/caja') %>" href="/caja"><%- svg('caja') %> Caja</a>
+      <a class="<%= activo('/clientes') %>" href="/clientes"><%- svg('clientes') %> Clientes</a>
+      <a class="<%= activo('/recetas') %>" href="/recetas"><%- svg('recetas') %> Recetas</a>
       <% if (usuario.rol === 'administrador') { %>
-        <a href="/proveedores">Proveedores</a>
-        <a href="/usuarios">Usuarios</a>
+        <a class="<%= activo('/proveedores') %>" href="/proveedores"><%- svg('proveedores') %> Proveedores</a>
+        <a class="<%= activo('/usuarios') %>" href="/usuarios"><%- svg('usuarios') %> Usuarios</a>
       <% } %>
     </nav>
 
-    <span class="quien">
-      <%= usuario.nombre %>
-      <span class="etiqueta"><%= usuario.rol %></span>
-      <span class="sucursal"><%= usuario.sucursal || 'las dos sucursales' %></span>
-    </span>
-    <form method="post" action="/logout">
-      <button class="salir" type="submit">Salir</button>
-    </form>
-  </header>
+    <p class="pie-lateral">Heladería artesanal<br>San Miguel de Tucumán</p>
+  </aside>
+
+  <div class="contenido">
+    <header class="cabecera">
+      <span class="sucursal"><%= usuario.sucursal || 'Las dos sucursales' %></span>
+      <span class="quien">
+        <span class="avatar"><%= (usuario.nombre || '?').charAt(0).toUpperCase() %></span>
+        <%= usuario.nombre %>
+        <span class="etiqueta"><%= usuario.rol === 'administrador' ? 'dueña/o' : 'empleado' %></span>
+      </span>
+      <form method="post" action="/logout">
+        <button class="salir" type="submit">Salir</button>
+      </form>
+    </header>
+    <main>
+<% } else { %>
+<div class="pantalla-suelta">
+  <div class="caja-suelta">
 <% } %>
-<main>
 <% if (typeof aviso !== 'undefined' && aviso) { %>
   <p class="aviso" role="status"><%= aviso %></p>
 <% } %>

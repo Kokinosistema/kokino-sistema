@@ -41,6 +41,12 @@ function crearAplicacion() {
   );
 
   app.use(exponerUsuario);
+  // La barra lateral resalta la seccion en la que se esta; para eso necesita
+  // saber la direccion pedida.
+  app.use((req, res, siguiente) => {
+    res.locals.rutaActual = req.path;
+    siguiente();
+  });
   app.use(exponerAviso);
 
   // El login es lo unico que se puede ver sin estar logueado.
