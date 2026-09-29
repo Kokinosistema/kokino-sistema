@@ -13,6 +13,7 @@ const rutasClientes = require('./rutas/clientes');
 const rutasRecetas = require('./rutas/recetas');
 const rutasCaja = require('./rutas/caja');
 const rutasVentas = require('./rutas/ventas');
+const rutasInsumos = require('./rutas/insumos');
 
 function crearAplicacion() {
   const app = express();
@@ -66,6 +67,7 @@ function crearAplicacion() {
   app.use('/recetas', rutasRecetas);
   app.use('/caja', rutasCaja);
   app.use('/ventas', rutasVentas);
+  app.use('/insumos', rutasInsumos);
 
   app.use((req, res) => {
     res.status(404).render('error', {

@@ -19,6 +19,7 @@
     recetas: '<path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6M9 7h3"/>',
     proveedores: '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>',
     usuarios: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/>',
+    insumos: '<path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/>',
   };
   const svg = (nombre) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + iconos[nombre] + '</svg>';
   const ruta = typeof rutaActual !== 'undefined' ? rutaActual : '';
@@ -39,6 +40,7 @@
       <a class="<%= activo('/clientes') %>" href="/clientes"><%- svg('clientes') %> Clientes</a>
       <a class="<%= activo('/recetas') %>" href="/recetas"><%- svg('recetas') %> Recetas</a>
       <% if (usuario.rol === 'administrador') { %>
+        <a class="<%= activo('/insumos') %>" href="/insumos"><%- svg('insumos') %> Insumos</a>
         <a class="<%= activo('/proveedores') %>" href="/proveedores"><%- svg('proveedores') %> Proveedores</a>
         <a class="<%= activo('/usuarios') %>" href="/usuarios"><%- svg('usuarios') %> Usuarios</a>
       <% } %>

@@ -1,0 +1,64 @@
+<%- include('../parciales/encabezado', { titulo: (esNuevo ? 'Nuevo insumo' : 'Editar insumo') + ' - Kokino' }) %>
+
+<h1><%= esNuevo ? 'Nuevo insumo' : 'Editar insumo' %></h1>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<form method="post" action="<%= esNuevo ? '/insumos' : '/insumos/' + insumo.id_insumo %>" class="formulario">
+  <label for="nombre">Nombre <span class="obligatorio">*</span></label>
+  <input id="nombre" name="nombre" required maxlength="150" autofocus
+         value="<%= insumo.nombre || '' %>" placeholder="Por ejemplo: Cucurucho simple">
+
+  <div class="fila">
+    <div>
+      <label for="id_categoria">Categoría <span class="obligatorio">*</span></label>
+      <select id="id_categoria" name="id_categoria" required>
+        <option value="">Elegí una</option>
+        <% categorias.forEach(function (c) { %>
+          <option value="<%= c.id_categoria %>" <%= Number(insumo.id_categoria) === c.id_categoria ? 'selected' : '' %>><%= c.nombre %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label for="id_unidad_medida">Se compra en <span class="obligatorio">*</span></label>
+      <select id="id_unidad_medida" name="id_unidad_medida" required>
+        <option value="">Elegí una</option>
+        <% unidades.forEach(function (u) { %>
+          <option value="<%= u.id_unidad %>" <%= Number(insumo.id_unidad_medida) === u.id_unidad ? 'selected' : '' %>><%= u.nombre %> (<%= u.abreviatura %>)</option>
+        <% }) %>
+      </select>
+      <p class="pista">
+        El stock se cuenta en esta unidad. Si se compra por kilo, en productos y
+        recetas se puede cargar en gramos; si se compra por unidad o paquete, se
+        carga en esa misma unidad.
+      </p>
+    </div>
+  </div>
+
+  <div class="fila">
+    <div>
+      <label for="stock_minimo">Stock mínimo</label>
+      <input id="stock_minimo" name="stock_minimo" type="number" step="0.001" min="0"
+             value="<%= insumo.stock_minimo !== undefined && insumo.stock_minimo !== null ? Number(insumo.stock_minimo) : 0 %>">
+      <p class="pista">Por debajo de esta cantidad conviene reponer. Cero si no importa.</p>
+    </div>
+    <div>
+      <label class="casilla">
+        <input type="checkbox" name="perecedero" value="1" <%= insumo.perecedero ? 'checked' : '' %>>
+        Es perecedero
+      </label>
+      <p class="pista">Se vence o se echa a perder (leche, crema, frutas).</p>
+    </div>
+  </div>
+
+  <div class="botonera">
+    <button type="submit"><%= esNuevo ? 'Agregar insumo' : 'Guardar cambios' %></button>
+    <a class="cancelar" href="/insumos">Cancelar</a>
+  </div>
+</form>
+
+<%- include('../parciales/pie') %>

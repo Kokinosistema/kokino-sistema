@@ -334,6 +334,9 @@ input:focus, select:focus, textarea:focus {
 .formulario .fila > div { flex: 1 1 220px; }
 .formulario + .formulario { margin-top: 0; }
 .pista { color: var(--text-secondary); font-size: 12px; margin: 4px 0 0; }
+/* Casilla de verificacion con su texto al lado, no un campo a todo el ancho. */
+label.casilla { display: flex; align-items: center; gap: 8px; margin-top: 34px; font-size: 14px; color: var(--text-primary); }
+label.casilla input { width: auto; margin: 0; accent-color: var(--brand-primary); }
 .pista.sensible { color: #8A5A10; }
 .obligatorio { color: var(--status-error); }
 .botonera { display: flex; align-items: center; gap: 16px; margin-top: 24px; }

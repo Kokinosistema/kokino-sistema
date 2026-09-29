@@ -1,0 +1,70 @@
+<%- include('../parciales/encabezado', { titulo: 'Insumos - Kokino' }) %>
+
+<div class="titulo-con-accion">
+  <h1>Insumos</h1>
+  <a class="boton" href="/insumos/nuevo">Agregar insumo</a>
+</div>
+
+<p class="ayuda">
+  Lo que se compra para producir o para armar lo que se vende: materia prima,
+  cucuruchos, envases, térmicos vacíos, cafetería. La unidad es la de compra:
+  el stock se cuenta en esa unidad.
+</p>
+
+<% if (grupos.length === 0) { %>
+  <p class="ayuda">Todavía no hay insumos. Agregá el primero con el botón de arriba.</p>
+<% } %>
+
+<% grupos.forEach(function (g) { %>
+  <section class="panel">
+    <div class="titulo-con-accion">
+      <h2><%= g.categoria %> <span class="cuantos">· <%= g.insumos.length %></span></h2>
+    </div>
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Insumo</th>
+          <th>Se compra en</th>
+          <th class="numero">Stock mínimo</th>
+          <th>Se usa en</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% g.insumos.forEach(function (i) { %>
+          <tr class="<%= i.activo ? '' : 'inactiva' %>">
+            <td>
+              <a href="/insumos/<%= i.id_insumo %>/editar"><%= i.nombre %></a>
+              <% if (i.perecedero) { %><span class="etiqueta">perecedero</span><% } %>
+              <% if (!i.activo) { %><span class="etiqueta">dado de baja</span><% } %>
+            </td>
+            <td><%= i.unidad %></td>
+            <td class="numero"><%= Number(i.stock_minimo) %> <%= i.unidad %></td>
+            <td>
+              <% const usos = []; %>
+              <% if (i.en_productos) usos.push(i.en_productos + ' producto' + (i.en_productos === 1 ? '' : 's')); %>
+              <% if (i.en_recetas) usos.push(i.en_recetas + ' receta' + (i.en_recetas === 1 ? '' : 's')); %>
+              <%= usos.length ? usos.join(', ') : '—' %>
+            </td>
+            <td class="acciones">
+              <form method="post" action="/insumos/<%= i.id_insumo %>/baja">
+                <input type="hidden" name="activar" value="<%= i.activo ? '0' : '1' %>">
+                <button class="enlace" type="submit"><%= i.activo ? 'Dar de baja' : 'Reactivar' %></button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+<% }) %>
+
+<p class="ayuda">
+  <% if (mostrarInactivos) { %>
+    <a href="/insumos">Ver solo los activos</a>
+  <% } else { %>
+    <a href="/insumos?inactivos=1">Ver también los dados de baja</a>
+  <% } %>
+</p>
+
+<%- include('../parciales/pie') %>
