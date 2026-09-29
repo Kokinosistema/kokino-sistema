@@ -131,13 +131,21 @@ async function mostrar(req, res, { sucursales, elegida, categoria, busqueda, err
   let ultimas = [];
   if (caja) {
     ({ rows: ultimas } = await consultar(
-      `SELECT vt.id_venta, vt.fecha_hora, vt.canal_venta, vt.total,
+      // Las anuladas tambien se listan, tachadas y con su motivo: que
+      // desaparezcan sin rastro haria pensar que la venta nunca existio.
+      `SELECT vt.id_venta, vt.fecha_hora, vt.canal_venta, vt.total, vt.anulada,
+              v.motivo_anulacion,
+              (SELECT e.nombre
+                 FROM usuarios u
+                 JOIN empleados e ON e.id_empleado = u.id_empleado
+                WHERE u.id_usuario = v.id_usuario_anulacion) AS anulo,
               (SELECT string_agg(m.nombre, ', ' ORDER BY m.nombre)
                  FROM pagos_venta pv
                  JOIN medios_pago m ON m.id_medio_pago = pv.id_medio_pago
                 WHERE pv.id_venta = vt.id_venta) AS medios
          FROM ventas_totales vt
-        WHERE vt.id_caja = $1 AND NOT vt.anulada
+         JOIN ventas v ON v.id_venta = vt.id_venta
+        WHERE vt.id_caja = $1
         ORDER BY vt.fecha_hora DESC
         LIMIT 10`,
       [caja.id_caja]
@@ -317,6 +325,150 @@ router.post('/cobrar', async (req, res, siguiente) => {
     // cliente, y no tiene por que arrancar en la categoria del anterior.
     req.session.aviso = 'Venta registrada: $' + resultado.total.toFixed(2) + '.';
     res.redirect(direccionVender(elegida));
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Anular una venta
+//
+// Puede anular cualquiera que venda: el error se comete en el mostrador y se
+// corrige ahi, con el cliente adelante. Queda registrado quien, cuando y por
+// que, para que los duenos puedan revisarlo.
+
+const MOTIVO_MAXIMO = 300;
+
+// Trae la venta con lo necesario para decidir si se puede anular. Con
+// bloquear, la fila de la venta queda tomada hasta el final de la
+// transaccion, asi dos personas no la anulan a la vez.
+async function ventaParaAnular(ejecutar, idVenta, bloquear) {
+  // Una direccion como /ventas/abc/anular no llega a la base.
+  if (!Number.isInteger(idVenta) || idVenta <= 0) return null;
+  const { rows } = await ejecutar(
+    `SELECT v.id_venta, v.id_sucursal, v.fecha_hora, v.canal_venta,
+            v.fecha_anulacion, v.id_caja, c.fecha_cierre, vt.total
+       FROM ventas v
+       JOIN ventas_totales vt ON vt.id_venta = v.id_venta
+       LEFT JOIN cajas c ON c.id_caja = v.id_caja
+      WHERE v.id_venta = $1
+      ${bloquear ? 'FOR UPDATE OF v' : ''}`,
+    [idVenta]
+  );
+  return rows[0] || null;
+}
+
+// Por que no se puede anular, en castellano, o null si se puede. Son las
+// mismas reglas que hace cumplir la base; se chequean antes para explicarlas
+// en vez de mostrar el error de PostgreSQL.
+function motivoParaNoAnular(venta, sucursales) {
+  if (!venta || !sucursales.some((s) => s.id_sucursal === venta.id_sucursal)) {
+    return 'No encontramos esa venta entre las de tu sucursal.';
+  }
+  if (venta.fecha_anulacion) {
+    return 'Esa venta ya estaba anulada.';
+  }
+  if (venta.fecha_cierre) {
+    return 'La caja de esa venta ya se cerró, así que no se puede anular: su arqueo está hecho. '
+      + 'La corrección es una nota de crédito con fecha de hoy.';
+  }
+  return null;
+}
+
+async function detalleDeVenta(idVenta) {
+  const { rows: lineas } = await consultar(
+    `SELECT p.nombre, vd.cantidad, vd.precio_unitario_aplicado AS precio,
+            vd.cantidad * vd.precio_unitario_aplicado AS subtotal
+       FROM venta_detalle vd
+       JOIN productos p ON p.id_producto = vd.id_producto
+      WHERE vd.id_venta = $1
+      ORDER BY vd.id_venta_detalle`,
+    [idVenta]
+  );
+  const { rows: pagos } = await consultar(
+    `SELECT m.nombre AS medio, m.afecta_caja_efectivo, pv.monto
+       FROM pagos_venta pv
+       JOIN medios_pago m ON m.id_medio_pago = pv.id_medio_pago
+      WHERE pv.id_venta = $1
+      ORDER BY pv.id_pago_venta`,
+    [idVenta]
+  );
+  return { lineas, pagos };
+}
+
+async function mostrarAnulacion(res, venta, { errores = [], motivo = '', estado = 200 } = {}) {
+  const { lineas, pagos } = await detalleDeVenta(venta.id_venta);
+  res.status(estado).render('ventas/anular', {
+    venta, lineas, pagos, errores, motivo, CANALES, MOTIVO_MAXIMO,
+  });
+}
+
+router.get('/:id/anular', async (req, res, siguiente) => {
+  try {
+    const sucursales = await sucursalesDisponibles(req.session.usuario);
+    const venta = await ventaParaAnular(consultar, Number(req.params.id), false);
+    const impedimento = motivoParaNoAnular(venta, sucursales);
+    if (impedimento) {
+      req.session.aviso = impedimento;
+      return res.redirect(venta ? '/ventas?sucursal=' + venta.id_sucursal : '/ventas');
+    }
+    await mostrarAnulacion(res, venta);
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+router.post('/:id/anular', async (req, res, siguiente) => {
+  try {
+    const { usuario } = req.session;
+    const sucursales = await sucursalesDisponibles(usuario);
+    const idVenta = Number(req.params.id);
+    const motivo = typeof req.body.motivo === 'string' ? req.body.motivo.trim() : '';
+
+    const resultado = await conTransaccion(async (ejecutar) => {
+      const venta = await ventaParaAnular(ejecutar, idVenta, true);
+      const impedimento = motivoParaNoAnular(venta, sucursales);
+      if (impedimento) return { impedimento, venta };
+
+      if (motivo === '') return { venta, error: 'Escribí por qué se anula la venta.' };
+      if (motivo.length > MOTIVO_MAXIMO) {
+        return { venta, error: 'El motivo es muy largo: resumilo en menos de ' + MOTIVO_MAXIMO + ' letras.' };
+      }
+
+      // El stock, los insumos y los tachos los devuelve la base sola, con el
+      // trigger que corre al anular.
+      await ejecutar(
+        `UPDATE ventas
+            SET fecha_anulacion = now(), id_usuario_anulacion = $1, motivo_anulacion = $2
+          WHERE id_venta = $3`,
+        [usuario.id_usuario, motivo, idVenta]
+      );
+
+      const { rows: [efectivo] } = await ejecutar(
+        `SELECT coalesce(sum(pv.monto), 0) AS monto
+           FROM pagos_venta pv
+           JOIN medios_pago m ON m.id_medio_pago = pv.id_medio_pago
+          WHERE pv.id_venta = $1 AND m.afecta_caja_efectivo`,
+        [idVenta]
+      );
+      return { anulada: true, venta, efectivo: Number(efectivo.monto) };
+    });
+
+    if (resultado.impedimento) {
+      req.session.aviso = resultado.impedimento;
+      return res.redirect(resultado.venta ? '/ventas?sucursal=' + resultado.venta.id_sucursal : '/ventas');
+    }
+    if (resultado.error) {
+      return mostrarAnulacion(res, resultado.venta, { errores: [resultado.error], motivo, estado: 400 });
+    }
+
+    // Lo que hay que hacer con la plata depende de como se cobro: el efectivo
+    // se devuelve del cajon en el momento; lo cobrado con tarjeta o
+    // transferencia se devuelve por el mismo medio, fuera del cajon.
+    req.session.aviso = 'Venta anulada.' + (resultado.efectivo > 0
+      ? ' Devolvele al cliente $' + resultado.efectivo.toFixed(2) + ' en efectivo.'
+      : '');
+    res.redirect('/ventas?sucursal=' + resultado.venta.id_sucursal);
   } catch (error) {
     siguiente(error);
   }

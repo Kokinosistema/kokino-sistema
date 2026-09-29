@@ -20,6 +20,11 @@ const TURNOS = [
 // lo cobrado en efectivo, menos lo que salio en efectivo. Los cobros con
 // tarjeta o por transferencia quedan afuera porque esa plata no esta ahi, y de
 // eso se encarga medios_pago.afecta_caja_efectivo.
+//
+// Los pagos de una venta anulada no se borran (la base los congela, y el
+// registro de que se cobro tiene que quedar), pero esa plata se le devolvio
+// al cliente: si se sumara, el arqueo esperaria en el cajon plata que ya no
+// esta y el cierre daria un faltante que no existe.
 const SQL_ARQUEO = `
   SELECT c.id_caja,
          c.id_sucursal,
@@ -30,7 +35,9 @@ const SQL_ARQUEO = `
          (SELECT coalesce(sum(p.monto), 0)
             FROM pagos_venta p
             JOIN medios_pago m ON m.id_medio_pago = p.id_medio_pago
-           WHERE p.id_caja = c.id_caja AND m.afecta_caja_efectivo) AS cobrado_efectivo,
+            JOIN ventas v ON v.id_venta = p.id_venta
+           WHERE p.id_caja = c.id_caja AND m.afecta_caja_efectivo
+             AND v.fecha_anulacion IS NULL) AS cobrado_efectivo,
          (SELECT coalesce(sum(e.monto), 0)
             FROM egresos e
             JOIN medios_pago m ON m.id_medio_pago = e.id_medio_pago
@@ -38,7 +45,9 @@ const SQL_ARQUEO = `
          (SELECT coalesce(sum(p.monto), 0)
             FROM pagos_venta p
             JOIN medios_pago m ON m.id_medio_pago = p.id_medio_pago
-           WHERE p.id_caja = c.id_caja AND NOT m.afecta_caja_efectivo) AS cobrado_electronico,
+            JOIN ventas v ON v.id_venta = p.id_venta
+           WHERE p.id_caja = c.id_caja AND NOT m.afecta_caja_efectivo
+             AND v.fecha_anulacion IS NULL) AS cobrado_electronico,
          (SELECT count(*) FROM ventas v
            WHERE v.id_caja = c.id_caja AND v.fecha_anulacion IS NULL)::int AS ventas
     FROM cajas c

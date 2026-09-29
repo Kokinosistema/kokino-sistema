@@ -179,15 +179,24 @@
             <th>Canal</th>
             <th>Pago</th>
             <th class="numero">Total</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           <% ultimas.forEach(function (v) { %>
-            <tr>
+            <tr class="<%= v.anulada ? 'anulada' : '' %>">
               <td><%= v.fecha_hora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) %></td>
               <td><%= (CANALES.find(function (c) { return c.valor === v.canal_venta; }) || {}).texto %></td>
               <td><%= v.medios || 'Sin pago' %></td>
-              <td class="numero">$<%= Number(v.total).toFixed(2) %></td>
+              <td class="numero"><span class="monto">$<%= Number(v.total).toFixed(2) %></span></td>
+              <td class="acciones">
+                <% if (v.anulada) { %>
+                  <span class="marca-anulada">Anulada</span>
+                  <span class="motivo">Anuló <%= v.anulo %>: <%= v.motivo_anulacion %></span>
+                <% } else { %>
+                  <a class="enlace" href="/ventas/<%= v.id_venta %>/anular">Anular</a>
+                <% } %>
+              </td>
             </tr>
           <% }) %>
         </tbody>

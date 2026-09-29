@@ -449,6 +449,20 @@ form.producto {
 .pedido form + form { margin-top: 12px; }
 .venta .pedido button.boton { width: 100%; }
 
+/* Una venta anulada sigue en la lista, pero se lee de un vistazo que no
+   cuenta: tachado el total y en gris la fila. */
+.tabla tr.anulada td { color: var(--text-secondary); }
+.tabla tr.anulada .monto { text-decoration: line-through; }
+.marca-anulada {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--status-error);
+  background: rgba(214, 69, 69, 0.10);
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+}
+.motivo { display: block; font-size: 12px; margin-top: 2px; }
+
 /* ---------- Login y pantallas sueltas ---------- */
 
 .pantalla-suelta { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
