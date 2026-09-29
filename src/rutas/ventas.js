@@ -49,12 +49,18 @@ function sucursalPedida(valor, sucursales) {
   return sucursales.some((s) => s.id_sucursal === id) ? id : null;
 }
 
-// A donde volver despues de tocar el pedido: a la misma categoria, para
-// seguir cargando productos del mismo tipo sin tener que volver a entrar.
-function direccionVender(idSucursal, categoria) {
+// A donde volver despues de tocar el pedido: a la misma categoria y con la
+// misma busqueda, para seguir cargando sin volver a entrar ni a tipear.
+function direccionVender(idSucursal, categoria, busqueda) {
   const idCategoria = Number(categoria);
-  return '/ventas?sucursal=' + idSucursal
-    + (Number.isInteger(idCategoria) && idCategoria > 0 ? '&categoria=' + idCategoria : '');
+  if (!Number.isInteger(idCategoria) || idCategoria <= 0) return '/ventas?sucursal=' + idSucursal;
+  const texto = limpiarBusqueda(busqueda);
+  return '/ventas?sucursal=' + idSucursal + '&categoria=' + idCategoria
+    + (texto ? '&busqueda=' + encodeURIComponent(texto) : '');
+}
+
+function limpiarBusqueda(valor) {
+  return typeof valor === 'string' ? valor.trim().slice(0, 100) : '';
 }
 
 async function cajaAbiertaDe(idSucursal) {
@@ -69,7 +75,7 @@ async function cajaAbiertaDe(idSucursal) {
 
 // Arma todo lo que necesita la pantalla y la muestra. Lo usan tanto la carga
 // normal como los errores al cobrar, para que el pedido siga a la vista.
-async function mostrar(req, res, { sucursales, elegida, categoria, errores = [], estado = 200, canal, medio }) {
+async function mostrar(req, res, { sucursales, elegida, categoria, busqueda, errores = [], estado = 200, canal, medio }) {
   const caja = await cajaAbiertaDe(elegida);
 
   const { rows: productos } = await consultar(
@@ -141,6 +147,7 @@ async function mostrar(req, res, { sucursales, elegida, categoria, errores = [],
   res.status(estado).render('ventas/vender', {
     sucursales, elegida, caja, catalogo, abierta, lineas, total, medios, ultimas,
     CANALES, errores, CANTIDAD_MAXIMA,
+    busqueda: limpiarBusqueda(busqueda),
     canal: canal || 'MOSTRADOR',
     medio: Number(medio) || (medios[0] && medios[0].id_medio_pago),
   });
@@ -152,7 +159,9 @@ router.get('/', async (req, res, siguiente) => {
   try {
     const sucursales = await sucursalesDisponibles(req.session.usuario);
     const elegida = sucursalPedida(req.query.sucursal, sucursales) || sucursales[0].id_sucursal;
-    await mostrar(req, res, { sucursales, elegida, categoria: req.query.categoria });
+    await mostrar(req, res, {
+      sucursales, elegida, categoria: req.query.categoria, busqueda: req.query.busqueda,
+    });
   } catch (error) {
     siguiente(error);
   }
@@ -204,7 +213,7 @@ router.post('/pedido', async (req, res, siguiente) => {
     }
     req.session.pedidos[elegida] = pedido.filter((l) => l.cantidad > 0);
 
-    res.redirect(direccionVender(elegida, req.body.categoria));
+    res.redirect(direccionVender(elegida, req.body.categoria, req.body.busqueda));
   } catch (error) {
     siguiente(error);
   }

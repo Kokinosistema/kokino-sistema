@@ -71,12 +71,17 @@
             <span class="icono-categoria chico"><%- iconoCategoria(abierta.categoria) %></span>
             <%= abierta.categoria %>
           </h2>
+          <input type="search" id="buscar-producto" class="buscar" value="<%= busqueda %>"
+                 placeholder="Buscar en <%= abierta.categoria %> por nombre"
+                 aria-label="Buscar producto por nombre" autocomplete="off">
         </div>
+        <p id="sin-resultados" class="ayuda" hidden>Ningún producto de esta categoría coincide con la búsqueda.</p>
         <div class="productos">
           <% abierta.productos.forEach(function (p) { %>
-            <form class="producto" method="post" action="/ventas/pedido">
+            <form class="producto" method="post" action="/ventas/pedido" data-nombre="<%= p.nombre %>">
               <input type="hidden" name="id_sucursal" value="<%= elegida %>">
               <input type="hidden" name="categoria" value="<%= abierta.id_categoria %>">
+              <input type="hidden" name="busqueda" value="<%= busqueda %>">
               <input type="hidden" name="id_producto" value="<%= p.id_producto %>">
               <span class="nombre-producto"><%= p.nombre %></span>
               <span class="precio-producto">$<%= Number(p.precio).toFixed(2) %></span>
@@ -108,6 +113,7 @@
                     <form method="post" action="/ventas/pedido">
                       <input type="hidden" name="id_sucursal" value="<%= elegida %>">
                       <input type="hidden" name="categoria" value="<%= abierta ? abierta.id_categoria : '' %>">
+                      <input type="hidden" name="busqueda" value="<%= busqueda %>">
                       <input type="hidden" name="id_producto" value="<%= l.id_producto %>">
                       <button class="boton-secundario" type="submit" name="accion" value="restar" aria-label="Uno menos">−</button>
                       <span><%= l.cantidad %></span>
@@ -154,6 +160,7 @@
         <form method="post" action="/ventas/pedido">
           <input type="hidden" name="id_sucursal" value="<%= elegida %>">
           <input type="hidden" name="categoria" value="<%= abierta ? abierta.id_categoria : '' %>">
+          <input type="hidden" name="busqueda" value="<%= busqueda %>">
           <button class="enlace" type="submit" name="accion" value="vaciar">Vaciar el pedido</button>
         </form>
       <% } %>
@@ -188,5 +195,44 @@
     <% } %>
   </section>
 <% } %>
+
+<script>
+  // Filtra los productos de la categoria mientras se escribe. Si el
+  // navegador no corre JavaScript no pasa nada: se ven todos, como antes.
+  (function () {
+    var campo = document.getElementById('buscar-producto');
+    if (!campo) return;
+
+    // Sin acentos y en minuscula, asi "cafe" encuentra "Café".
+    function normalizar(texto) {
+      return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    }
+
+    var tarjetas = document.querySelectorAll('form.producto');
+    var sinResultados = document.getElementById('sin-resultados');
+
+    function filtrar() {
+      // Cada palabra tiene que aparecer en el nombre, en cualquier orden:
+      // "choco blanco" encuentra "Alfajor chocolate blanco con nuez".
+      var palabras = normalizar(campo.value).split(/\s+/).filter(Boolean);
+      var visibles = 0;
+      tarjetas.forEach(function (tarjeta) {
+        var nombre = normalizar(tarjeta.dataset.nombre);
+        var coincide = palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
+        tarjeta.hidden = !coincide;
+        if (coincide) visibles += 1;
+      });
+      sinResultados.hidden = visibles > 0;
+
+      // Viaja con cada boton del pedido, para que al volver siga filtrado.
+      document.querySelectorAll('input[name="busqueda"]').forEach(function (oculto) {
+        oculto.value = campo.value;
+      });
+    }
+
+    campo.addEventListener('input', filtrar);
+    filtrar();
+  })();
+</script>
 
 <%- include('../parciales/pie') %>

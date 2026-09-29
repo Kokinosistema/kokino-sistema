@@ -420,6 +420,9 @@ form > button[type="submit"]:not(.enlace):not(.salir) { margin-top: 20px; }
 
 /* Segunda vista: los productos de la categoria elegida. */
 .titulo-categoria { margin-bottom: 12px; }
+.titulo-categoria .buscar { max-width: 420px; margin-top: 12px; background: var(--bg-panel); }
+/* form.producto es flex, y eso le gana al atributo hidden si no se aclara. */
+form.producto[hidden] { display: none; }
 .titulo-categoria h2 { margin: 6px 0 0; }
 .volver { font-family: var(--font-head); font-weight: 700; font-size: 14px; color: var(--brand-pressed); text-decoration: none; }
 .volver:hover { text-decoration: underline; }
