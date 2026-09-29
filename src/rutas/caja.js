@@ -3,6 +3,7 @@
 const express = require('express');
 const { consultar, conTransaccion } = require('../db');
 const { sucursalesDisponibles } = require('../sucursales');
+const { montoValido } = require('../dinero');
 
 const router = express.Router();
 
@@ -84,13 +85,6 @@ const TEXTO_MAXIMO = 300;
 // son las que tiene que justificar al contar el cajon.
 function esDueno(usuario) {
   return usuario.rol === 'administrador';
-}
-
-// Un monto de plata valido: positivo y con dos decimales como mucho. Se
-// valida el texto, no el numero, porque Number('4000.555') no avisa que
-// sobra un decimal.
-function montoValido(valor) {
-  return typeof valor === 'string' && /^\d+(\.\d{1,2})?$/.test(valor.trim()) && Number(valor) > 0;
 }
 
 // Arma todo lo que necesita la pantalla principal. La usan la carga normal y

@@ -3,6 +3,7 @@
 const express = require('express');
 const { consultar, conTransaccion } = require('../db');
 const { sucursalesDisponibles } = require('../sucursales');
+const { montoValido, aCentavos, textoPesos } = require('../dinero');
 
 const router = express.Router();
 
@@ -11,6 +12,19 @@ const CANALES = [
   { valor: 'TELEFONO', texto: 'Teléfono' },
   { valor: 'PEDIDOSYA', texto: 'PedidosYa' },
 ];
+
+// Valor de "Con que pago" cuando se paga con mas de un medio. Entonces llega
+// un monto por medio, en campos monto_<id_medio_pago>.
+const VARIOS_MEDIOS = 'varios';
+
+function montosPorMedio(cuerpo) {
+  const montos = {};
+  for (const [campo, valor] of Object.entries(cuerpo)) {
+    const id = /^monto_(\d+)$/.exec(campo);
+    if (id) montos[id[1]] = typeof valor === 'string' ? valor.trim() : '';
+  }
+  return montos;
+}
 
 // Tope por linea: nadie vende mil cucuruchos en una venta de mostrador, y un
 // numero asi casi siempre es un dedo que se quedo apretado.
@@ -75,7 +89,9 @@ async function cajaAbiertaDe(idSucursal) {
 
 // Arma todo lo que necesita la pantalla y la muestra. Lo usan tanto la carga
 // normal como los errores al cobrar, para que el pedido siga a la vista.
-async function mostrar(req, res, { sucursales, elegida, categoria, busqueda, errores = [], estado = 200, canal, medio }) {
+async function mostrar(req, res, {
+  sucursales, elegida, categoria, busqueda, errores = [], estado = 200, canal, medio, montos = {},
+}) {
   const caja = await cajaAbiertaDe(elegida);
 
   const { rows: productos } = await consultar(
@@ -157,7 +173,9 @@ async function mostrar(req, res, { sucursales, elegida, categoria, busqueda, err
     CANALES, errores, CANTIDAD_MAXIMA,
     busqueda: limpiarBusqueda(busqueda),
     canal: canal || 'MOSTRADOR',
-    medio: Number(medio) || (medios[0] && medios[0].id_medio_pago),
+    medio: medio === VARIOS_MEDIOS ? VARIOS_MEDIOS : String(Number(medio) || (medios[0] && medios[0].id_medio_pago)),
+    montos,
+    VARIOS_MEDIOS,
   });
 }
 
@@ -238,18 +256,28 @@ router.post('/cobrar', async (req, res, siguiente) => {
     }
 
     const { canal, id_medio_pago: medio } = req.body;
+    const variosMedios = medio === VARIOS_MEDIOS;
+    const montos = montosPorMedio(req.body);
     const pedido = pedidoDe(req, elegida);
     const volver = (errores) => mostrar(req, res, {
-      sucursales, elegida, categoria: req.body.categoria, errores, estado: 400, canal, medio,
+      sucursales, elegida, categoria: req.body.categoria, errores, estado: 400, canal, medio, montos,
     });
 
     const errores = [];
     if (pedido.length === 0) errores.push('El pedido está vacío: agregá al menos un producto.');
     if (!CANALES.some((c) => c.valor === canal)) errores.push('Elegí por dónde fue la venta.');
-    if (!Number.isInteger(Number(medio))) errores.push('Elegí con qué pagó.');
+    if (variosMedios) {
+      const cargados = Object.values(montos).filter((m) => m !== '');
+      if (cargados.length === 0) errores.push('Poné cuánto se pagó con cada medio.');
+      if (cargados.some((m) => !montoValido(m))) {
+        errores.push('Cada monto tiene que ser un número mayor que cero, con dos decimales como mucho.');
+      }
+    } else if (!Number.isInteger(Number(medio))) {
+      errores.push('Elegí con qué pagó.');
+    }
     if (errores.length > 0) return volver(errores);
 
-    // Todo en una transaccion: la venta, sus lineas y el pago se guardan
+    // Todo en una transaccion: la venta, sus lineas y sus pagos se guardan
     // juntos o no se guarda nada. La caja se bloquea mientras tanto (FOR
     // UPDATE), y el cierre de caja la bloquea igual, asi que una venta y un
     // cierre simultaneos se esperan uno al otro: la venta no puede quedar
@@ -266,12 +294,6 @@ router.post('/cobrar', async (req, res, siguiente) => {
       }
       const idCaja = cajas[0].id_caja;
 
-      const { rows: medios } = await ejecutar(
-        'SELECT id_medio_pago FROM medios_pago WHERE id_medio_pago = $1 AND activo',
-        [medio]
-      );
-      if (medios.length === 0) return { error: 'Elegí con qué pagó.' };
-
       const ids = pedido.map((l) => l.id_producto);
       const { rows: precios } = await ejecutar(
         `SELECT p.id_producto, pr.precio
@@ -284,6 +306,33 @@ router.post('/cobrar', async (req, res, siguiente) => {
         return { error: 'Algún producto del pedido ya no está a la venta. Revisá el pedido y volvé a cobrar.' };
       }
       const precioDe = new Map(precios.map((p) => [p.id_producto, p.precio]));
+      const total = pedido.reduce((suma, l) => suma + aCentavos(precioDe.get(l.id_producto)) * l.cantidad, 0);
+
+      // Los pagos, en centavos, por medio. Con un solo medio es el total
+      // entero; con varios, lo que se cargo en cada uno, que tiene que sumar
+      // exactamente el total: que sobre plata es un error de tipeo, y que
+      // falte es una venta a cuenta, que todavia no se hace desde aca.
+      const pagos = variosMedios
+        ? Object.entries(montos)
+          .filter(([, m]) => m !== '')
+          .map(([id, m]) => ({ id_medio_pago: Number(id), centavos: aCentavos(m) }))
+        : [{ id_medio_pago: Number(medio), centavos: total }];
+
+      const { rows: activos } = await ejecutar(
+        'SELECT id_medio_pago, nombre FROM medios_pago WHERE activo AND id_medio_pago = ANY($1::int[])',
+        [pagos.map((p) => p.id_medio_pago)]
+      );
+      if (activos.length !== pagos.length) return { error: 'Elegí con qué pagó.' };
+      const nombreDe = new Map(activos.map((m) => [m.id_medio_pago, m.nombre]));
+
+      const pagado = pagos.reduce((suma, p) => suma + p.centavos, 0);
+      if (variosMedios && pagado !== total) {
+        const diferencia = Math.abs(total - pagado);
+        return {
+          error: 'Los montos suman ' + textoPesos(pagado) + ' y la venta es de ' + textoPesos(total) + ': '
+            + (pagado < total ? 'faltan ' : 'sobran ') + textoPesos(diferencia) + '.',
+        };
+      }
 
       const { rows: [venta] } = await ejecutar(
         `INSERT INTO ventas (id_caja, id_usuario, id_sucursal, canal_venta, tipo_venta)
@@ -292,30 +341,30 @@ router.post('/cobrar', async (req, res, siguiente) => {
         [idCaja, usuario.id_usuario, elegida, canal]
       );
 
-      // La cuenta se hace en centavos enteros: sumar precios con decimales en
-      // JavaScript da cosas como 0.1 + 0.2 = 0.30000000000000004.
-      let centavos = 0;
       for (const l of pedido) {
-        const precio = precioDe.get(l.id_producto);
         await ejecutar(
           `INSERT INTO venta_detalle (id_venta, id_producto, cantidad, precio_unitario_aplicado)
            VALUES ($1, $2, $3, $4)`,
-          [venta.id_venta, l.id_producto, l.cantidad, precio]
+          [venta.id_venta, l.id_producto, l.cantidad, precioDe.get(l.id_producto)]
         );
-        centavos += Math.round(Number(precio) * 100) * l.cantidad;
       }
 
       // Un pago de cero no existe (la base lo rechaza), y una venta que suma
       // cero, como un producto de regalo, simplemente no lleva pago.
-      if (centavos > 0) {
+      for (const p of pagos.filter((pago) => pago.centavos > 0)) {
         await ejecutar(
           `INSERT INTO pagos_venta (id_venta, id_medio_pago, id_caja, id_usuario, monto)
            VALUES ($1, $2, $3, $4, $5)`,
-          [venta.id_venta, medio, idCaja, usuario.id_usuario, (centavos / 100).toFixed(2)]
+          [venta.id_venta, p.id_medio_pago, idCaja, usuario.id_usuario, (p.centavos / 100).toFixed(2)]
         );
       }
 
-      return { total: centavos / 100 };
+      return {
+        total,
+        detalle: pagos.length > 1
+          ? pagos.map((p) => nombreDe.get(p.id_medio_pago) + ' ' + textoPesos(p.centavos)).join(', ')
+          : null,
+      };
     });
 
     if (resultado.error) return volver([resultado.error]);
@@ -323,7 +372,8 @@ router.post('/cobrar', async (req, res, siguiente) => {
     vaciarPedido(req, elegida);
     // Despues de cobrar se vuelve a las categorias: lo que sigue es otro
     // cliente, y no tiene por que arrancar en la categoria del anterior.
-    req.session.aviso = 'Venta registrada: $' + resultado.total.toFixed(2) + '.';
+    req.session.aviso = 'Venta registrada: ' + textoPesos(resultado.total)
+      + (resultado.detalle ? ' (' + resultado.detalle + ')' : '') + '.';
     res.redirect(direccionVender(elegida));
   } catch (error) {
     siguiente(error);

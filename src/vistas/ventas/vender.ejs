@@ -147,12 +147,26 @@
 
           <label>
             Con qué pagó
-            <select name="id_medio_pago" required>
+            <select name="id_medio_pago" id="medio-pago" required>
               <% medios.forEach(function (m) { %>
-                <option value="<%= m.id_medio_pago %>" <%= m.id_medio_pago === medio ? 'selected' : '' %>><%= m.nombre %></option>
+                <option value="<%= m.id_medio_pago %>" <%= String(m.id_medio_pago) === medio ? 'selected' : '' %>><%= m.nombre %></option>
               <% }) %>
+              <option value="<%= VARIOS_MEDIOS %>" <%= medio === VARIOS_MEDIOS ? 'selected' : '' %>>Varios medios</option>
             </select>
           </label>
+
+          <div id="pago-varios" class="pago-varios" data-total="<%= Math.round(total * 100) %>"
+               <%= medio === VARIOS_MEDIOS ? '' : 'hidden' %>>
+            <p class="pista">Poné cuánto se pagó con cada medio. Tiene que sumar $<%= total.toFixed(2) %>.</p>
+            <% medios.forEach(function (m) { %>
+              <label class="linea-pago">
+                <span><%= m.nombre %></span>
+                <input type="number" name="monto_<%= m.id_medio_pago %>" step="0.01" min="0"
+                       value="<%= montos[m.id_medio_pago] || '' %>" placeholder="0.00" onfocus="this.select()">
+              </label>
+            <% }) %>
+            <p id="falta-pagar" class="falta-pagar" aria-live="polite"></p>
+          </div>
 
           <button class="boton" type="submit">Cobrar $<%= total.toFixed(2) %></button>
         </form>
@@ -241,6 +255,38 @@
 
     campo.addEventListener('input', filtrar);
     filtrar();
+  })();
+
+  // Pago con varios medios: muestra los montos solo cuando se elige esa
+  // opcion, y va diciendo cuanto falta o sobra para llegar al total. La
+  // cuenta de verdad la vuelve a hacer el servidor al cobrar.
+  (function () {
+    var selector = document.getElementById('medio-pago');
+    var bloque = document.getElementById('pago-varios');
+    if (!selector || !bloque) return;
+
+    var total = Number(bloque.dataset.total);
+    var aviso = document.getElementById('falta-pagar');
+    var campos = bloque.querySelectorAll('input');
+
+    function pesos(centavos) { return '$' + (centavos / 100).toFixed(2); }
+
+    function actualizar() {
+      var varios = selector.value === '<%= VARIOS_MEDIOS %>';
+      bloque.hidden = !varios;
+      if (!varios) return;
+      var pagado = 0;
+      campos.forEach(function (c) { pagado += Math.round(Number(c.value || 0) * 100); });
+      var diferencia = total - pagado;
+      aviso.textContent = diferencia === 0 ? 'Cubre el total.'
+        : diferencia > 0 ? 'Faltan ' + pesos(diferencia) + '.'
+        : 'Sobran ' + pesos(-diferencia) + '.';
+      aviso.className = 'falta-pagar' + (diferencia === 0 ? ' completo' : '');
+    }
+
+    selector.addEventListener('change', actualizar);
+    campos.forEach(function (c) { c.addEventListener('input', actualizar); });
+    actualizar();
   })();
 </script>
 

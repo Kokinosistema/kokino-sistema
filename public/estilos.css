@@ -451,6 +451,15 @@ form.producto {
 .pedido form + form { margin-top: 12px; }
 .venta .pedido button.boton { width: 100%; }
 
+/* Pago con varios medios: un renglon por medio, con el monto a la derecha. */
+.pago-varios { margin-top: 12px; padding: 12px; background: var(--bg-base); border-radius: var(--radius-sm); }
+.pago-varios[hidden] { display: none; }
+.pago-varios .pista { margin: 0 0 4px; }
+.linea-pago { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; font-size: 13px; }
+.linea-pago input { width: 130px; margin: 0; text-align: right; }
+.falta-pagar { margin: 10px 0 0; font-weight: 700; font-size: 13px; color: var(--status-error); }
+.falta-pagar.completo { color: var(--brand-pressed); }
+
 /* Una venta anulada sigue en la lista, pero se lee de un vistazo que no
    cuenta: tachado el total y en gris la fila. */
 .tabla tr.anulada td { color: var(--text-secondary); }
