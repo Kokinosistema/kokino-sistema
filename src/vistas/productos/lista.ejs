@@ -1,0 +1,43 @@
+<%- include('../parciales/encabezado', { titulo: 'Productos - Kokino' }) %>
+
+<h1>Productos</h1>
+
+<p class="ayuda">
+  Qué insumos lleva cada producto. Cada vez que se vende uno, el sistema
+  descuenta esos insumos del stock de la sucursal. Un producto sin insumos se
+  vende igual, pero no descuenta nada.
+</p>
+
+<% if (total > 0) { %>
+  <p class="ayuda">
+    <strong><%= total - sinInsumos %> de <%= total %></strong> productos tienen sus insumos cargados.
+  </p>
+  <div class="avance"><div class="avance-lleno" style="width: <%= Math.round(((total - sinInsumos) / total) * 100) %>%"></div></div>
+<% } %>
+
+<% grupos.forEach(function (g) { %>
+  <section class="panel">
+    <h2><%= g.categoria %> <span class="cuantos">· <%= g.productos.length %></span></h2>
+    <table class="tabla">
+      <tbody>
+        <% g.productos.forEach(function (p) { %>
+          <tr class="<%= p.activo ? '' : 'inactiva' %>">
+            <td>
+              <a href="/productos/<%= p.id_producto %>"><%= p.nombre %></a>
+              <% if (!p.activo) { %><span class="etiqueta">dado de baja</span><% } %>
+            </td>
+            <td class="numero">
+              <% if (p.insumos === 0) { %>
+                <span class="pendiente">Sin insumos</span>
+              <% } else { %>
+                <%= p.insumos %> insumo<%= p.insumos === 1 ? '' : 's' %>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+<% }) %>
+
+<%- include('../parciales/pie') %>

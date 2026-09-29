@@ -1,0 +1,110 @@
+<%- include('../parciales/encabezado', { titulo: producto.nombre + ' - Kokino' }) %>
+
+<a class="volver" href="/productos">← Productos</a>
+<h1><%= producto.nombre %></h1>
+<p class="ayuda">
+  <%= producto.categoria %>.
+  Las cantidades son por cada unidad vendida: si se venden 3, se descuenta el triple.
+</p>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<section class="panel">
+  <h2>Qué lleva</h2>
+  <% if (lleva.length === 0) { %>
+    <p class="ayuda">Todavía no tiene insumos: al venderlo no se descuenta nada.</p>
+  <% } else { %>
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Insumo</th>
+          <th class="numero">Cantidad</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% lleva.forEach(function (l) { %>
+          <tr>
+            <td>
+              <%= l.nombre %>
+              <% if (!l.activo) { %><span class="etiqueta">dado de baja</span><% } %>
+            </td>
+            <td class="numero"><%= Number(l.cantidad) %> <%= l.unidad %></td>
+            <td class="acciones">
+              <form method="post" action="/productos/<%= producto.id_producto %>/insumos/<%= l.id_insumo %>/quitar">
+                <button class="enlace" type="submit">Sacar</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
+
+<section class="panel">
+  <h2>Agregar un insumo</h2>
+  <% if (insumos.length === 0) { %>
+    <p class="ayuda">No hay insumos cargados. <a href="/insumos/nuevo">Agregá uno</a> primero.</p>
+  <% } else { %>
+    <form method="post" action="/productos/<%= producto.id_producto %>/insumos" class="formulario">
+      <div class="fila">
+        <div>
+          <label for="id_insumo">Insumo</label>
+          <select id="id_insumo" name="id_insumo" required>
+            <option value="">Elegí uno</option>
+            <% let categoria = null; %>
+            <% insumos.forEach(function (i) { %>
+              <% if (i.categoria !== categoria) { %>
+                <% if (categoria !== null) { %></optgroup><% } %>
+                <optgroup label="<%= i.categoria %>">
+                <% categoria = i.categoria; %>
+              <% } %>
+              <option value="<%= i.id_insumo %>" data-unidad="<%= i.id_unidad_medida %>"
+                      <%= i.id_insumo === elegido.id_insumo ? 'selected' : '' %>><%= i.nombre %> (se compra en <%= i.unidad %>)</option>
+            <% }) %>
+            <% if (categoria !== null) { %></optgroup><% } %>
+          </select>
+        </div>
+        <div>
+          <label for="cantidad">Cantidad por unidad vendida</label>
+          <input id="cantidad" name="cantidad" type="number" step="0.001" min="0.001" required
+                 value="<%= elegido.cantidad || '' %>" placeholder="Por ejemplo: 1">
+        </div>
+        <div>
+          <label for="id_unidad_medida">Unidad</label>
+          <select id="id_unidad_medida" name="id_unidad_medida" required>
+            <% unidades.forEach(function (u) { %>
+              <option value="<%= u.id_unidad %>" <%= u.id_unidad === elegido.id_unidad_medida ? 'selected' : '' %>><%= u.nombre %> (<%= u.abreviatura %>)</option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+      <p class="pista">
+        Si el insumo ya está en el producto, se reemplaza su cantidad. Un insumo que
+        se compra por kilo se puede cargar en gramos.
+      </p>
+      <button type="submit">Agregar</button>
+    </form>
+  <% } %>
+</section>
+
+<script>
+  // Al elegir un insumo, propone su unidad de compra, que es la que siempre
+  // sirve. Se puede cambiar (por ejemplo, a gramos si se compra por kilo).
+  (function () {
+    var insumo = document.getElementById('id_insumo');
+    var unidad = document.getElementById('id_unidad_medida');
+    if (!insumo || !unidad) return;
+    insumo.addEventListener('change', function () {
+      var opcion = insumo.options[insumo.selectedIndex];
+      if (opcion && opcion.dataset.unidad) unidad.value = opcion.dataset.unidad;
+    });
+  })();
+</script>
+
+<%- include('../parciales/pie') %>
