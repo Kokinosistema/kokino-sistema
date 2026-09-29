@@ -38,8 +38,13 @@
   </table>
 
   <p class="ayuda">
-    Los $<%= Number(caja.cobrado_electronico).toFixed(2) %> cobrados con tarjeta
-    o transferencia no entran en esta cuenta, porque esa plata no está en el cajón.
+    <% if (verTodo) { %>
+      Los $<%= Number(caja.cobrado_electronico).toFixed(2) %> cobrados con tarjeta
+      o transferencia no entran en esta cuenta, porque esa plata no está en el cajón.
+    <% } else { %>
+      Lo cobrado con tarjeta o transferencia no entra en esta cuenta, porque esa
+      plata no está en el cajón.
+    <% } %>
   </p>
 </section>
 

@@ -55,8 +55,10 @@
 
     <p class="ayuda">
       <%= abierta.ventas %> venta<%= abierta.ventas === 1 ? '' : 's' %> en el turno.
-      Cobrado con tarjeta o transferencia: $<%= Number(abierta.cobrado_electronico).toFixed(2) %>,
-      que no está en el cajón.
+      <% if (verTodo) { %>
+        Cobrado con tarjeta o transferencia: $<%= Number(abierta.cobrado_electronico).toFixed(2) %>,
+        que no está en el cajón.
+      <% } %>
     </p>
 
     <a class="boton" href="/caja/cerrar?sucursal=<%= elegida %>">Cerrar la caja</a>
@@ -65,9 +67,15 @@
   <section class="panel">
     <h2>Salidas del turno</h2>
     <p class="ayuda">
-      La plata que sale durante el turno: compras chicas, servicios o un retiro
-      de un empleado a cuenta de sueldo. Lo pagado por transferencia o tarjeta
-      queda registrado, pero no se descuenta del cajón.
+      <% if (verTodo) { %>
+        La plata que sale durante el turno: compras chicas, servicios o un retiro
+        de un empleado a cuenta de sueldo. Lo pagado por transferencia o tarjeta
+        queda registrado, pero no se descuenta del cajón, y solo lo ven los dueños.
+      <% } else { %>
+        La plata que sale del cajón durante el turno: compras chicas, servicios o
+        un retiro de un empleado a cuenta de sueldo. Registrala siempre: al cerrar,
+        el cajón tiene que cuadrar.
+      <% } %>
     </p>
 
     <form method="post" action="/caja/egresos" class="formulario">

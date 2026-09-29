@@ -77,6 +77,15 @@ const TIPOS_EGRESO = [
 
 const TEXTO_MAXIMO = 300;
 
+// Lo que no pasa por el cajon es cosa de los duenos: el total cobrado con
+// tarjeta o transferencia y las salidas pagadas desde la cuenta del negocio,
+// como los pagos a proveedores. El empleado cobra con transferencia, pero no
+// ve cuanto entro en el dia; y carga y ve solo las salidas en efectivo, que
+// son las que tiene que justificar al contar el cajon.
+function esDueno(usuario) {
+  return usuario.rol === 'administrador';
+}
+
 // Un monto de plata valido: positivo y con dos decimales como mucho. Se
 // valida el texto, no el numero, porque Number('4000.555') no avisa que
 // sobra un decimal.
@@ -86,7 +95,8 @@ function montoValido(valor) {
 
 // Arma todo lo que necesita la pantalla principal. La usan la carga normal y
 // los errores de los formularios, para que no se pierda lo que se escribio.
-async function mostrarCaja(res, { sucursales, elegida, errores = [], estado = 200, egreso = {} }) {
+async function mostrarCaja(res, { usuario, sucursales, elegida, errores = [], estado = 200, egreso = {} }) {
+  const verTodo = esDueno(usuario);
   const abierta = await cajaAbiertaDe(elegida);
 
   let egresos = [];
@@ -105,16 +115,19 @@ async function mostrarCaja(res, { sucursales, elegida, errores = [], estado = 20
          FROM egresos e
          JOIN medios_pago m ON m.id_medio_pago = e.id_medio_pago
          LEFT JOIN empleados emp ON emp.id_empleado = e.id_empleado
-        WHERE e.id_caja = $1
+        WHERE e.id_caja = $1 AND ($2 OR m.afecta_caja_efectivo)
         ORDER BY e.fecha_hora DESC`,
-      [abierta.id_caja]
+      [abierta.id_caja, verTodo]
     ));
     ({ rows: empleados } = await consultar(
       `SELECT id_empleado, concat_ws(' ', nombre, apellido) AS nombre
          FROM empleados WHERE activo ORDER BY nombre, apellido`
     ));
     ({ rows: medios } = await consultar(
-      'SELECT id_medio_pago, nombre FROM medios_pago WHERE activo ORDER BY id_medio_pago'
+      `SELECT id_medio_pago, nombre FROM medios_pago
+        WHERE activo AND ($1 OR afecta_caja_efectivo)
+        ORDER BY id_medio_pago`,
+      [verTodo]
     ));
   }
 
@@ -144,6 +157,7 @@ async function mostrarCaja(res, { sucursales, elegida, errores = [], estado = 20
     TIPOS_EGRESO,
     TEXTO_MAXIMO,
     errores,
+    verTodo,
   });
 }
 
@@ -159,8 +173,9 @@ function sucursalPermitida(valor, sucursales) {
 // el turno y sus salidas; si no, el formulario para abrirla.
 router.get('/', async (req, res, siguiente) => {
   try {
-    const sucursales = await sucursalesDisponibles(req.session.usuario);
-    await mostrarCaja(res, { sucursales, elegida: sucursalPermitida(req.query.sucursal, sucursales) });
+    const { usuario } = req.session;
+    const sucursales = await sucursalesDisponibles(usuario);
+    await mostrarCaja(res, { usuario, sucursales, elegida: sucursalPermitida(req.query.sucursal, sucursales) });
   } catch (error) {
     siguiente(error);
   }
@@ -187,7 +202,7 @@ router.post('/abrir', async (req, res, siguiente) => {
 
     if (errores.length > 0) {
       return mostrarCaja(res, {
-        sucursales, elegida: sucursalPermitida(idSucursal, sucursales), errores, estado: 400,
+        usuario, sucursales, elegida: sucursalPermitida(idSucursal, sucursales), errores, estado: 400,
       });
     }
 
@@ -230,6 +245,7 @@ router.get('/cerrar', async (req, res, siguiente) => {
       errores: [],
       declarado: '',
       TURNOS,
+      verTodo: esDueno(usuario),
     });
   } catch (error) {
     siguiente(error);
@@ -289,6 +305,7 @@ router.post('/cerrar', async (req, res, siguiente) => {
         errores: [resultado.error],
         declarado,
         TURNOS,
+        verTodo: esDueno(usuario),
       });
     }
 
@@ -337,7 +354,7 @@ router.post('/egresos', async (req, res, siguiente) => {
     if (!esRetiro && egreso.descripcion === '') errores.push('Escribí en qué se gastó: por ejemplo, «bolsas y servilletas».');
     if (egreso.descripcion.length > TEXTO_MAXIMO) errores.push('La descripción es muy larga: resumila en menos de ' + TEXTO_MAXIMO + ' letras.');
     if (errores.length > 0) {
-      return mostrarCaja(res, { sucursales, elegida: idSucursal, errores, estado: 400, egreso });
+      return mostrarCaja(res, { usuario, sucursales, elegida: idSucursal, errores, estado: 400, egreso });
     }
 
     const resultado = await conTransaccion(async (ejecutar) => {
@@ -350,9 +367,13 @@ router.post('/egresos', async (req, res, siguiente) => {
       if (cajas.length === 0) return { error: 'No hay una caja abierta en esta sucursal.' };
 
       const { rows: medios } = await ejecutar(
-        'SELECT 1 FROM medios_pago WHERE id_medio_pago = $1 AND activo', [egreso.id_medio_pago]
+        'SELECT afecta_caja_efectivo FROM medios_pago WHERE id_medio_pago = $1 AND activo',
+        [egreso.id_medio_pago]
       );
       if (medios.length === 0) return { error: 'Elegí con qué se pagó.' };
+      if (!medios[0].afecta_caja_efectivo && !esDueno(usuario)) {
+        return { error: 'Las salidas por transferencia o tarjeta las registran los dueños.' };
+      }
 
       if (esRetiro) {
         const { rows: empleados } = await ejecutar(
@@ -372,7 +393,7 @@ router.post('/egresos', async (req, res, siguiente) => {
     });
 
     if (resultado.error) {
-      return mostrarCaja(res, { sucursales, elegida: idSucursal, errores: [resultado.error], estado: 400, egreso });
+      return mostrarCaja(res, { usuario, sucursales, elegida: idSucursal, errores: [resultado.error], estado: 400, egreso });
     }
 
     req.session.aviso = 'Salida de $' + Number(egreso.monto).toFixed(2) + ' registrada.';
@@ -404,8 +425,9 @@ async function egresoParaAnular(ejecutar, idEgreso, bloquear) {
 
 // Las mismas reglas que hace cumplir trg_egresos_congelar, dichas antes y en
 // castellano.
-function motivoParaNoAnularEgreso(egreso, sucursales) {
-  if (!egreso || !sucursales.some((s) => s.id_sucursal === egreso.id_sucursal)) {
+function motivoParaNoAnularEgreso(egreso, sucursales, usuario) {
+  if (!egreso || !sucursales.some((s) => s.id_sucursal === egreso.id_sucursal)
+      || (!egreso.afecta_caja_efectivo && !esDueno(usuario))) {
     return 'No encontramos esa salida entre las de tu sucursal.';
   }
   if (egreso.fecha_anulacion) return 'Esa salida ya estaba anulada.';
@@ -421,9 +443,10 @@ function mostrarAnulacionEgreso(res, egreso, { errores = [], motivo = '', estado
 
 router.get('/egresos/:id/anular', async (req, res, siguiente) => {
   try {
-    const sucursales = await sucursalesDisponibles(req.session.usuario);
+    const { usuario } = req.session;
+    const sucursales = await sucursalesDisponibles(usuario);
     const egreso = await egresoParaAnular(consultar, Number(req.params.id), false);
-    const impedimento = motivoParaNoAnularEgreso(egreso, sucursales);
+    const impedimento = motivoParaNoAnularEgreso(egreso, sucursales, usuario);
     if (impedimento) {
       req.session.aviso = impedimento;
       return res.redirect(egreso ? '/caja?sucursal=' + egreso.id_sucursal : '/caja');
@@ -442,7 +465,7 @@ router.post('/egresos/:id/anular', async (req, res, siguiente) => {
 
     const resultado = await conTransaccion(async (ejecutar) => {
       const egreso = await egresoParaAnular(ejecutar, Number(req.params.id), true);
-      const impedimento = motivoParaNoAnularEgreso(egreso, sucursales);
+      const impedimento = motivoParaNoAnularEgreso(egreso, sucursales, usuario);
       if (impedimento) return { impedimento, egreso };
       if (motivo === '') return { egreso, error: 'Escribí por qué se anula la salida.' };
       if (motivo.length > TEXTO_MAXIMO) {
