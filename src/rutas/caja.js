@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { consultar, conTransaccion } = require('../db');
+const { sucursalesDisponibles } = require('../sucursales');
 
 const router = express.Router();
 
@@ -12,25 +13,8 @@ const TURNOS = [
 ];
 
 // No lleva exigirRol: abrir y cerrar la caja es tarea de mostrador, la hace
-// quien atiende. Lo que si se restringe es sobre que sucursal: el empleado
-// opera la suya y nada mas.
-//
-// El dueno no tiene sucursal asignada, porque ve las dos, asi que a el hay que
-// preguntarle sobre cual va a trabajar. Cuando exista la configuracion por
-// computadora que hablamos, ese selector desaparece y sale de ahi.
-async function sucursalesDisponibles(usuario) {
-  if (usuario.id_sucursal_asignada) {
-    const { rows } = await consultar(
-      'SELECT id_sucursal, nombre FROM sucursales WHERE id_sucursal = $1',
-      [usuario.id_sucursal_asignada]
-    );
-    return rows;
-  }
-  const { rows } = await consultar(
-    'SELECT id_sucursal, nombre FROM sucursales WHERE activa ORDER BY nombre'
-  );
-  return rows;
-}
+// quien atiende. Lo que si se restringe es sobre que sucursal (ver
+// sucursalesDisponibles).
 
 // Lo que el sistema dice que deberia haber en el cajon: lo que se abrio, mas
 // lo cobrado en efectivo, menos lo que salio en efectivo. Los cobros con

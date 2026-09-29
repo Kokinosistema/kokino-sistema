@@ -1,0 +1,150 @@
+<%- include('../parciales/encabezado', { titulo: 'Vender - Kokino' }) %>
+
+<h1>Vender</h1>
+
+<% if (sucursales.length > 1) { %>
+  <form class="filtro" method="get" action="/ventas">
+    <label>
+      Sucursal
+      <select name="sucursal" onchange="this.form.submit()">
+        <% sucursales.forEach(function (s) { %>
+          <option value="<%= s.id_sucursal %>" <%= s.id_sucursal === elegida ? 'selected' : '' %>>
+            <%= s.nombre %>
+          </option>
+        <% }) %>
+      </select>
+    </label>
+    <noscript><button type="submit">Ver</button></noscript>
+  </form>
+<% } %>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<% if (!caja) { %>
+  <section class="panel">
+    <h2>No hay caja abierta</h2>
+    <p class="ayuda">
+      Para vender tiene que haber una caja abierta en esta sucursal: cada venta
+      queda registrada en el turno de una caja.
+    </p>
+    <a class="boton" href="/caja?sucursal=<%= elegida %>">Ir a abrir la caja</a>
+  </section>
+<% } else { %>
+  <div class="venta">
+    <section class="catalogo-venta">
+      <% catalogo.forEach(function (grupo) { %>
+        <h2><%= grupo.categoria %></h2>
+        <div class="productos">
+          <% grupo.productos.forEach(function (p) { %>
+            <form method="post" action="/ventas/pedido">
+              <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+              <input type="hidden" name="id_producto" value="<%= p.id_producto %>">
+              <button class="producto" type="submit" name="accion" value="agregar">
+                <span class="nombre-producto"><%= p.nombre %></span>
+                <span class="precio-producto">$<%= Number(p.precio).toFixed(2) %></span>
+              </button>
+            </form>
+          <% }) %>
+        </div>
+      <% }) %>
+    </section>
+
+    <aside class="panel pedido">
+      <h2>Pedido</h2>
+
+      <% if (lineas.length === 0) { %>
+        <p class="ayuda">Tocá un producto para sumarlo al pedido.</p>
+      <% } else { %>
+        <table class="tabla">
+          <tbody>
+            <% lineas.forEach(function (l) { %>
+              <tr>
+                <td>
+                  <%= l.nombre %>
+                  <div class="cantidad">
+                    <form method="post" action="/ventas/pedido">
+                      <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+                      <input type="hidden" name="id_producto" value="<%= l.id_producto %>">
+                      <button class="boton-secundario" type="submit" name="accion" value="restar" aria-label="Uno menos">−</button>
+                      <span><%= l.cantidad %></span>
+                      <button class="boton-secundario" type="submit" name="accion" value="agregar" aria-label="Uno más">+</button>
+                      <button class="enlace" type="submit" name="accion" value="quitar">Quitar</button>
+                    </form>
+                  </div>
+                </td>
+                <td class="numero">$<%= l.subtotal.toFixed(2) %></td>
+              </tr>
+            <% }) %>
+            <tr class="destacada">
+              <th>Total</th>
+              <td class="numero">$<%= total.toFixed(2) %></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <form method="post" action="/ventas/cobrar">
+          <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+
+          <label>
+            Por dónde fue la venta
+            <select name="canal" required>
+              <% CANALES.forEach(function (c) { %>
+                <option value="<%= c.valor %>" <%= c.valor === canal ? 'selected' : '' %>><%= c.texto %></option>
+              <% }) %>
+            </select>
+          </label>
+
+          <label>
+            Con qué pagó
+            <select name="id_medio_pago" required>
+              <% medios.forEach(function (m) { %>
+                <option value="<%= m.id_medio_pago %>" <%= m.id_medio_pago === medio ? 'selected' : '' %>><%= m.nombre %></option>
+              <% }) %>
+            </select>
+          </label>
+
+          <button class="boton" type="submit">Cobrar $<%= total.toFixed(2) %></button>
+        </form>
+
+        <form method="post" action="/ventas/pedido">
+          <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+          <button class="enlace" type="submit" name="accion" value="vaciar">Vaciar el pedido</button>
+        </form>
+      <% } %>
+    </aside>
+  </div>
+
+  <section class="panel">
+    <h2>Últimas ventas del turno</h2>
+    <% if (ultimas.length === 0) { %>
+      <p class="ayuda">Todavía no hay ventas en este turno.</p>
+    <% } else { %>
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Hora</th>
+            <th>Canal</th>
+            <th>Pago</th>
+            <th class="numero">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% ultimas.forEach(function (v) { %>
+            <tr>
+              <td><%= v.fecha_hora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) %></td>
+              <td><%= (CANALES.find(function (c) { return c.valor === v.canal_venta; }) || {}).texto %></td>
+              <td><%= v.medios || 'Sin pago' %></td>
+              <td class="numero">$<%= Number(v.total).toFixed(2) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+<% } %>
+
+<%- include('../parciales/pie') %>
