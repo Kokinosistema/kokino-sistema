@@ -387,30 +387,58 @@ form > button[type="submit"]:not(.enlace):not(.salir) { margin-top: 20px; }
 .venta { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; margin-bottom: 24px; }
 .catalogo-venta h2 { font-size: 18px; margin: 20px 0 10px; }
 .catalogo-venta h2:first-child { margin-top: 0; }
-.productos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-.productos form { margin: 0; }
-.venta .productos button[type="submit"].producto {
-  width: 100%;
-  height: 100%;
-  min-height: 76px;
-  margin: 0;
-  padding: 12px;
+/* Primera vista: una tarjeta grande por categoria, con su icono. */
+.categorias { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px; }
+.categoria {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 6px;
-  text-align: left;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px 20px;
   background: var(--bg-panel);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
   color: var(--text-primary);
+  text-align: center;
+  text-decoration: none;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.categoria:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); border-color: var(--brand-primary); }
+.icono-categoria {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--bg-active);
+  color: var(--brand-pressed);
+  display: grid; place-items: center;
+}
+.icono-categoria svg { width: 34px; height: 34px; }
+.icono-categoria.chico { width: 36px; height: 36px; display: inline-grid; vertical-align: middle; margin-right: 6px; }
+.icono-categoria.chico svg { width: 20px; height: 20px; }
+.nombre-categoria { font-family: var(--font-head); font-weight: 700; font-size: 17px; }
+.cuantos { color: var(--text-secondary); font-size: 12px; }
+
+/* Segunda vista: los productos de la categoria elegida. */
+.titulo-categoria { margin-bottom: 12px; }
+.titulo-categoria h2 { margin: 6px 0 0; }
+.volver { font-family: var(--font-head); font-weight: 700; font-size: 14px; color: var(--brand-pressed); text-decoration: none; }
+.volver:hover { text-decoration: underline; }
+.productos { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+form.producto {
+  margin: 0;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg-panel);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
-  box-shadow: none;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 14px;
 }
-.venta .productos button[type="submit"].producto:hover { border-color: var(--brand-primary); background: var(--bg-active); }
+.nombre-producto { font-weight: 700; font-size: 14px; flex: 1; }
 .precio-producto { font-family: var(--font-head); font-weight: 700; color: var(--brand-pressed); }
+.agregar { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.agregar input { width: 64px; margin: 0; padding: 6px 8px; text-align: center; }
+.agregar button[type="submit"] { flex: 1; padding: 7px 12px; font-size: 14px; }
 .pedido { position: sticky; top: 24px; margin: 0; }
 .cantidad form { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .venta .cantidad button[type="submit"].boton-secundario { margin: 0; padding: 0; width: 30px; height: 30px; font-size: 16px; line-height: 1; }

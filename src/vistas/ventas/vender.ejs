@@ -1,4 +1,21 @@
 <%- include('../parciales/encabezado', { titulo: 'Vender - Kokino' }) %>
+<%
+  // Un icono por categoria, con el mismo trazo que el menu. Van por nombre
+  // porque las categorias las carga una migracion y casi no cambian; una
+  // categoria nueva aparece con el generico hasta que se le dibuje el suyo.
+  const trazos = {
+    'Cafetería': '<path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 10.5h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8 3.5v2.5M12.5 3.5v2.5"/>',
+    'Cucuruchos': '<circle cx="12" cy="8" r="4.5"/><path d="M7.9 10.2 12 21l4.1-10.8"/><path d="M9.5 14h5"/>',
+    'Familiar': '<path d="M4 8.5h16"/><path d="M5.5 8.5 7 20h10l1.5-11.5"/><path d="M6.5 8.5c0-2.5 2.5-4 5.5-4s5.5 1.5 5.5 4"/>',
+    'Impulsivos': '<rect x="7" y="3" width="10" height="13" rx="5"/><path d="M12 16v5"/><path d="M10 7.5v4"/>',
+    'Línea diet': '<path d="M5 19c0-8 5-14 14-14 0 9-6 14-14 14z"/><path d="M5 19l8-8"/>',
+    'Repostería': '<path d="M4 20h16v-7H4z"/><path d="M4 16c2 1.5 4 1.5 6 0s4-1.5 6 0 3 1 4 0"/><path d="M12 13V9.5"/><path d="M12 7c.9-.9.9-1.9 0-3-.9 1.1-.9 2.1 0 3z"/>',
+    'Salsas': '<path d="M12 3c3 4.5 6 7.8 6 11a6 6 0 0 1-12 0c0-3.2 3-6.5 6-11z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/>',
+    'Térmicos': '<rect x="6" y="7" width="12" height="14" rx="2"/><path d="M5 7h14"/><path d="M9.5 3.5h5V7h-5z"/><path d="M9 12h6"/>',
+  };
+  const generico = '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>';
+  const iconoCategoria = (nombre) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + (trazos[nombre] || generico) + '</svg>';
+%>
 
 <h1>Vender</h1>
 
@@ -36,21 +53,43 @@
 <% } else { %>
   <div class="venta">
     <section class="catalogo-venta">
-      <% catalogo.forEach(function (grupo) { %>
-        <h2><%= grupo.categoria %></h2>
+      <% if (!abierta) { %>
+        <h2>¿Qué va a llevar?</h2>
+        <div class="categorias">
+          <% catalogo.forEach(function (grupo) { %>
+            <a class="categoria" href="/ventas?sucursal=<%= elegida %>&categoria=<%= grupo.id_categoria %>">
+              <span class="icono-categoria"><%- iconoCategoria(grupo.categoria) %></span>
+              <span class="nombre-categoria"><%= grupo.categoria %></span>
+              <span class="cuantos"><%= grupo.productos.length %> producto<%= grupo.productos.length === 1 ? '' : 's' %></span>
+            </a>
+          <% }) %>
+        </div>
+      <% } else { %>
+        <div class="titulo-categoria">
+          <a class="volver" href="/ventas?sucursal=<%= elegida %>">← Categorías</a>
+          <h2>
+            <span class="icono-categoria chico"><%- iconoCategoria(abierta.categoria) %></span>
+            <%= abierta.categoria %>
+          </h2>
+        </div>
         <div class="productos">
-          <% grupo.productos.forEach(function (p) { %>
-            <form method="post" action="/ventas/pedido">
+          <% abierta.productos.forEach(function (p) { %>
+            <form class="producto" method="post" action="/ventas/pedido">
               <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+              <input type="hidden" name="categoria" value="<%= abierta.id_categoria %>">
               <input type="hidden" name="id_producto" value="<%= p.id_producto %>">
-              <button class="producto" type="submit" name="accion" value="agregar">
-                <span class="nombre-producto"><%= p.nombre %></span>
-                <span class="precio-producto">$<%= Number(p.precio).toFixed(2) %></span>
-              </button>
+              <span class="nombre-producto"><%= p.nombre %></span>
+              <span class="precio-producto">$<%= Number(p.precio).toFixed(2) %></span>
+              <div class="agregar">
+                <input type="number" name="cantidad" value="1" min="1" max="<%= CANTIDAD_MAXIMA %>"
+                       step="1" inputmode="numeric" aria-label="Cantidad de <%= p.nombre %>"
+                       onfocus="this.select()">
+                <button type="submit" name="accion" value="agregar">Agregar</button>
+              </div>
             </form>
           <% }) %>
         </div>
-      <% }) %>
+      <% } %>
     </section>
 
     <aside class="panel pedido">
@@ -68,6 +107,7 @@
                   <div class="cantidad">
                     <form method="post" action="/ventas/pedido">
                       <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+                      <input type="hidden" name="categoria" value="<%= abierta ? abierta.id_categoria : '' %>">
                       <input type="hidden" name="id_producto" value="<%= l.id_producto %>">
                       <button class="boton-secundario" type="submit" name="accion" value="restar" aria-label="Uno menos">−</button>
                       <span><%= l.cantidad %></span>
@@ -88,6 +128,7 @@
 
         <form method="post" action="/ventas/cobrar">
           <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+          <input type="hidden" name="categoria" value="<%= abierta ? abierta.id_categoria : '' %>">
 
           <label>
             Por dónde fue la venta
@@ -112,6 +153,7 @@
 
         <form method="post" action="/ventas/pedido">
           <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+          <input type="hidden" name="categoria" value="<%= abierta ? abierta.id_categoria : '' %>">
           <button class="enlace" type="submit" name="accion" value="vaciar">Vaciar el pedido</button>
         </form>
       <% } %>

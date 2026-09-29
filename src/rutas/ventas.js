@@ -49,6 +49,14 @@ function sucursalPedida(valor, sucursales) {
   return sucursales.some((s) => s.id_sucursal === id) ? id : null;
 }
 
+// A donde volver despues de tocar el pedido: a la misma categoria, para
+// seguir cargando productos del mismo tipo sin tener que volver a entrar.
+function direccionVender(idSucursal, categoria) {
+  const idCategoria = Number(categoria);
+  return '/ventas?sucursal=' + idSucursal
+    + (Number.isInteger(idCategoria) && idCategoria > 0 ? '&categoria=' + idCategoria : '');
+}
+
 async function cajaAbiertaDe(idSucursal) {
   const { rows } = await consultar(
     `SELECT id_caja, turno, fecha_apertura
@@ -61,11 +69,11 @@ async function cajaAbiertaDe(idSucursal) {
 
 // Arma todo lo que necesita la pantalla y la muestra. Lo usan tanto la carga
 // normal como los errores al cobrar, para que el pedido siga a la vista.
-async function mostrar(req, res, { sucursales, elegida, errores = [], estado = 200, canal, medio }) {
+async function mostrar(req, res, { sucursales, elegida, categoria, errores = [], estado = 200, canal, medio }) {
   const caja = await cajaAbiertaDe(elegida);
 
   const { rows: productos } = await consultar(
-    `SELECT p.id_producto, p.nombre, c.nombre AS categoria, pr.precio
+    `SELECT p.id_producto, p.nombre, c.id_categoria, c.nombre AS categoria, pr.precio
        FROM productos p
        JOIN categorias c ON c.id_categoria = p.id_categoria
        ${SQL_PRECIO_VIGENTE}
@@ -79,11 +87,15 @@ async function mostrar(req, res, { sucursales, elegida, errores = [], estado = 2
     porId.set(p.id_producto, p);
     let grupo = catalogo[catalogo.length - 1];
     if (!grupo || grupo.categoria !== p.categoria) {
-      grupo = { categoria: p.categoria, productos: [] };
+      grupo = { id_categoria: p.id_categoria, categoria: p.categoria, productos: [] };
       catalogo.push(grupo);
     }
     grupo.productos.push(p);
   }
+
+  // Sin categoria elegida (o con una que no existe) se muestra la grilla de
+  // categorias; con una, sus productos.
+  const abierta = catalogo.find((g) => g.id_categoria === Number(categoria)) || null;
 
   // Si un producto del pedido se dio de baja o se quedo sin precio mientras
   // se armaba, se saca y se avisa, en vez de fallar recien al cobrar.
@@ -127,8 +139,8 @@ async function mostrar(req, res, { sucursales, elegida, errores = [], estado = 2
   }
 
   res.status(estado).render('ventas/vender', {
-    sucursales, elegida, caja, catalogo, lineas, total, medios, ultimas,
-    CANALES, errores,
+    sucursales, elegida, caja, catalogo, abierta, lineas, total, medios, ultimas,
+    CANALES, errores, CANTIDAD_MAXIMA,
     canal: canal || 'MOSTRADOR',
     medio: Number(medio) || (medios[0] && medios[0].id_medio_pago),
   });
@@ -140,7 +152,7 @@ router.get('/', async (req, res, siguiente) => {
   try {
     const sucursales = await sucursalesDisponibles(req.session.usuario);
     const elegida = sucursalPedida(req.query.sucursal, sucursales) || sucursales[0].id_sucursal;
-    await mostrar(req, res, { sucursales, elegida });
+    await mostrar(req, res, { sucursales, elegida, categoria: req.query.categoria });
   } catch (error) {
     siguiente(error);
   }
@@ -162,14 +174,22 @@ router.post('/pedido', async (req, res, siguiente) => {
     const linea = pedido.find((l) => l.id_producto === idProducto);
 
     switch (req.body.accion) {
-      case 'agregar':
+      case 'agregar': {
+        // Desde la tarjeta del producto llega la cantidad elegida; desde el
+        // boton + del pedido no llega nada y se suma una.
+        const cantidad = req.body.cantidad === undefined ? 1 : Number(req.body.cantidad);
         if (!Number.isInteger(idProducto) || idProducto <= 0) break;
+        if (!Number.isInteger(cantidad) || cantidad < 1) {
+          req.session.aviso = 'La cantidad tiene que ser un número entero, de 1 para arriba.';
+          break;
+        }
         if (linea) {
-          linea.cantidad = Math.min(linea.cantidad + 1, CANTIDAD_MAXIMA);
+          linea.cantidad = Math.min(linea.cantidad + cantidad, CANTIDAD_MAXIMA);
         } else {
-          pedido.push({ id_producto: idProducto, cantidad: 1 });
+          pedido.push({ id_producto: idProducto, cantidad: Math.min(cantidad, CANTIDAD_MAXIMA) });
         }
         break;
+      }
       case 'restar':
         if (linea) linea.cantidad -= 1;
         break;
@@ -184,7 +204,7 @@ router.post('/pedido', async (req, res, siguiente) => {
     }
     req.session.pedidos[elegida] = pedido.filter((l) => l.cantidad > 0);
 
-    res.redirect('/ventas?sucursal=' + elegida);
+    res.redirect(direccionVender(elegida, req.body.categoria));
   } catch (error) {
     siguiente(error);
   }
@@ -202,7 +222,9 @@ router.post('/cobrar', async (req, res, siguiente) => {
 
     const { canal, id_medio_pago: medio } = req.body;
     const pedido = pedidoDe(req, elegida);
-    const volver = (errores) => mostrar(req, res, { sucursales, elegida, errores, estado: 400, canal, medio });
+    const volver = (errores) => mostrar(req, res, {
+      sucursales, elegida, categoria: req.body.categoria, errores, estado: 400, canal, medio,
+    });
 
     const errores = [];
     if (pedido.length === 0) errores.push('El pedido está vacío: agregá al menos un producto.');
@@ -282,8 +304,10 @@ router.post('/cobrar', async (req, res, siguiente) => {
     if (resultado.error) return volver([resultado.error]);
 
     vaciarPedido(req, elegida);
+    // Despues de cobrar se vuelve a las categorias: lo que sigue es otro
+    // cliente, y no tiene por que arrancar en la categoria del anterior.
     req.session.aviso = 'Venta registrada: $' + resultado.total.toFixed(2) + '.';
-    res.redirect('/ventas?sucursal=' + elegida);
+    res.redirect(direccionVender(elegida));
   } catch (error) {
     siguiente(error);
   }
