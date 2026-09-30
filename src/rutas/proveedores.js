@@ -4,6 +4,7 @@ const express = require('express');
 const { consultar } = require('../db');
 const { exigirRol } = require('../middleware/sesion');
 const { normalizarCuit } = require('../cuit');
+const { normalizarTelefono } = require('../telefono');
 
 const router = express.Router();
 
@@ -45,6 +46,10 @@ function leerFormulario(cuerpo) {
   const revisado = normalizarCuit(datos.cuit);
   if (revisado.error) errores.push(revisado.error);
   else datos.cuit = revisado.cuit;
+
+  const telefono = normalizarTelefono(datos.telefono);
+  if (telefono.error) errores.push(telefono.error);
+  else datos.telefono = telefono.telefono;
 
   if (datos.plazo_pago && !PLAZOS.some((p) => p.valor === datos.plazo_pago)) {
     errores.push('Ese plazo de pago no es uno de los posibles.');

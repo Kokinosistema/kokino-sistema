@@ -3,6 +3,7 @@
 const express = require('express');
 const { consultar } = require('../db');
 const { normalizarCuit } = require('../cuit');
+const { normalizarTelefono } = require('../telefono');
 
 const router = express.Router();
 
@@ -55,6 +56,10 @@ function leerFormulario(cuerpo, puedeTocarCredito, valoresActuales) {
   const revisado = normalizarCuit(datos.cuit);
   if (revisado.error) errores.push(revisado.error);
   else datos.cuit = revisado.cuit;
+
+  const telefono = normalizarTelefono(datos.telefono);
+  if (telefono.error) errores.push(telefono.error);
+  else datos.telefono = telefono.telefono;
 
   if (puedeTocarCredito) {
     datos.limite_cuenta_corriente = leerNumero(cuerpo.limite_cuenta_corriente);
