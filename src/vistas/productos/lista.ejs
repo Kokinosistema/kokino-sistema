@@ -3,9 +3,9 @@
 <h1>Productos</h1>
 
 <p class="ayuda">
-  Cuánto hay de cada producto en <strong><%= sucursal.nombre %></strong>. Los que se
-  arman al vender (cafés, cucuruchos, térmicos) no tienen stock propio: al venderlos
-  se descuenta el helado y los insumos que usan.
+  Cuánto hay de cada producto en <strong><%= sucursal.nombre %></strong>. Lo que se
+  arma al vender (térmicos, cucuruchos, cafés) no aparece acá: lo que se cuenta de eso
+  son los envases, los cucuruchos y el café, en <a href="/insumos">Insumos</a>.
 </p>
 
 <% grupos.forEach(function (g) { %>
@@ -26,11 +26,7 @@
               <a href="/productos/<%= p.id_producto %>"><%= p.nombre %></a>
               <% if (!p.activo) { %><span class="etiqueta">dado de baja</span><% } %>
             </td>
-            <% if (p.lleva_stock_propio) { %>
-              <td class="numero <%= Number(p.stock) < 0 ? 'alerta' : '' %>"><%= Number(Number(p.stock).toFixed(3)) %></td>
-            <% } else { %>
-              <td class="numero"><span class="pista" title="Se arma al vender: descuenta de tachos e insumos">se arma al vender</span></td>
-            <% } %>
+            <td class="numero <%= Number(p.stock) < 0 ? 'alerta' : '' %>"><%= Number(Number(p.stock).toFixed(3)) %></td>
           </tr>
         <% }) %>
       </tbody>

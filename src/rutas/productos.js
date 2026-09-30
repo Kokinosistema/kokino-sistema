@@ -21,6 +21,10 @@ router.get('/', async (req, res, siguiente) => {
                          WHERE m.id_producto = p.id_producto AND m.id_sucursal = $1), 0) AS stock
          FROM productos p
          JOIN categorias c ON c.id_categoria = p.id_categoria
+        -- Solo lo que tiene stock propio. Lo que se arma al vender (termicos,
+        -- cucuruchos, cafeteria) no: lo que se cuenta de eso es el envase, el
+        -- cucurucho o el cafe, que son insumos y se ven en Insumos.
+        WHERE p.lleva_stock_propio
         ORDER BY c.nombre, p.nombre`,
       [req.sucursal.id_sucursal]
     );
