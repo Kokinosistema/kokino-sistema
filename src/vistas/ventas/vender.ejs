@@ -19,22 +19,6 @@
 
 <h1>Vender</h1>
 
-<% if (sucursales.length > 1) { %>
-  <form class="filtro" method="get" action="/ventas">
-    <label>
-      Sucursal
-      <select name="sucursal" onchange="this.form.submit()">
-        <% sucursales.forEach(function (s) { %>
-          <option value="<%= s.id_sucursal %>" <%= s.id_sucursal === elegida ? 'selected' : '' %>>
-            <%= s.nombre %>
-          </option>
-        <% }) %>
-      </select>
-    </label>
-    <noscript><button type="submit">Ver</button></noscript>
-  </form>
-<% } %>
-
 <% if (errores.length > 0) { %>
   <ul class="errores">
     <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
@@ -48,7 +32,7 @@
       Para vender tiene que haber una caja abierta en esta sucursal: cada venta
       queda registrada en el turno de una caja.
     </p>
-    <a class="boton" href="/caja?sucursal=<%= elegida %>">Ir a abrir la caja</a>
+    <a class="boton" href="/caja">Ir a abrir la caja</a>
   </section>
 <% } else { %>
   <div class="venta">
@@ -57,7 +41,7 @@
         <h2>¿Qué va a llevar?</h2>
         <div class="categorias">
           <% catalogo.forEach(function (grupo) { %>
-            <a class="categoria" href="/ventas?sucursal=<%= elegida %>&categoria=<%= grupo.id_categoria %>">
+            <a class="categoria" href="/ventas?categoria=<%= grupo.id_categoria %>">
               <span class="icono-categoria"><%- iconoCategoria(grupo.categoria) %></span>
               <span class="nombre-categoria"><%= grupo.categoria %></span>
               <span class="cuantos"><%= grupo.productos.length %> producto<%= grupo.productos.length === 1 ? '' : 's' %></span>
@@ -66,7 +50,7 @@
         </div>
       <% } else { %>
         <div class="titulo-categoria">
-          <a class="volver" href="/ventas?sucursal=<%= elegida %>">← Categorías</a>
+          <a class="volver" href="/ventas">← Categorías</a>
           <h2>
             <span class="icono-categoria chico"><%- iconoCategoria(abierta.categoria) %></span>
             <%= abierta.categoria %>

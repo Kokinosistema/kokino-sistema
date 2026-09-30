@@ -10,22 +10,16 @@ const router = express.Router();
 // antes de construir cualquier otra pantalla encima.
 router.get('/', async (req, res, siguiente) => {
   try {
-    const { usuario } = req.session;
-
-    // Los duenos ven las dos sucursales; el empleado, solo la suya. Este mismo
-    // filtro se va a repetir en ventas, caja y stock, asi que conviene que la
-    // regla quede escrita en un solo lugar cuando crezca.
-    const esAdministrador = usuario.rol === 'administrador';
-
+    // La sucursal de trabajo: la del empleado, o la que el dueno eligio
+    // arriba. Esa regla ya quedo escrita en un solo lugar, src/sucursales.js.
     const { rows } = await consultar(
       `SELECT s.nombre,
               s.direccion,
               (SELECT count(*) FROM empleados e
                 WHERE e.id_sucursal_asignada = s.id_sucursal AND e.activo)::int AS empleados
          FROM sucursales s
-        WHERE $1 OR s.id_sucursal = $2
-        ORDER BY s.nombre`,
-      [esAdministrador, usuario.id_sucursal_asignada]
+        WHERE s.id_sucursal = $1`,
+      [req.sucursal.id_sucursal]
     );
 
     const { rows: totales } = await consultar(

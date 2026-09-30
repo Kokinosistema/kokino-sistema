@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { consultar, conTransaccion } = require('../db');
-const { sucursalesDisponibles } = require('../sucursales');
+const { CAMBIO_DE_SUCURSAL } = require('../sucursales');
 const { montoValido } = require('../dinero');
 
 const router = express.Router();
@@ -14,8 +14,7 @@ const TURNOS = [
 ];
 
 // No lleva exigirRol: abrir y cerrar la caja es tarea de mostrador, la hace
-// quien atiende. Lo que si se restringe es sobre que sucursal (ver
-// sucursalesDisponibles).
+// quien atiende. Opera sobre la sucursal de trabajo (ver src/sucursales.js).
 
 // Lo que el sistema dice que deberia haber en el cajon: lo que se abrio, mas
 // lo cobrado en efectivo, menos lo que salio en efectivo. Los cobros con
@@ -155,21 +154,13 @@ async function mostrarCaja(res, { usuario, sucursales, elegida, errores = [], es
   });
 }
 
-// La sucursal pedida, si el usuario puede operarla; si no, la primera suya.
-// Sin este control, un empleado que cambie el numero en la direccion veria
-// la caja de la otra sucursal.
-function sucursalPermitida(valor, sucursales) {
-  const id = Number(valor);
-  return sucursales.some((s) => s.id_sucursal === id) ? id : sucursales[0].id_sucursal;
-}
-
 // Pantalla principal: si hay una caja abierta en la sucursal, muestra como va
 // el turno y sus salidas; si no, el formulario para abrirla.
 router.get('/', async (req, res, siguiente) => {
   try {
     const { usuario } = req.session;
-    const sucursales = await sucursalesDisponibles(usuario);
-    await mostrarCaja(res, { usuario, sucursales, elegida: sucursalPermitida(req.query.sucursal, sucursales) });
+    const sucursales = [req.sucursal];
+    await mostrarCaja(res, { usuario, sucursales, elegida: req.sucursal.id_sucursal });
   } catch (error) {
     siguiente(error);
   }
@@ -178,14 +169,14 @@ router.get('/', async (req, res, siguiente) => {
 router.post('/abrir', async (req, res, siguiente) => {
   try {
     const { usuario } = req.session;
-    const sucursales = await sucursalesDisponibles(usuario);
+    const sucursales = [req.sucursal];
     const idSucursal = Number(req.body.id_sucursal);
     const turno = req.body.turno;
     const monto = req.body.monto_apertura;
 
     const errores = [];
     if (!sucursales.some((s) => s.id_sucursal === idSucursal)) {
-      errores.push('Esa no es una sucursal sobre la que puedas operar.');
+      errores.push(CAMBIO_DE_SUCURSAL);
     }
     if (!TURNOS.some((t) => t.valor === turno)) {
       errores.push('Elegí un turno.');
@@ -196,7 +187,7 @@ router.post('/abrir', async (req, res, siguiente) => {
 
     if (errores.length > 0) {
       return mostrarCaja(res, {
-        usuario, sucursales, elegida: sucursalPermitida(idSucursal, sucursales), errores, estado: 400,
+        usuario, sucursales, elegida: req.sucursal.id_sucursal, errores, estado: 400,
       });
     }
 
@@ -207,7 +198,7 @@ router.post('/abrir', async (req, res, siguiente) => {
     );
 
     req.session.aviso = 'Caja abierta. Buen turno.';
-    res.redirect('/caja?sucursal=' + idSucursal);
+    res.redirect('/caja');
   } catch (error) {
     // La base garantiza una sola caja abierta por sucursal. Si alguien abrio
     // desde otra pantalla mientras esta estaba cargada, el error llega aca y
@@ -224,8 +215,8 @@ router.post('/abrir', async (req, res, siguiente) => {
 router.get('/cerrar', async (req, res, siguiente) => {
   try {
     const { usuario } = req.session;
-    const sucursales = await sucursalesDisponibles(usuario);
-    const elegida = sucursalPermitida(req.query.sucursal, sucursales);
+    const sucursales = [req.sucursal];
+    const elegida = req.sucursal.id_sucursal;
     const abierta = await cajaAbiertaDe(elegida);
 
     if (!abierta) {
@@ -249,11 +240,11 @@ router.get('/cerrar', async (req, res, siguiente) => {
 router.post('/cerrar', async (req, res, siguiente) => {
   try {
     const { usuario } = req.session;
-    const sucursales = await sucursalesDisponibles(usuario);
+    const sucursales = [req.sucursal];
     const elegida = Number(req.body.id_sucursal);
 
     if (!sucursales.some((s) => s.id_sucursal === elegida)) {
-      req.session.aviso = 'Esa no es una sucursal sobre la que puedas operar.';
+      req.session.aviso = CAMBIO_DE_SUCURSAL;
       return res.redirect('/caja');
     }
 
@@ -307,7 +298,7 @@ router.post('/cerrar', async (req, res, siguiente) => {
     req.session.aviso = d === 0
       ? 'Caja cerrada y cuadrada.'
       : 'Caja cerrada. ' + (d > 0 ? 'Sobraron ' : 'Faltaron ') + Math.abs(d).toFixed(2) + '.';
-    res.redirect('/caja?sucursal=' + elegida);
+    res.redirect('/caja');
   } catch (error) {
     siguiente(error);
   }
@@ -323,10 +314,10 @@ router.post('/cerrar', async (req, res, siguiente) => {
 router.post('/egresos', async (req, res, siguiente) => {
   try {
     const { usuario } = req.session;
-    const sucursales = await sucursalesDisponibles(usuario);
+    const sucursales = [req.sucursal];
     const idSucursal = Number(req.body.id_sucursal);
     if (!sucursales.some((s) => s.id_sucursal === idSucursal)) {
-      req.session.aviso = 'Esa no es una sucursal sobre la que puedas operar.';
+      req.session.aviso = CAMBIO_DE_SUCURSAL;
       return res.redirect('/caja');
     }
 
@@ -391,7 +382,7 @@ router.post('/egresos', async (req, res, siguiente) => {
     }
 
     req.session.aviso = 'Salida de $' + Number(egreso.monto).toFixed(2) + ' registrada.';
-    res.redirect('/caja?sucursal=' + idSucursal);
+    res.redirect('/caja');
   } catch (error) {
     siguiente(error);
   }
@@ -438,12 +429,12 @@ function mostrarAnulacionEgreso(res, egreso, { errores = [], motivo = '', estado
 router.get('/egresos/:id/anular', async (req, res, siguiente) => {
   try {
     const { usuario } = req.session;
-    const sucursales = await sucursalesDisponibles(usuario);
+    const sucursales = [req.sucursal];
     const egreso = await egresoParaAnular(consultar, Number(req.params.id), false);
     const impedimento = motivoParaNoAnularEgreso(egreso, sucursales, usuario);
     if (impedimento) {
       req.session.aviso = impedimento;
-      return res.redirect(egreso ? '/caja?sucursal=' + egreso.id_sucursal : '/caja');
+      return res.redirect('/caja');
     }
     mostrarAnulacionEgreso(res, egreso);
   } catch (error) {
@@ -454,7 +445,7 @@ router.get('/egresos/:id/anular', async (req, res, siguiente) => {
 router.post('/egresos/:id/anular', async (req, res, siguiente) => {
   try {
     const { usuario } = req.session;
-    const sucursales = await sucursalesDisponibles(usuario);
+    const sucursales = [req.sucursal];
     const motivo = typeof req.body.motivo === 'string' ? req.body.motivo.trim() : '';
 
     const resultado = await conTransaccion(async (ejecutar) => {
@@ -477,7 +468,7 @@ router.post('/egresos/:id/anular', async (req, res, siguiente) => {
 
     if (resultado.impedimento) {
       req.session.aviso = resultado.impedimento;
-      return res.redirect(resultado.egreso ? '/caja?sucursal=' + resultado.egreso.id_sucursal : '/caja');
+      return res.redirect('/caja');
     }
     if (resultado.error) {
       return mostrarAnulacionEgreso(res, resultado.egreso, { errores: [resultado.error], motivo, estado: 400 });
@@ -488,7 +479,7 @@ router.post('/egresos/:id/anular', async (req, res, siguiente) => {
     req.session.aviso = 'Salida anulada.' + (resultado.egreso.afecta_caja_efectivo
       ? ' Si la plata había salido del cajón, tiene que volver: el arqueo la vuelve a contar.'
       : '');
-    res.redirect('/caja?sucursal=' + resultado.egreso.id_sucursal);
+    res.redirect('/caja');
   } catch (error) {
     siguiente(error);
   }

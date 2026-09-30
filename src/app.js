@@ -5,6 +5,7 @@ const express = require('express');
 const session = require('express-session');
 
 const { exigirLogin, exponerUsuario, exponerAviso } = require('./middleware/sesion');
+const { sucursalDeTrabajo, cambiarSucursal } = require('./sucursales');
 const rutasAuth = require('./rutas/auth');
 const rutasInicio = require('./rutas/inicio');
 const rutasProveedores = require('./rutas/proveedores');
@@ -55,6 +56,8 @@ function crearAplicacion() {
   // El login es lo unico que se puede ver sin estar logueado.
   app.use(rutasAuth);
   app.use(exigirLogin);
+  app.use(sucursalDeTrabajo);
+  app.post('/sucursal', cambiarSucursal);
 
   // Cada router se monta bajo su prefijo, no en la raiz. Importa mas de lo que
   // parece: adentro de estos routers hay un router.use(exigirRol(...)) que se

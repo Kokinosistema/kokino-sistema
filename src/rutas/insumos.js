@@ -67,13 +67,18 @@ router.get('/', async (req, res, siguiente) => {
       `SELECT i.id_insumo, i.nombre, i.stock_minimo, i.perecedero, i.activo,
               c.nombre AS categoria, u.abreviatura AS unidad,
               (SELECT count(*) FROM producto_insumos pi WHERE pi.id_insumo = i.id_insumo)::int AS en_productos,
-              (SELECT count(*) FROM receta_detalle rd WHERE rd.id_insumo = i.id_insumo)::int AS en_recetas
+              (SELECT count(*) FROM receta_detalle rd WHERE rd.id_insumo = i.id_insumo)::int AS en_recetas,
+              -- El catalogo de insumos es uno solo, pero el stock es de cada
+              -- sucursal: se muestra el de la sucursal de trabajo. Es la suma
+              -- de sus movimientos, igual que en alertas_stock_negativo.
+              coalesce((SELECT sum(m.cantidad) FROM movimientos_insumo m
+                         WHERE m.id_insumo = i.id_insumo AND m.id_sucursal = $2), 0) AS stock
          FROM insumos i
          JOIN categorias c ON c.id_categoria = i.id_categoria
          JOIN unidades_medida u ON u.id_unidad = i.id_unidad_medida
         WHERE $1 OR i.activo
         ORDER BY c.nombre, i.activo DESC, i.nombre`,
-      [mostrarInactivos]
+      [mostrarInactivos, req.sucursal.id_sucursal]
     );
 
     // Agrupados por categoria, como en la pantalla de ventas.

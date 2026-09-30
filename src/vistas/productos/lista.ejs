@@ -7,6 +7,10 @@
   descuenta esos insumos del stock de la sucursal. Un producto sin insumos se
   vende igual, pero no descuenta nada.
 </p>
+<p class="ayuda">
+  Los productos y sus insumos son los mismos para las dos sucursales; el stock
+  que se ve es el de <strong><%= sucursal.nombre %></strong>.
+</p>
 
 <% if (total > 0) { %>
   <p class="ayuda">
@@ -19,6 +23,13 @@
   <section class="panel">
     <h2><%= g.categoria %> <span class="cuantos">· <%= g.productos.length %></span></h2>
     <table class="tabla">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th class="numero">Stock en <%= sucursal.nombre %></th>
+          <th class="numero">Insumos</th>
+        </tr>
+      </thead>
       <tbody>
         <% g.productos.forEach(function (p) { %>
           <tr class="<%= p.activo ? '' : 'inactiva' %>">
@@ -26,6 +37,11 @@
               <a href="/productos/<%= p.id_producto %>"><%= p.nombre %></a>
               <% if (!p.activo) { %><span class="etiqueta">dado de baja</span><% } %>
             </td>
+            <% if (p.lleva_stock_propio) { %>
+              <td class="numero <%= Number(p.stock) < 0 ? 'alerta' : '' %>"><%= Number(Number(p.stock).toFixed(3)) %></td>
+            <% } else { %>
+              <td class="numero"><span class="pista" title="Se arma al vender: descuenta de tachos e insumos">se arma al vender</span></td>
+            <% } %>
             <td class="numero">
               <% if (p.insumos === 0) { %>
                 <span class="pendiente">Sin insumos</span>

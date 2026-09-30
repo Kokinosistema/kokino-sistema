@@ -52,7 +52,23 @@
 
   <div class="contenido">
     <header class="cabecera">
-      <span class="sucursal"><%= usuario.sucursal || 'Las dos sucursales' %></span>
+      <% if (sucursalesElegibles.length > 1) { %>
+        <%# El dueno elige sobre que sucursal trabaja; vale para todas las pantallas. %>
+        <form class="elegir-sucursal" method="post" action="/sucursal">
+          <input type="hidden" name="volver" value="<%= rutaActual %>">
+          <label>
+            Sucursal
+            <select name="id_sucursal" onchange="this.form.submit()">
+              <% sucursalesElegibles.forEach(function (s) { %>
+                <option value="<%= s.id_sucursal %>" <%= s.id_sucursal === sucursal.id_sucursal ? 'selected' : '' %>><%= s.nombre %></option>
+              <% }) %>
+            </select>
+          </label>
+          <noscript><button type="submit">Cambiar</button></noscript>
+        </form>
+      <% } else if (sucursal) { %>
+        <span class="sucursal"><%= sucursal.nombre %></span>
+      <% } %>
       <span class="quien">
         <span class="avatar"><%= (usuario.nombre || '?').charAt(0).toUpperCase() %></span>
         <%= usuario.nombre %>

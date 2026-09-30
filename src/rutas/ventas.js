@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { consultar, conTransaccion } = require('../db');
-const { sucursalesDisponibles } = require('../sucursales');
+const { CAMBIO_DE_SUCURSAL } = require('../sucursales');
 const { montoValido, aCentavos, textoPesos } = require('../dinero');
 
 const router = express.Router();
@@ -67,9 +67,9 @@ function sucursalPedida(valor, sucursales) {
 // misma busqueda, para seguir cargando sin volver a entrar ni a tipear.
 function direccionVender(idSucursal, categoria, busqueda) {
   const idCategoria = Number(categoria);
-  if (!Number.isInteger(idCategoria) || idCategoria <= 0) return '/ventas?sucursal=' + idSucursal;
+  if (!Number.isInteger(idCategoria) || idCategoria <= 0) return '/ventas';
   const texto = limpiarBusqueda(busqueda);
-  return '/ventas?sucursal=' + idSucursal + '&categoria=' + idCategoria
+  return '/ventas?categoria=' + idCategoria
     + (texto ? '&busqueda=' + encodeURIComponent(texto) : '');
 }
 
@@ -183,8 +183,8 @@ async function mostrar(req, res, {
 // se restringe es la sucursal, igual que en la caja.
 router.get('/', async (req, res, siguiente) => {
   try {
-    const sucursales = await sucursalesDisponibles(req.session.usuario);
-    const elegida = sucursalPedida(req.query.sucursal, sucursales) || sucursales[0].id_sucursal;
+    const sucursales = [req.sucursal];
+    const elegida = req.sucursal.id_sucursal;
     await mostrar(req, res, {
       sucursales, elegida, categoria: req.query.categoria, busqueda: req.query.busqueda,
     });
@@ -197,10 +197,10 @@ router.get('/', async (req, res, siguiente) => {
 // sesion; la base no se entera hasta que se cobra.
 router.post('/pedido', async (req, res, siguiente) => {
   try {
-    const sucursales = await sucursalesDisponibles(req.session.usuario);
+    const sucursales = [req.sucursal];
     const elegida = sucursalPedida(req.body.id_sucursal, sucursales);
     if (!elegida) {
-      req.session.aviso = 'Esa no es una sucursal sobre la que puedas operar.';
+      req.session.aviso = CAMBIO_DE_SUCURSAL;
       return res.redirect('/ventas');
     }
 
@@ -248,10 +248,10 @@ router.post('/pedido', async (req, res, siguiente) => {
 router.post('/cobrar', async (req, res, siguiente) => {
   try {
     const { usuario } = req.session;
-    const sucursales = await sucursalesDisponibles(usuario);
+    const sucursales = [req.sucursal];
     const elegida = sucursalPedida(req.body.id_sucursal, sucursales);
     if (!elegida) {
-      req.session.aviso = 'Esa no es una sucursal sobre la que puedas operar.';
+      req.session.aviso = CAMBIO_DE_SUCURSAL;
       return res.redirect('/ventas');
     }
 
@@ -455,12 +455,12 @@ async function mostrarAnulacion(res, venta, { errores = [], motivo = '', estado 
 
 router.get('/:id/anular', async (req, res, siguiente) => {
   try {
-    const sucursales = await sucursalesDisponibles(req.session.usuario);
+    const sucursales = [req.sucursal];
     const venta = await ventaParaAnular(consultar, Number(req.params.id), false);
     const impedimento = motivoParaNoAnular(venta, sucursales);
     if (impedimento) {
       req.session.aviso = impedimento;
-      return res.redirect(venta ? '/ventas?sucursal=' + venta.id_sucursal : '/ventas');
+      return res.redirect('/ventas');
     }
     await mostrarAnulacion(res, venta);
   } catch (error) {
@@ -471,7 +471,7 @@ router.get('/:id/anular', async (req, res, siguiente) => {
 router.post('/:id/anular', async (req, res, siguiente) => {
   try {
     const { usuario } = req.session;
-    const sucursales = await sucursalesDisponibles(usuario);
+    const sucursales = [req.sucursal];
     const idVenta = Number(req.params.id);
     const motivo = typeof req.body.motivo === 'string' ? req.body.motivo.trim() : '';
 
@@ -506,7 +506,7 @@ router.post('/:id/anular', async (req, res, siguiente) => {
 
     if (resultado.impedimento) {
       req.session.aviso = resultado.impedimento;
-      return res.redirect(resultado.venta ? '/ventas?sucursal=' + resultado.venta.id_sucursal : '/ventas');
+      return res.redirect('/ventas');
     }
     if (resultado.error) {
       return mostrarAnulacion(res, resultado.venta, { errores: [resultado.error], motivo, estado: 400 });
@@ -518,7 +518,7 @@ router.post('/:id/anular', async (req, res, siguiente) => {
     req.session.aviso = 'Venta anulada.' + (resultado.efectivo > 0
       ? ' Devolvele al cliente $' + resultado.efectivo.toFixed(2) + ' en efectivo.'
       : '');
-    res.redirect('/ventas?sucursal=' + resultado.venta.id_sucursal);
+    res.redirect('/ventas');
   } catch (error) {
     siguiente(error);
   }

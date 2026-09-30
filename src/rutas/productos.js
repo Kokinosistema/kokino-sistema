@@ -13,11 +13,17 @@ router.use(exigirRol('administrador'));
 router.get('/', async (req, res, siguiente) => {
   try {
     const { rows } = await consultar(
-      `SELECT p.id_producto, p.nombre, p.activo, c.nombre AS categoria,
-              (SELECT count(*) FROM producto_insumos pi WHERE pi.id_producto = p.id_producto)::int AS insumos
+      `SELECT p.id_producto, p.nombre, p.activo, p.lleva_stock_propio, c.nombre AS categoria,
+              (SELECT count(*) FROM producto_insumos pi WHERE pi.id_producto = p.id_producto)::int AS insumos,
+              -- El stock es de cada sucursal: el de la sucursal de trabajo.
+              -- Los que se arman al vender (un termico, un cafe) no tienen
+              -- stock propio: lo suyo se descuenta de tachos e insumos.
+              coalesce((SELECT sum(m.cantidad) FROM movimientos_producto m
+                         WHERE m.id_producto = p.id_producto AND m.id_sucursal = $1), 0) AS stock
          FROM productos p
          JOIN categorias c ON c.id_categoria = p.id_categoria
-        ORDER BY c.nombre, p.nombre`
+        ORDER BY c.nombre, p.nombre`,
+      [req.sucursal.id_sucursal]
     );
     const grupos = [];
     for (const producto of rows) {

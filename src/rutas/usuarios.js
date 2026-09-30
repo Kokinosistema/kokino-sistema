@@ -75,7 +75,11 @@ router.get('/', async (req, res, siguiente) => {
          JOIN roles r     ON r.id_rol = u.id_rol
          JOIN empleados e ON e.id_empleado = u.id_empleado
          LEFT JOIN sucursales s ON s.id_sucursal = e.id_sucursal_asignada
-        ORDER BY u.activo DESC, e.nombre`
+        -- Los de la sucursal de trabajo, mas los duenos, que no tienen
+        -- sucursal porque trabajan sobre las dos.
+        WHERE e.id_sucursal_asignada = $1 OR e.id_sucursal_asignada IS NULL
+        ORDER BY u.activo DESC, e.nombre`,
+      [req.sucursal.id_sucursal]
     );
 
     // Para saber si tiene sentido ofrecer el boton de agregar: si todos los

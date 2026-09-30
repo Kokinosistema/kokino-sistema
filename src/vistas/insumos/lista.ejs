@@ -10,6 +10,12 @@
   cucuruchos, envases, térmicos vacíos, cafetería. La unidad es la de compra:
   el stock se cuenta en esa unidad.
 </p>
+<p class="ayuda">
+  La lista de insumos es la misma para las dos sucursales; el stock que se ve
+  es el de <strong><%= sucursal.nombre %></strong>. Todavía no hay una pantalla
+  para cargar la mercadería que llega ni para hacer el recuento, así que por
+  ahora el stock solo baja con las ventas.
+</p>
 
 <% if (grupos.length === 0) { %>
   <p class="ayuda">Todavía no hay insumos. Agregá el primero con el botón de arriba.</p>
@@ -25,6 +31,7 @@
         <tr>
           <th>Insumo</th>
           <th>Se compra en</th>
+          <th class="numero">Stock en <%= sucursal.nombre %></th>
           <th class="numero">Stock mínimo</th>
           <th>Se usa en</th>
           <th></th>
@@ -39,6 +46,11 @@
               <% if (!i.activo) { %><span class="etiqueta">dado de baja</span><% } %>
             </td>
             <td><%= i.unidad %></td>
+            <% const stock = Number(i.stock); %>
+            <%# En rojo si falta: negativo, o por debajo del minimo cuando hay minimo. %>
+            <td class="numero <%= stock < 0 || (Number(i.stock_minimo) > 0 && stock < Number(i.stock_minimo)) ? 'alerta' : '' %>">
+              <%= Number(stock.toFixed(3)) %> <%= i.unidad %>
+            </td>
             <td class="numero"><%= Number(i.stock_minimo) %> <%= i.unidad %></td>
             <td>
               <% const usos = []; %>

@@ -3,10 +3,10 @@
 <h1>Hola, <%= usuario.nombre %></h1>
 
 <p class="ayuda">
-  <% if (usuario.rol === 'administrador') { %>
-    Como dueno ves las dos sucursales.
+  <% if (sucursalesElegibles.length > 1) { %>
+    Estás trabajando sobre <strong><%= sucursal.nombre %></strong>. Para ver la otra, cambiala arriba.
   <% } else { %>
-    Operas sobre la sucursal <strong><%= usuario.sucursal %></strong>.
+    Operas sobre la sucursal <strong><%= sucursal.nombre %></strong>.
   <% } %>
 </p>
 

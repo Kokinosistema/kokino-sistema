@@ -2,22 +2,6 @@
 
 <h1>Caja</h1>
 
-<% if (sucursales.length > 1) { %>
-  <form class="filtro" method="get" action="/caja">
-    <label>
-      Sucursal
-      <select name="sucursal" onchange="this.form.submit()">
-        <% sucursales.forEach(function (s) { %>
-          <option value="<%= s.id_sucursal %>" <%= s.id_sucursal === elegida ? 'selected' : '' %>>
-            <%= s.nombre %>
-          </option>
-        <% }) %>
-      </select>
-    </label>
-    <noscript><button type="submit">Ver</button></noscript>
-  </form>
-<% } %>
-
 <% if (errores.length > 0) { %>
   <ul class="errores">
     <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
@@ -61,7 +45,7 @@
       <% } %>
     </p>
 
-    <a class="boton" href="/caja/cerrar?sucursal=<%= elegida %>">Cerrar la caja</a>
+    <a class="boton" href="/caja/cerrar">Cerrar la caja</a>
   </section>
 
   <section class="panel">
