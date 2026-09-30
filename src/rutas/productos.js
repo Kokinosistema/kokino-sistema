@@ -14,7 +14,6 @@ router.get('/', async (req, res, siguiente) => {
   try {
     const { rows } = await consultar(
       `SELECT p.id_producto, p.nombre, p.activo, p.lleva_stock_propio, c.nombre AS categoria,
-              (SELECT count(*) FROM producto_insumos pi WHERE pi.id_producto = p.id_producto)::int AS insumos,
               -- El stock es de cada sucursal: el de la sucursal de trabajo.
               -- Los que se arman al vender (un termico, un cafe) no tienen
               -- stock propio: lo suyo se descuenta de tachos e insumos.
@@ -34,8 +33,9 @@ router.get('/', async (req, res, siguiente) => {
       }
       grupo.productos.push(producto);
     }
-    const sinInsumos = rows.filter((p) => p.activo && p.insumos === 0).length;
-    res.render('productos/lista', { grupos, sinInsumos, total: rows.filter((p) => p.activo).length });
+    // La lista muestra solo el producto y su stock; que insumos lleva se ve
+    // y se carga entrando a cada producto.
+    res.render('productos/lista', { grupos });
   } catch (error) {
     siguiente(error);
   }

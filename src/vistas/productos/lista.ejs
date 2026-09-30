@@ -3,21 +3,10 @@
 <h1>Productos</h1>
 
 <p class="ayuda">
-  Qué insumos lleva cada producto. Cada vez que se vende uno, el sistema
-  descuenta esos insumos del stock de la sucursal. Un producto sin insumos se
-  vende igual, pero no descuenta nada.
+  Cuánto hay de cada producto en <strong><%= sucursal.nombre %></strong>. Los que se
+  arman al vender (cafés, cucuruchos, térmicos) no tienen stock propio: al venderlos
+  se descuenta el helado y los insumos que usan.
 </p>
-<p class="ayuda">
-  Los productos y sus insumos son los mismos para las dos sucursales; el stock
-  que se ve es el de <strong><%= sucursal.nombre %></strong>.
-</p>
-
-<% if (total > 0) { %>
-  <p class="ayuda">
-    <strong><%= total - sinInsumos %> de <%= total %></strong> productos tienen sus insumos cargados.
-  </p>
-  <div class="avance"><div class="avance-lleno" style="width: <%= Math.round(((total - sinInsumos) / total) * 100) %>%"></div></div>
-<% } %>
 
 <% grupos.forEach(function (g) { %>
   <section class="panel">
@@ -26,7 +15,6 @@
       <thead>
         <tr>
           <th>Producto</th>
-          <th>Insumos</th>
           <th class="numero">Stock en <%= sucursal.nombre %></th>
         </tr>
       </thead>
@@ -34,17 +22,10 @@
         <% g.productos.forEach(function (p) { %>
           <tr class="<%= p.activo ? '' : 'inactiva' %>">
             <td>
+              <%# El enlace lleva a donde se cargan los insumos del producto. %>
               <a href="/productos/<%= p.id_producto %>"><%= p.nombre %></a>
               <% if (!p.activo) { %><span class="etiqueta">dado de baja</span><% } %>
             </td>
-            <td>
-              <% if (p.insumos === 0) { %>
-                <span class="pendiente">Sin insumos</span>
-              <% } else { %>
-                <%= p.insumos %> insumo<%= p.insumos === 1 ? '' : 's' %>
-              <% } %>
-            </td>
-            <%# El stock va a la derecha, donde se mira primero. %>
             <% if (p.lleva_stock_propio) { %>
               <td class="numero <%= Number(p.stock) < 0 ? 'alerta' : '' %>"><%= Number(Number(p.stock).toFixed(3)) %></td>
             <% } else { %>
