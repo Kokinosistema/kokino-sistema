@@ -63,13 +63,16 @@ function leerFormulario(cuerpo, puedeTocarCredito, valoresActuales) {
 
   if (puedeTocarCredito) {
     datos.limite_cuenta_corriente = leerNumero(cuerpo.limite_cuenta_corriente);
-    datos.plazo_pago_dias = leerNumero(cuerpo.plazo_pago_dias);
 
     if (datos.limite_cuenta_corriente !== null && datos.limite_cuenta_corriente < 0) {
       errores.push('El limite de cuenta corriente no puede ser negativo.');
     }
-    if (datos.plazo_pago_dias !== null && datos.plazo_pago_dias < 0) {
-      errores.push('El plazo de pago no puede ser negativo.');
+    // Dias para pagar: un numero entero de dias, de 0 a 999. Vacio es que no
+    // tiene plazo.
+    const dias = (cuerpo.plazo_pago_dias || '').trim();
+    datos.plazo_pago_dias = /^\d{1,3}$/.test(dias) ? Number(dias) : null;
+    if (dias !== '' && datos.plazo_pago_dias === null) {
+      errores.push('Los días para pagar tienen que ser un número entero, sin letras ni comas (por ejemplo, 30).');
     }
   }
 

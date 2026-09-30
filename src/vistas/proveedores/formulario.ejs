@@ -27,7 +27,7 @@
     </div>
     <div>
       <label for="telefono">Telefono</label>
-      <input id="telefono" name="telefono" class="telefono" inputmode="tel" maxlength="15" autocomplete="off" placeholder="Por ejemplo: 3815123456" value="<%= proveedor.telefono || '' %>">
+      <input id="telefono" name="telefono" class="solo-numeros" data-mensaje="el teléfono solo lleva números." inputmode="tel" maxlength="15" autocomplete="off" placeholder="Por ejemplo: 3815123456" value="<%= proveedor.telefono || '' %>">
     </div>
   </div>
 
@@ -76,6 +76,6 @@
 </form>
 
 <script src="/cuit.js"></script>
-<script src="/telefono.js"></script>
+<script src="/solo-numeros.js"></script>
 
 <%- include('../parciales/pie') %>

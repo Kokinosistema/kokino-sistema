@@ -45,7 +45,7 @@
   <div class="fila">
     <div>
       <label for="telefono">Telefono</label>
-      <input id="telefono" name="telefono" class="telefono" inputmode="tel" maxlength="15" autocomplete="off" placeholder="Por ejemplo: 3815123456" value="<%= cliente.telefono || '' %>">
+      <input id="telefono" name="telefono" class="solo-numeros" data-mensaje="el teléfono solo lleva números." inputmode="tel" maxlength="15" autocomplete="off" placeholder="Por ejemplo: 3815123456" value="<%= cliente.telefono || '' %>">
     </div>
     <div>
       <label for="direccion">Direccion</label>
@@ -67,7 +67,8 @@
       </div>
       <div>
         <label for="plazo_pago_dias">Dias para pagar</label>
-        <input id="plazo_pago_dias" name="plazo_pago_dias" inputmode="numeric"
+        <input id="plazo_pago_dias" name="plazo_pago_dias" class="solo-numeros" inputmode="numeric" maxlength="3"
+               data-mensaje="los días para pagar son un número entero, sin letras ni comas." autocomplete="off" placeholder="Por ejemplo: 30"
                value="<%= cliente.plazo_pago_dias === null || cliente.plazo_pago_dias === undefined ? '' : cliente.plazo_pago_dias %>">
       </div>
     </div>
@@ -80,6 +81,6 @@
 </form>
 
 <script src="/cuit.js"></script>
-<script src="/telefono.js"></script>
+<script src="/solo-numeros.js"></script>
 
 <%- include('../parciales/pie') %>
