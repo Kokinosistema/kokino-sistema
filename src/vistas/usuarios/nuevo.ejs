@@ -10,65 +10,119 @@
   </div>
 <% } %>
 
-<% if (empleados.length === 0) { %>
-  <p class="ayuda">
-    Todos los empleados activos ya tienen cuenta.
-    <a href="/usuarios">Volver a la lista</a>
-  </p>
-<% } else { %>
-  <form method="post" action="/usuarios" class="formulario" autocomplete="off">
+<form method="post" action="/usuarios" class="formulario" autocomplete="off">
 
-    <label for="id_empleado">De quien es la cuenta <span class="obligatorio">*</span></label>
-    <select id="id_empleado" name="id_empleado" required>
-      <option value="">Elegi a la persona</option>
-      <% empleados.forEach(function (e) { %>
-        <option value="<%= e.id_empleado %>" <%= String(datos.id_empleado) === String(e.id_empleado) ? 'selected' : '' %>>
-          <%= (e.nombre + ' ' + e.apellido).trim() %> — <%= e.sucursal %>
-        </option>
-      <% }) %>
-    </select>
-    <p class="pista">Solo aparecen los empleados que todavia no tienen cuenta.</p>
+  <p class="etiqueta-campo">De quién es la cuenta <span class="obligatorio">*</span></p>
+  <div class="opciones-quien">
+    <label class="casilla">
+      <input type="radio" name="quien" value="existente" <%= quien === 'existente' ? 'checked' : '' %>
+             <%= empleados.length === 0 ? 'disabled' : '' %>>
+      Una persona ya cargada
+    </label>
+    <label class="casilla">
+      <input type="radio" name="quien" value="nueva" <%= quien === 'nueva' ? 'checked' : '' %>>
+      Una persona nueva
+    </label>
+  </div>
 
+  <div id="bloque-existente" data-quien="existente">
+    <% if (empleados.length === 0) { %>
+      <p class="pista">Todas las personas cargadas ya tienen cuenta: cargá una nueva.</p>
+    <% } else { %>
+      <label for="id_empleado">Persona</label>
+      <select id="id_empleado" name="id_empleado">
+        <option value="">Elegí a la persona</option>
+        <% empleados.forEach(function (e) { %>
+          <option value="<%= e.id_empleado %>" <%= String(datos.id_empleado) === String(e.id_empleado) ? 'selected' : '' %>>
+            <%= (e.nombre + ' ' + e.apellido).trim() %> — <%= e.sucursal %>
+          </option>
+        <% }) %>
+      </select>
+      <p class="pista">Solo aparecen las personas que todavía no tienen cuenta.</p>
+    <% } %>
+  </div>
+
+  <div id="bloque-nueva" data-quien="nueva">
     <div class="fila">
       <div>
-        <label for="username">Usuario <span class="obligatorio">*</span></label>
-        <input id="username" name="username" required value="<%= datos.username %>">
-        <p class="pista">Letras, numeros, puntos y guiones. Con el que va a entrar.</p>
+        <label for="nombre">Nombre</label>
+        <input id="nombre" name="nombre" maxlength="100" value="<%= datos.nombre %>">
       </div>
       <div>
-        <label for="id_rol">Rol <span class="obligatorio">*</span></label>
-        <select id="id_rol" name="id_rol" required>
-          <option value="">Elegi el rol</option>
-          <% roles.forEach(function (r) { %>
-            <option value="<%= r.id_rol %>" <%= String(datos.id_rol) === String(r.id_rol) ? 'selected' : '' %>>
-              <%= r.nombre_rol %>
-            </option>
+        <label for="apellido">Apellido</label>
+        <input id="apellido" name="apellido" maxlength="100" value="<%= datos.apellido %>">
+      </div>
+      <div>
+        <label for="id_sucursal">Sucursal</label>
+        <select id="id_sucursal" name="id_sucursal">
+          <option value="">Elegí una</option>
+          <% sucursales.forEach(function (s) { %>
+            <option value="<%= s.id_sucursal %>" <%= String(datos.id_sucursal) === String(s.id_sucursal) ? 'selected' : '' %>><%= s.nombre %></option>
           <% }) %>
+          <option value="<%= LAS_DOS %>" <%= datos.id_sucursal === LAS_DOS ? 'selected' : '' %>>Las dos</option>
         </select>
-        <p class="pista">Administrador ve las dos sucursales y configura el sistema.</p>
-      </div>
-    </div>
-
-    <div class="fila">
-      <div>
-        <label for="clave">Contrasena <span class="obligatorio">*</span></label>
-        <input id="clave" name="clave" type="password" required autocomplete="new-password">
-      </div>
-      <div>
-        <label for="repetida">Repetir contrasena <span class="obligatorio">*</span></label>
-        <input id="repetida" name="repetida" type="password" required autocomplete="new-password">
       </div>
     </div>
     <p class="pista">
-      Al menos 8 caracteres. Conviene que la persona la cambie despues de entrar
-      la primera vez.
+      La persona queda cargada en el sistema. Con "Las dos" puede elegir arriba en qué
+      sucursal trabaja, como los dueños.
     </p>
+  </div>
 
-    <div class="botonera">
-      <button type="submit">Crear cuenta</button>
-      <a class="cancelar" href="/usuarios">Cancelar</a>
+  <div class="fila">
+    <div>
+      <label for="username">Usuario <span class="obligatorio">*</span></label>
+      <input id="username" name="username" required value="<%= datos.username %>">
+      <p class="pista">Letras, numeros, puntos y guiones. Con el que va a entrar.</p>
     </div>
-  </form>
-<% } %>
+    <div>
+      <label for="id_rol">Rol <span class="obligatorio">*</span></label>
+      <select id="id_rol" name="id_rol" required>
+        <option value="">Elegi el rol</option>
+        <% roles.forEach(function (r) { %>
+          <option value="<%= r.id_rol %>" <%= String(datos.id_rol) === String(r.id_rol) ? 'selected' : '' %>>
+            <%= r.nombre_rol %>
+          </option>
+        <% }) %>
+      </select>
+      <p class="pista">Administrador ve las dos sucursales y configura el sistema.</p>
+    </div>
+  </div>
+
+  <div class="fila">
+    <div>
+      <label for="clave">Contrasena <span class="obligatorio">*</span></label>
+      <input id="clave" name="clave" type="password" required autocomplete="new-password">
+    </div>
+    <div>
+      <label for="repetida">Repetir contrasena <span class="obligatorio">*</span></label>
+      <input id="repetida" name="repetida" type="password" required autocomplete="new-password">
+    </div>
+  </div>
+  <p class="pista">
+    Al menos 8 caracteres. Conviene que la persona la cambie despues de entrar
+    la primera vez.
+  </p>
+
+  <div class="botonera">
+    <button type="submit">Crear cuenta</button>
+    <a class="cancelar" href="/usuarios">Cancelar</a>
+  </div>
+</form>
+
+<script>
+  // Muestra solo los campos de la opcion elegida. Sin JavaScript se ven los
+  // dos bloques, y el servidor usa el que corresponde a la opcion marcada.
+  (function () {
+    var opciones = document.querySelectorAll('input[name="quien"]');
+    var bloques = document.querySelectorAll('[data-quien]');
+    function mostrar() {
+      var elegida = document.querySelector('input[name="quien"]:checked');
+      bloques.forEach(function (b) { b.hidden = !elegida || b.dataset.quien !== elegida.value; });
+    }
+    opciones.forEach(function (o) { o.addEventListener('change', mostrar); });
+    mostrar();
+  })();
+</script>
 
 <%- include('../parciales/pie') %>

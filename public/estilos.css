@@ -339,6 +339,11 @@ input:focus, select:focus, textarea:focus {
 /* Casilla de verificacion con su texto al lado, no un campo a todo el ancho. */
 label.casilla { display: flex; align-items: center; gap: 8px; margin-top: 34px; font-size: 14px; color: var(--text-primary); }
 label.casilla input { width: auto; margin: 0; accent-color: var(--brand-primary); }
+/* Una pregunta con opciones (radio) en vez de un campo. */
+.etiqueta-campo { margin: 14px 0 0; font-family: var(--font-head); font-weight: 700; font-size: 12px; color: var(--text-secondary); }
+.opciones-quien { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 4px; }
+.opciones-quien label.casilla { margin-top: 8px; }
+[data-quien][hidden] { display: none; }
 .pista.sensible { color: #8A5A10; }
 .obligatorio { color: var(--status-error); }
 .botonera { display: flex; align-items: center; gap: 16px; margin-top: 24px; }

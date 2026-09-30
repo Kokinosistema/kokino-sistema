@@ -2,7 +2,7 @@
 
 const express = require('express');
 const bcrypt = require('bcrypt');
-const { consultar } = require('../db');
+const { consultar, conTransaccion } = require('../db');
 const { exigirRol } = require('../middleware/sesion');
 
 const router = express.Router();
@@ -82,19 +82,9 @@ router.get('/', async (req, res, siguiente) => {
       [req.sucursal.id_sucursal]
     );
 
-    // Para saber si tiene sentido ofrecer el boton de agregar: si todos los
-    // empleados ya tienen cuenta, primero hay que cargar al empleado.
-    const { rows: pendientes } = await consultar(
-      `SELECT count(*)::int AS n
-         FROM empleados e
-        WHERE e.activo
-          AND NOT EXISTS (SELECT 1 FROM usuarios u WHERE u.id_empleado = e.id_empleado)`
-    );
-
-    res.render('usuarios/lista', {
-      usuarios: rows,
-      hayEmpleadosSinCuenta: pendientes[0].n > 0,
-    });
+    // El boton de crear cuenta va siempre: si todas las personas cargadas ya
+    // tienen cuenta, se puede cargar una nueva desde el mismo formulario.
+    res.render('usuarios/lista', { usuarios: rows });
   } catch (error) {
     siguiente(error);
   }
@@ -118,22 +108,45 @@ async function traerEmpleadosSinCuenta() {
   return rows;
 }
 
+// Valor de "sucursal" para una persona que trabaja en las dos: en la base es
+// id_sucursal_asignada vacio, igual que los duenos, y puede elegir arriba
+// sobre cual trabajar.
+const LAS_DOS = 'ambas';
+
+async function mostrarNuevo(res, datos, errores = [], estado = 200) {
+  const empleados = await traerEmpleadosSinCuenta();
+  const { rows: sucursales } = await consultar(
+    'SELECT id_sucursal, nombre FROM sucursales WHERE activa ORDER BY nombre'
+  );
+  res.status(estado).render('usuarios/nuevo', {
+    empleados, sucursales, roles: await traerRoles(), datos, errores, LAS_DOS,
+    // Si no queda nadie cargado sin cuenta, la unica opcion es una persona nueva.
+    quien: empleados.length === 0 ? 'nueva' : datos.quien,
+  });
+}
+
 router.get('/nuevo', async (req, res, siguiente) => {
   try {
-    res.render('usuarios/nuevo', {
-      empleados: await traerEmpleadosSinCuenta(),
-      roles: await traerRoles(),
-      datos: { id_empleado: '', username: '', id_rol: '' },
-      errores: [],
+    await mostrarNuevo(res, {
+      quien: 'existente', id_empleado: '', nombre: '', apellido: '', id_sucursal: '',
+      username: '', id_rol: '',
     });
   } catch (error) {
     siguiente(error);
   }
 });
 
+// La cuenta puede ser de una persona ya cargada o de una nueva. En el segundo
+// caso se da de alta a la persona y se le crea la cuenta en la misma
+// transaccion: si el usuario elegido ya existe, no queda una persona cargada
+// sin cuenta, ni al reves.
 router.post('/', async (req, res, siguiente) => {
   const datos = {
+    quien: req.body.quien === 'nueva' ? 'nueva' : 'existente',
     id_empleado: req.body.id_empleado || '',
+    nombre: (req.body.nombre || '').trim(),
+    apellido: (req.body.apellido || '').trim(),
+    id_sucursal: req.body.id_sucursal || '',
     username: (req.body.username || '').trim().toLowerCase(),
     id_rol: req.body.id_rol || '',
   };
@@ -141,43 +154,69 @@ router.post('/', async (req, res, siguiente) => {
   const repetida = req.body.repetida || '';
   const errores = [];
 
-  if (!datos.id_empleado) errores.push('Elegi de que empleado es la cuenta.');
-  if (!datos.id_rol) errores.push('Elegi el rol.');
-
-  const errorUsuario = validarUsuario(datos.username);
-  if (errorUsuario) errores.push(errorUsuario);
-
-  const errorClave = validarClave(clave, repetida);
-  if (errorClave) errores.push(errorClave);
-
   try {
-    if (errores.length > 0) {
-      return res.status(400).render('usuarios/nuevo', {
-        empleados: await traerEmpleadosSinCuenta(),
-        roles: await traerRoles(),
-        datos,
-        errores,
-      });
+    let idSucursal = null;
+    if (datos.quien === 'nueva') {
+      if (datos.nombre.length < 2 || datos.nombre.length > 100) errores.push('Poné el nombre de la persona.');
+      if (datos.apellido.length < 2 || datos.apellido.length > 100) errores.push('Poné el apellido de la persona.');
+      if (datos.id_sucursal !== LAS_DOS) {
+        const { rows } = await consultar(
+          'SELECT id_sucursal FROM sucursales WHERE id_sucursal = $1 AND activa',
+          [Number(datos.id_sucursal) || null]
+        );
+        if (rows.length === 0) errores.push('Elegí en qué sucursal trabaja, o las dos.');
+        else idSucursal = rows[0].id_sucursal;
+      }
+      // Para no cargar dos veces a la misma persona.
+      if (datos.nombre && datos.apellido) {
+        const { rows: iguales } = await consultar(
+          `SELECT 1 FROM empleados
+            WHERE activo AND lower(nombre) = lower($1) AND lower(coalesce(apellido, '')) = lower($2)`,
+          [datos.nombre, datos.apellido]
+        );
+        if (iguales.length > 0) {
+          errores.push('Ya hay una persona cargada como ' + datos.nombre + ' ' + datos.apellido
+            + '. Si es ella, elegila en "Una persona ya cargada".');
+        }
+      }
+    } else if (!datos.id_empleado) {
+      errores.push('Elegi de que empleado es la cuenta.');
     }
+    if (!datos.id_rol) errores.push('Elegi el rol.');
+
+    const errorUsuario = validarUsuario(datos.username);
+    if (errorUsuario) errores.push(errorUsuario);
+
+    const errorClave = validarClave(clave, repetida);
+    if (errorClave) errores.push(errorClave);
+
+    if (errores.length > 0) return mostrarNuevo(res, datos, errores, 400);
 
     const hash = await bcrypt.hash(clave, VUELTAS_BCRYPT);
-    await consultar(
-      `INSERT INTO usuarios (id_empleado, id_rol, username, password_hash)
-       VALUES ($1, $2, $3, $4)`,
-      [datos.id_empleado, datos.id_rol, datos.username, hash]
-    );
+    await conTransaccion(async (ejecutar) => {
+      let idEmpleado = datos.id_empleado;
+      if (datos.quien === 'nueva') {
+        const { rows: [empleado] } = await ejecutar(
+          `INSERT INTO empleados (nombre, apellido, id_sucursal_asignada)
+           VALUES ($1, $2, $3)
+           RETURNING id_empleado`,
+          [datos.nombre, datos.apellido, idSucursal]
+        );
+        idEmpleado = empleado.id_empleado;
+      }
+      await ejecutar(
+        `INSERT INTO usuarios (id_empleado, id_rol, username, password_hash)
+         VALUES ($1, $2, $3, $4)`,
+        [idEmpleado, datos.id_rol, datos.username, hash]
+      );
+    });
 
     req.session.aviso = 'La cuenta "' + datos.username + '" ya puede entrar.';
     res.redirect('/usuarios');
   } catch (error) {
     if (error.code === '23505') {
       try {
-        return res.status(409).render('usuarios/nuevo', {
-          empleados: await traerEmpleadosSinCuenta(),
-          roles: await traerRoles(),
-          datos,
-          errores: ['Ese nombre de usuario ya esta tomado.'],
-        });
+        return await mostrarNuevo(res, datos, ['Ese nombre de usuario ya esta tomado.'], 409);
       } catch (otro) {
         return siguiente(otro);
       }

@@ -2,9 +2,7 @@
 
 <div class="titulo-con-accion">
   <h1>Usuarios</h1>
-  <% if (hayEmpleadosSinCuenta) { %>
-    <a class="boton" href="/usuarios/nuevo">Crear cuenta</a>
-  <% } %>
+  <a class="boton" href="/usuarios/nuevo">Crear cuenta</a>
 </div>
 
 <p class="ayuda">Las cuentas de <strong><%= sucursal.nombre %></strong> y las de los dueños, que trabajan sobre las dos.</p>
@@ -45,13 +43,6 @@
       <% }) %>
     </tbody>
   </table>
-<% } %>
-
-<% if (!hayEmpleadosSinCuenta) { %>
-  <p class="ayuda">
-    Todos los empleados activos ya tienen cuenta. Para crear una nueva, primero
-    hay que cargar al empleado.
-  </p>
 <% } %>
 
 <%- include('../parciales/pie') %>
