@@ -336,6 +336,10 @@ input:focus, select:focus, textarea:focus {
 .formulario .fila > div { flex: 1 1 220px; }
 .formulario + .formulario { margin-top: 0; }
 .pista { color: var(--text-secondary); font-size: 12px; margin: 4px 0 0; }
+/* Cartel de error debajo de un campo, mientras se escribe (por ejemplo, el CUIT). */
+.error-campo { margin: 6px 0 0; color: var(--status-error); font-size: 13px; font-weight: 700; }
+.error-campo[hidden] { display: none; }
+input.con-error, input.con-error:focus { border-color: var(--status-error); }
 /* Casilla de verificacion con su texto al lado, no un campo a todo el ancho. */
 label.casilla { display: flex; align-items: center; gap: 8px; margin-top: 34px; font-size: 14px; color: var(--text-primary); }
 label.casilla input { width: auto; margin: 0; accent-color: var(--brand-primary); }

@@ -37,8 +37,8 @@
     </div>
     <div>
       <label for="cuit">CUIT</label>
-      <input id="cuit" name="cuit" placeholder="20-12345678-9" value="<%= cliente.cuit || '' %>">
-      <p class="pista">Se controla el digito verificador.</p>
+      <input id="cuit" name="cuit" class="cuit" inputmode="numeric" maxlength="13" autocomplete="off" placeholder="20-12345678-9" value="<%= cliente.cuit || '' %>">
+      <p class="pista">Solo números; los guiones se ponen solos. Se controla que el CUIT exista.</p>
     </div>
   </div>
 
@@ -78,5 +78,7 @@
     <a class="cancelar" href="/clientes">Cancelar</a>
   </div>
 </form>
+
+<script src="/cuit.js"></script>
 
 <%- include('../parciales/pie') %>
