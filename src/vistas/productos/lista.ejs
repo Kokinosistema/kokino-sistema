@@ -26,8 +26,8 @@
       <thead>
         <tr>
           <th>Producto</th>
+          <th>Insumos</th>
           <th class="numero">Stock en <%= sucursal.nombre %></th>
-          <th class="numero">Insumos</th>
         </tr>
       </thead>
       <tbody>
@@ -37,18 +37,19 @@
               <a href="/productos/<%= p.id_producto %>"><%= p.nombre %></a>
               <% if (!p.activo) { %><span class="etiqueta">dado de baja</span><% } %>
             </td>
-            <% if (p.lleva_stock_propio) { %>
-              <td class="numero <%= Number(p.stock) < 0 ? 'alerta' : '' %>"><%= Number(Number(p.stock).toFixed(3)) %></td>
-            <% } else { %>
-              <td class="numero"><span class="pista" title="Se arma al vender: descuenta de tachos e insumos">se arma al vender</span></td>
-            <% } %>
-            <td class="numero">
+            <td>
               <% if (p.insumos === 0) { %>
                 <span class="pendiente">Sin insumos</span>
               <% } else { %>
                 <%= p.insumos %> insumo<%= p.insumos === 1 ? '' : 's' %>
               <% } %>
             </td>
+            <%# El stock va a la derecha, donde se mira primero. %>
+            <% if (p.lleva_stock_propio) { %>
+              <td class="numero <%= Number(p.stock) < 0 ? 'alerta' : '' %>"><%= Number(Number(p.stock).toFixed(3)) %></td>
+            <% } else { %>
+              <td class="numero"><span class="pista" title="Se arma al vender: descuenta de tachos e insumos">se arma al vender</span></td>
+            <% } %>
           </tr>
         <% }) %>
       </tbody>

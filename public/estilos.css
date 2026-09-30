@@ -246,6 +246,9 @@ main { padding: 24px; max-width: 1180px; width: 100%; }
 .tabla a { color: var(--text-primary); font-weight: 700; text-decoration: none; }
 .tabla a:hover { color: var(--brand-pressed); }
 .numero { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* El titulo de una columna de numeros va a la derecha, sobre los numeros:
+   ".tabla th" lo alineaba a la izquierda y quedaba lejos de su columna. */
+.tabla th.numero { text-align: right; }
 .alerta { color: var(--status-error); font-weight: 700; }
 .acciones { text-align: right; }
 
