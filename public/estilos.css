@@ -1,6 +1,8 @@
 /* Diseño de Kokino. Los valores salen del brief de diseño, salvo el verde de
-   marca: se tomo el que se ve en las pantallas de referencia (#71BBA5), mas
-   apagado que el del brief (#3CBEA4), porque es el que se aprobo al verlo.
+   marca, que es el oficial del logo de Kokino: RGB 70, 189, 162 (#46BDA2).
+   Los tonos de hover y presionado son el mismo verde oscurecido; el
+   presionado se usa tambien como color de texto, y esta elegido para que se
+   lea bien sobre blanco.
 
    Todas las clases que usaban las pantallas anteriores siguen existiendo, asi
    que ninguna vista se rompe por el cambio: solo se ve distinta. */
@@ -30,9 +32,9 @@
   --bg-input: #FDF6EA;
   --bg-active: #E5F5EF;
 
-  --brand-primary: #71BBA5;
-  --brand-hover: #5FAA94;
-  --brand-pressed: #477B6D;
+  --brand-primary: #46BDA2;
+  --brand-hover: #3AA68D;
+  --brand-pressed: #2E7F6C;
   --brand-deep: #123C32;
 
   --text-primary: #1E2624;
@@ -98,22 +100,13 @@ a { color: var(--brand-pressed); }
   height: 100vh;
 }
 
+/* El logo oficial ya dice Kokino, asi que va solo, sin texto al lado. */
 .logo {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--text-on-brand);
-  text-decoration: none;
+  justify-content: center;
   margin: 0 4px 28px;
 }
-.logo .sello {
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  background: var(--bg-panel);
-  color: var(--brand-pressed);
-  display: grid; place-items: center;
-}
-.logo .nombre { font-family: var(--font-brand); font-size: 34px; line-height: 1; }
+.logo img { width: 112px; height: 112px; display: block; }
 
 .menu { display: flex; flex-direction: column; gap: 4px; }
 .menu a {
@@ -490,15 +483,7 @@ form.producto {
   text-align: center;
 }
 .caja-login form { text-align: left; }
-.caja-login .sello-grande {
-  width: 120px; height: 120px;
-  margin: 0 auto 12px;
-  border-radius: 50%;
-  background: var(--bg-active);
-  color: var(--brand-pressed);
-  display: grid; place-items: center;
-}
-.caja-login .marca { font-family: var(--font-brand); font-size: 48px; color: var(--brand-pressed); margin: 0; line-height: 1; }
+.caja-login .logo-grande { width: 176px; height: 176px; display: block; margin: 0 auto 8px; }
 .caja-login h1 { margin: 0 0 8px; }
 .caja-login button[type="submit"] { width: 100%; margin-top: 24px; }
 
@@ -507,7 +492,8 @@ form.producto {
 @media (max-width: 860px) {
   .app { flex-direction: column; background: var(--bg-base); }
   .lateral { width: 100%; height: auto; position: static; padding: 12px 16px; }
-  .logo { margin-bottom: 12px; }
+  .logo { margin-bottom: 12px; justify-content: flex-start; }
+  .logo img { width: 64px; height: 64px; }
   .menu { flex-direction: row; flex-wrap: wrap; }
   .pie-lateral { display: none; }
   .cabecera { height: auto; padding: 10px 16px; flex-wrap: wrap; }
