@@ -20,19 +20,19 @@
       <tbody>
         <tr>
           <th>Con lo que se abrió</th>
-          <td class="numero">$<%= Number(abierta.monto_apertura).toFixed(2) %></td>
+          <td class="numero"><%= pesos(Number(abierta.monto_apertura)) %></td>
         </tr>
         <tr>
           <th>Cobrado en efectivo</th>
-          <td class="numero">+ $<%= Number(abierta.cobrado_efectivo).toFixed(2) %></td>
+          <td class="numero">+ <%= pesos(Number(abierta.cobrado_efectivo)) %></td>
         </tr>
         <tr>
           <th>Salidas en efectivo</th>
-          <td class="numero">− $<%= Number(abierta.egresos_efectivo).toFixed(2) %></td>
+          <td class="numero">− <%= pesos(Number(abierta.egresos_efectivo)) %></td>
         </tr>
         <tr class="destacada">
-          <th>Debería haber en el cajón</th>
-          <td class="numero">$<%= esperado.toFixed(2) %></td>
+          <th>Debería haber en caja</th>
+          <td class="numero"><%= pesos(esperado) %></td>
         </tr>
       </tbody>
     </table>
@@ -40,7 +40,7 @@
     <p class="ayuda">
       <%= abierta.ventas %> venta<%= abierta.ventas === 1 ? '' : 's' %> en el turno.
       <% if (verTodo) { %>
-        Cobrado con tarjeta o transferencia: $<%= Number(abierta.cobrado_electronico).toFixed(2) %>,
+        Cobrado con tarjeta o transferencia: <%= pesos(Number(abierta.cobrado_electronico)) %>,
         que no está en el cajón.
       <% } %>
     </p>
@@ -79,8 +79,8 @@
         <div>
           <label>
             Monto
-            <input type="number" name="monto" step="0.01" min="0.01" required
-                   value="<%= egreso.monto || '' %>" placeholder="0.00">
+            <input type="text" inputmode="decimal" autocomplete="off" class="dinero" name="monto" required
+                   value="<%= egreso.monto || '' %>" placeholder="$0">
           </label>
         </div>
       </div>
@@ -138,7 +138,7 @@
               <td><%= (TIPOS_EGRESO.find(function (t) { return t.valor === e.tipo_egreso; }) || {}).texto %></td>
               <td><%= [e.empleado, e.descripcion].filter(Boolean).join(' — ') %></td>
               <td><%= e.medio %></td>
-              <td class="numero"><span class="monto">$<%= Number(e.monto).toFixed(2) %></span></td>
+              <td class="numero"><span class="monto"><%= pesos(Number(e.monto)) %></span></td>
               <td class="acciones">
                 <% if (e.anulado) { %>
                   <span class="marca-anulada">Anulada</span>
@@ -175,8 +175,8 @@
 
       <label>
         Efectivo con el que arranca
-        <input type="number" name="monto_apertura" step="0.01" min="0" required
-               placeholder="0.00" autofocus>
+        <input type="text" inputmode="decimal" autocomplete="off" class="dinero" name="monto_apertura" required
+               placeholder="$0" autofocus>
       </label>
 
       <button class="boton" type="submit">Abrir la caja</button>
@@ -205,11 +205,11 @@
         <tr>
           <td><%= (TURNOS.find(function (t) { return t.valor === c.turno; }) || {}).texto.toLowerCase() %></td>
           <td><%= c.fecha_cierre.toLocaleString('es-AR') %></td>
-          <td class="numero">$<%= Number(c.monto_cierre_sistema).toFixed(2) %></td>
-          <td class="numero">$<%= Number(c.monto_cierre_declarado).toFixed(2) %></td>
+          <td class="numero"><%= pesos(Number(c.monto_cierre_sistema)) %></td>
+          <td class="numero"><%= pesos(Number(c.monto_cierre_declarado)) %></td>
           <td class="numero <%= dif === 0 ? '' : 'alerta' %>">
             <% if (dif === 0) { %>cuadró<% } else { %>
-              <%= dif > 0 ? 'sobró' : 'faltó' %> $<%= Math.abs(dif).toFixed(2) %>
+              <%= dif > 0 ? 'sobró' : 'faltó' %> <%= pesos(Math.abs(dif)) %>
             <% } %>
           </td>
         </tr>

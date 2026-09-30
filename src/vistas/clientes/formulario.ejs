@@ -62,8 +62,11 @@
     <div class="fila">
       <div>
         <label for="limite_cuenta_corriente">Limite de deuda</label>
-        <input id="limite_cuenta_corriente" name="limite_cuenta_corriente" inputmode="decimal"
-               value="<%= cliente.limite_cuenta_corriente === null || cliente.limite_cuenta_corriente === undefined ? '' : cliente.limite_cuenta_corriente %>">
+        <%# El valor de la base llega como "300000.00" y se muestra como $300.000; lo que
+      se escribio y vuelve con un error ya viene formateado y se deja como esta. %>
+        <% const limite = cliente.limite_cuenta_corriente; %>
+        <input id="limite_cuenta_corriente" name="limite_cuenta_corriente" type="text" inputmode="decimal" autocomplete="off" class="dinero" placeholder="$0"
+               value="<%= limite === null || limite === undefined || limite === '' ? '' : (/^\d+(\.\d+)?$/.test(String(limite)) ? pesos(limite) : limite) %>">
       </div>
       <div>
         <label for="plazo_pago_dias">Dias para pagar</label>

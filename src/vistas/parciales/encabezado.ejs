@@ -6,6 +6,8 @@
   <title><%= typeof titulo !== 'undefined' ? titulo : 'Kokino' %></title>
   <link rel="stylesheet" href="/estilos.css">
   <link rel="icon" type="image/png" href="/imagenes/favicon-32.png">
+  <%# Va en el head y sin defer: los scripts de cada pantalla usan sus funciones al cargar. %>
+  <script src="/dinero.js"></script>
 </head>
 <body>
 <%

@@ -6,6 +6,7 @@ const session = require('express-session');
 
 const { exigirLogin, exponerUsuario, exponerAviso } = require('./middleware/sesion');
 const { sucursalDeTrabajo, cambiarSucursal } = require('./sucursales');
+const { pesos } = require('./dinero');
 const rutasAuth = require('./rutas/auth');
 const rutasInicio = require('./rutas/inicio');
 const rutasProveedores = require('./rutas/proveedores');
@@ -22,6 +23,8 @@ function crearAplicacion() {
 
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, 'vistas'));
+  // Todas las vistas muestran la plata igual: $17.500 o $17.500,15.
+  app.locals.pesos = pesos;
 
   // Los formularios HTML mandan los datos en este formato, no en JSON.
   app.use(express.urlencoded({ extended: false }));

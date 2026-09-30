@@ -20,26 +20,26 @@
     <tbody>
       <tr>
         <th>Con lo que se abrió</th>
-        <td class="numero">$<%= Number(caja.monto_apertura).toFixed(2) %></td>
+        <td class="numero"><%= pesos(Number(caja.monto_apertura)) %></td>
       </tr>
       <tr>
         <th>Cobrado en efectivo</th>
-        <td class="numero">+ $<%= Number(caja.cobrado_efectivo).toFixed(2) %></td>
+        <td class="numero">+ <%= pesos(Number(caja.cobrado_efectivo)) %></td>
       </tr>
       <tr>
         <th>Salidas en efectivo</th>
-        <td class="numero">− $<%= Number(caja.egresos_efectivo).toFixed(2) %></td>
+        <td class="numero">− <%= pesos(Number(caja.egresos_efectivo)) %></td>
       </tr>
       <tr class="destacada">
-        <th>Debería haber en el cajón</th>
-        <td class="numero">$<%= esperado.toFixed(2) %></td>
+        <th>Debería haber en caja</th>
+        <td class="numero"><%= pesos(esperado) %></td>
       </tr>
     </tbody>
   </table>
 
   <p class="ayuda">
     <% if (verTodo) { %>
-      Los $<%= Number(caja.cobrado_electronico).toFixed(2) %> cobrados con tarjeta
+      Los <%= pesos(Number(caja.cobrado_electronico)) %> cobrados con tarjeta
       o transferencia no entran en esta cuenta, porque esa plata no está en el cajón.
     <% } else { %>
       Lo cobrado con tarjeta o transferencia no entra en esta cuenta, porque esa
@@ -61,8 +61,8 @@
 
     <label>
       Efectivo contado en el cajón
-      <input type="number" name="monto_cierre_declarado" step="0.01" min="0" required
-             value="<%= declarado %>" placeholder="0.00" autofocus>
+      <input type="text" inputmode="decimal" autocomplete="off" class="dinero" name="monto_cierre_declarado" required
+             value="<%= declarado %>" placeholder="$0" autofocus>
     </label>
 
     <button class="boton" type="submit">Cerrar el turno</button>

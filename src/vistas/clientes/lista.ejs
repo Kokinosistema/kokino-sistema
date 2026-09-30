@@ -47,7 +47,7 @@
               <% if (c.limite_cuenta_corriente === null) { %>
                 <span class="pista">sin cuenta corriente</span>
               <% } else { %>
-                $<%= Number(c.limite_cuenta_corriente).toLocaleString('es-AR') %>
+                <%= pesos(c.limite_cuenta_corriente) %>
               <% } %>
             </td>
             <td><%= c.plazo_pago_dias === null ? '—' : c.plazo_pago_dias + ' dias' %></td>

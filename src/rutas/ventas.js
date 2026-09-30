@@ -3,7 +3,7 @@
 const express = require('express');
 const { consultar, conTransaccion } = require('../db');
 const { CAMBIO_DE_SUCURSAL } = require('../sucursales');
-const { montoValido, aCentavos, textoPesos } = require('../dinero');
+const { parsearMonto, MONTO_INVALIDO, pesos, aCentavos, textoPesos } = require('../dinero');
 
 const router = express.Router();
 
@@ -269,8 +269,8 @@ router.post('/cobrar', async (req, res, siguiente) => {
     if (variosMedios) {
       const cargados = Object.values(montos).filter((m) => m !== '');
       if (cargados.length === 0) errores.push('Poné cuánto se pagó con cada medio.');
-      if (cargados.some((m) => !montoValido(m))) {
-        errores.push('Cada monto tiene que ser un número mayor que cero, con dos decimales como mucho.');
+      if (cargados.some((m) => parsearMonto(m) === null)) {
+        errores.push('Cada monto tiene que ser mayor que cero: ' + MONTO_INVALIDO + '.');
       }
     } else if (!Number.isInteger(Number(medio))) {
       errores.push('Elegí con qué pagó.');
@@ -315,7 +315,7 @@ router.post('/cobrar', async (req, res, siguiente) => {
       const pagos = variosMedios
         ? Object.entries(montos)
           .filter(([, m]) => m !== '')
-          .map(([id, m]) => ({ id_medio_pago: Number(id), centavos: aCentavos(m) }))
+          .map(([id, m]) => ({ id_medio_pago: Number(id), centavos: aCentavos(parsearMonto(m)) }))
         : [{ id_medio_pago: Number(medio), centavos: total }];
 
       const { rows: activos } = await ejecutar(
@@ -516,7 +516,7 @@ router.post('/:id/anular', async (req, res, siguiente) => {
     // se devuelve del cajon en el momento; lo cobrado con tarjeta o
     // transferencia se devuelve por el mismo medio, fuera del cajon.
     req.session.aviso = 'Venta anulada.' + (resultado.efectivo > 0
-      ? ' Devolvele al cliente $' + resultado.efectivo.toFixed(2) + ' en efectivo.'
+      ? ' Devolvele al cliente ' + pesos(resultado.efectivo) + ' en efectivo.'
       : '');
     res.redirect('/ventas');
   } catch (error) {

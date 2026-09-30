@@ -68,7 +68,7 @@
               <input type="hidden" name="busqueda" value="<%= busqueda %>">
               <input type="hidden" name="id_producto" value="<%= p.id_producto %>">
               <span class="nombre-producto"><%= p.nombre %></span>
-              <span class="precio-producto">$<%= Number(p.precio).toFixed(2) %></span>
+              <span class="precio-producto"><%= pesos(Number(p.precio)) %></span>
               <div class="agregar">
                 <input type="number" name="cantidad" value="1" min="1" max="<%= CANTIDAD_MAXIMA %>"
                        step="1" inputmode="numeric" aria-label="Cantidad de <%= p.nombre %>"
@@ -106,12 +106,12 @@
                     </form>
                   </div>
                 </td>
-                <td class="numero">$<%= l.subtotal.toFixed(2) %></td>
+                <td class="numero"><%= pesos(l.subtotal) %></td>
               </tr>
             <% }) %>
             <tr class="destacada">
               <th>Total</th>
-              <td class="numero">$<%= total.toFixed(2) %></td>
+              <td class="numero"><%= pesos(total) %></td>
             </tr>
           </tbody>
         </table>
@@ -141,18 +141,18 @@
 
           <div id="pago-varios" class="pago-varios" data-total="<%= Math.round(total * 100) %>"
                <%= medio === VARIOS_MEDIOS ? '' : 'hidden' %>>
-            <p class="pista">Poné cuánto se pagó con cada medio. Tiene que sumar $<%= total.toFixed(2) %>.</p>
+            <p class="pista">Poné cuánto se pagó con cada medio. Tiene que sumar <%= pesos(total) %>.</p>
             <% medios.forEach(function (m) { %>
               <label class="linea-pago">
                 <span><%= m.nombre %></span>
-                <input type="number" name="monto_<%= m.id_medio_pago %>" step="0.01" min="0"
-                       value="<%= montos[m.id_medio_pago] || '' %>" placeholder="0.00" onfocus="this.select()">
+                <input type="text" inputmode="decimal" autocomplete="off" class="dinero" name="monto_<%= m.id_medio_pago %>"
+                       value="<%= montos[m.id_medio_pago] || '' %>" placeholder="$0" onfocus="this.select()">
               </label>
             <% }) %>
             <p id="falta-pagar" class="falta-pagar" aria-live="polite"></p>
           </div>
 
-          <button class="boton" type="submit">Cobrar $<%= total.toFixed(2) %></button>
+          <button class="boton" type="submit">Cobrar <%= pesos(total) %></button>
         </form>
 
         <form method="post" action="/ventas/pedido">
@@ -186,7 +186,7 @@
               <td><%= v.fecha_hora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) %></td>
               <td><%= (CANALES.find(function (c) { return c.valor === v.canal_venta; }) || {}).texto %></td>
               <td><%= v.medios || 'Sin pago' %></td>
-              <td class="numero"><span class="monto">$<%= Number(v.total).toFixed(2) %></span></td>
+              <td class="numero"><span class="monto"><%= pesos(Number(v.total)) %></span></td>
               <td class="acciones">
                 <% if (v.anulada) { %>
                   <span class="marca-anulada">Anulada</span>
@@ -253,14 +253,14 @@
     var aviso = document.getElementById('falta-pagar');
     var campos = bloque.querySelectorAll('input');
 
-    function pesos(centavos) { return '$' + (centavos / 100).toFixed(2); }
+    var pesos = window.dineroKokino.pesos;
 
     function actualizar() {
       var varios = selector.value === '<%= VARIOS_MEDIOS %>';
       bloque.hidden = !varios;
       if (!varios) return;
       var pagado = 0;
-      campos.forEach(function (c) { pagado += Math.round(Number(c.value || 0) * 100); });
+      campos.forEach(function (c) { pagado += window.dineroKokino.centavos(c.value); });
       var diferencia = total - pagado;
       aviso.textContent = diferencia === 0 ? 'Cubre el total.'
         : diferencia > 0 ? 'Faltan ' + pesos(diferencia) + '.'

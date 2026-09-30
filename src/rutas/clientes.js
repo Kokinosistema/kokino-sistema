@@ -4,6 +4,7 @@ const express = require('express');
 const { consultar } = require('../db');
 const { normalizarCuit } = require('../cuit');
 const { normalizarTelefono } = require('../telefono');
+const { parsearMonto, MONTO_INVALIDO } = require('../dinero');
 
 const router = express.Router();
 
@@ -62,10 +63,13 @@ function leerFormulario(cuerpo, puedeTocarCredito, valoresActuales) {
   else datos.telefono = telefono.telefono;
 
   if (puedeTocarCredito) {
-    datos.limite_cuenta_corriente = leerNumero(cuerpo.limite_cuenta_corriente);
 
-    if (datos.limite_cuenta_corriente !== null && datos.limite_cuenta_corriente < 0) {
-      errores.push('El limite de cuenta corriente no puede ser negativo.');
+    // El limite es plata: se escribe en formato argentino ($300.000,15).
+    // Vacio quiere decir que no tiene cuenta corriente.
+    const limite = (cuerpo.limite_cuenta_corriente || '').trim();
+    datos.limite_cuenta_corriente = limite === '' ? null : parsearMonto(limite, { permitirCero: true });
+    if (limite !== '' && datos.limite_cuenta_corriente === null) {
+      errores.push('El límite de cuenta corriente: ' + MONTO_INVALIDO + '.');
     }
     // Dias para pagar: un numero entero de dias, de 0 a 999. Vacio es que no
     // tiene plazo.
@@ -89,13 +93,6 @@ function leerFormulario(cuerpo, puedeTocarCredito, valoresActuales) {
   }
 
   return { datos, errores };
-}
-
-function leerNumero(entrada) {
-  const texto = (entrada || '').trim();
-  if (texto === '') return null;
-  const numero = Number(texto.replace(',', '.'));
-  return Number.isFinite(numero) ? numero : -1; // -1 cae en la validacion de negativo
 }
 
 router.get('/', async (req, res, siguiente) => {

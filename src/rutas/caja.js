@@ -3,7 +3,7 @@
 const express = require('express');
 const { consultar, conTransaccion } = require('../db');
 const { CAMBIO_DE_SUCURSAL } = require('../sucursales');
-const { montoValido } = require('../dinero');
+const { parsearMonto, MONTO_INVALIDO, pesos, aCentavos } = require('../dinero');
 
 const router = express.Router();
 
@@ -172,7 +172,8 @@ router.post('/abrir', async (req, res, siguiente) => {
     const sucursales = [req.sucursal];
     const idSucursal = Number(req.body.id_sucursal);
     const turno = req.body.turno;
-    const monto = req.body.monto_apertura;
+    // En formato argentino ($300.000,15); cero vale, si el cajon arranca vacio.
+    const monto = parsearMonto(req.body.monto_apertura, { permitirCero: true });
 
     const errores = [];
     if (!sucursales.some((s) => s.id_sucursal === idSucursal)) {
@@ -181,8 +182,8 @@ router.post('/abrir', async (req, res, siguiente) => {
     if (!TURNOS.some((t) => t.valor === turno)) {
       errores.push('Elegí un turno.');
     }
-    if (monto === '' || monto === undefined || Number(monto) < 0 || Number.isNaN(Number(monto))) {
-      errores.push('Pone con cuanto efectivo arranca la caja. Si arranca vacia, pone cero.');
+    if (monto === null) {
+      errores.push('Poné con cuánto efectivo arranca la caja (si arranca vacía, poné cero): ' + MONTO_INVALIDO + '.');
     }
 
     if (errores.length > 0) {
@@ -248,7 +249,10 @@ router.post('/cerrar', async (req, res, siguiente) => {
       return res.redirect('/caja');
     }
 
-    const declarado = req.body.monto_cierre_declarado;
+    // Lo escrito se guarda para volver a mostrarlo si hay un error; lo que
+    // va a la base es el monto ya leido del formato argentino.
+    const declarado = typeof req.body.monto_cierre_declarado === 'string' ? req.body.monto_cierre_declarado : '';
+    const declaradoNormal = parsearMonto(declarado, { permitirCero: true });
 
     // Todo dentro de una transaccion: el monto que el sistema esperaba se
     // calcula y se guarda en el mismo momento en que se cierra. Si se
@@ -262,9 +266,8 @@ router.post('/cerrar', async (req, res, siguiente) => {
       const caja = rows[0];
       if (!caja) return { sinCaja: true };
 
-      if (declarado === '' || declarado === undefined
-          || Number.isNaN(Number(declarado)) || Number(declarado) < 0) {
-        return { caja, error: 'Pone cuanto efectivo contaste en el cajon.' };
+      if (declaradoNormal === null) {
+        return { caja, error: 'Poné cuánto efectivo contaste en el cajón: ' + MONTO_INVALIDO + '.' };
       }
 
       const esperado = esperadoEnCajon(caja);
@@ -273,9 +276,11 @@ router.post('/cerrar', async (req, res, siguiente) => {
             SET fecha_cierre = now(), id_usuario_cierre = $1,
                 monto_cierre_declarado = $2, monto_cierre_sistema = $3
           WHERE id_caja = $4`,
-        [usuario.id_usuario, declarado, esperado, caja.id_caja]
+        [usuario.id_usuario, declaradoNormal, esperado, caja.id_caja]
       );
-      return { cerrada: true, diferencia: Number(declarado) - esperado };
+      // En centavos: con decimales de JavaScript, una caja que cuadra justo
+      // podia dar una diferencia de 0.0000001 y decir "sobraron".
+      return { cerrada: true, diferencia: (aCentavos(declaradoNormal) - aCentavos(esperado)) / 100 };
     });
 
     if (resultado.sinCaja) {
@@ -297,7 +302,7 @@ router.post('/cerrar', async (req, res, siguiente) => {
     const d = resultado.diferencia;
     req.session.aviso = d === 0
       ? 'Caja cerrada y cuadrada.'
-      : 'Caja cerrada. ' + (d > 0 ? 'Sobraron ' : 'Faltaron ') + Math.abs(d).toFixed(2) + '.';
+      : 'Caja cerrada. ' + (d > 0 ? 'Sobraron ' : 'Faltaron ') + pesos(Math.abs(d)) + '.';
     res.redirect('/caja');
   } catch (error) {
     siguiente(error);
@@ -332,7 +337,8 @@ router.post('/egresos', async (req, res, siguiente) => {
 
     const errores = [];
     if (!TIPOS_EGRESO.some((t) => t.valor === egreso.tipo_egreso)) errores.push('Elegí qué tipo de salida es.');
-    if (!montoValido(egreso.monto)) errores.push('Poné el monto: un número mayor que cero, con dos decimales como mucho.');
+    const montoNormal = parsearMonto(egreso.monto);
+    if (montoNormal === null) errores.push('Poné el monto de la salida: ' + MONTO_INVALIDO + '.');
     if (esRetiro && !egreso.id_empleado) errores.push('En un retiro, elegí qué empleado se lleva la plata.');
     // En un retiro el empleado ya dice de que se trata; en los demas, sin
     // descripcion nadie sabe despues en que se fue la plata.
@@ -371,7 +377,7 @@ router.post('/egresos', async (req, res, siguiente) => {
         `INSERT INTO egresos (id_caja, id_medio_pago, id_usuario, id_empleado, tipo_egreso, monto, descripcion)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [cajas[0].id_caja, egreso.id_medio_pago, usuario.id_usuario,
-          esRetiro ? egreso.id_empleado : null, egreso.tipo_egreso, egreso.monto,
+          esRetiro ? egreso.id_empleado : null, egreso.tipo_egreso, montoNormal,
           egreso.descripcion || null]
       );
       return {};
@@ -381,7 +387,7 @@ router.post('/egresos', async (req, res, siguiente) => {
       return mostrarCaja(res, { usuario, sucursales, elegida: idSucursal, errores: [resultado.error], estado: 400, egreso });
     }
 
-    req.session.aviso = 'Salida de $' + Number(egreso.monto).toFixed(2) + ' registrada.';
+    req.session.aviso = 'Salida de ' + pesos(montoNormal) + ' registrada.';
     res.redirect('/caja');
   } catch (error) {
     siguiente(error);

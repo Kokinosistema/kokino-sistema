@@ -43,13 +43,13 @@
       </tr>
       <tr class="destacada">
         <th>Monto</th>
-        <td class="numero">$<%= Number(egreso.monto).toFixed(2) %></td>
+        <td class="numero"><%= pesos(Number(egreso.monto)) %></td>
       </tr>
     </tbody>
   </table>
   <% if (egreso.afecta_caja_efectivo) { %>
     <p class="ayuda">
-      Al anularla, el arqueo vuelve a esperar estos $<%= Number(egreso.monto).toFixed(2) %> en el cajón.
+      Al anularla, el arqueo vuelve a esperar estos <%= pesos(Number(egreso.monto)) %> en el cajón.
     </p>
   <% } %>
 </section>
