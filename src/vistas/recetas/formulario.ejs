@@ -39,7 +39,8 @@
       <label for="id_unidad_rendimiento">Unidad <span class="obligatorio">*</span></label>
       <select id="id_unidad_rendimiento" name="id_unidad_rendimiento" required>
         <option value="">Elegi</option>
-        <% unidades.forEach(function (u) { %>
+        <%# Un sabor rinde en litros y un producto, en su unidad: se ofrece solo esa. %>
+        <% unidades.filter(function (u) { return !candidato.unidad_rendimiento || u.id_unidad === candidato.unidad_rendimiento; }).forEach(function (u) { %>
           <option value="<%= u.id_unidad %>" <%= String(receta.id_unidad_rendimiento) === String(u.id_unidad) ? 'selected' : '' %>>
             <%= u.nombre %> (<%= u.abreviatura %>)
           </option>
@@ -48,7 +49,10 @@
     </div>
   </div>
   <p class="pista">
-    Es el total de la tanda, no de un tacho: si la formula hace 10 kilos, va 10 kg.
+    Es el total de la tanda, no de un tacho.
+    <% if (candidato.clase === 'SABOR') { %>
+      Un sabor rinde en litros: si la formula llena 6 tachos de 10 litros, va 60 lt.
+    <% } %>
   </p>
 
   <h2>Ingredientes</h2>

@@ -1,0 +1,146 @@
+<%- include('../parciales/encabezado', { titulo: 'Fabricación - Kokino' }) %>
+
+<h1>Fabricación</h1>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<% if (puedeProducir) { %>
+  <section class="panel">
+    <h2>Registrar producción</h2>
+    <p class="ayuda">
+      El helado se carga en tachos de <%= LITROS_POR_TACHO %> litros; los impulsivos y la
+      repostería propia, en unidades. Lo producido suma al stock de <strong><%= sucursal.nombre %></strong>.
+    </p>
+    <form method="post" action="/fabricacion/produccion" class="formulario">
+      <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
+      <div class="fila">
+        <div>
+          <label for="fecha">Día</label>
+          <input id="fecha" name="fecha" type="date" required max="<%= hoy %>" value="<%= elegido.fecha %>">
+        </div>
+        <div class="campo-ancho">
+          <label for="que">Qué se produjo</label>
+          <select id="que" name="que" required>
+            <option value="">Elegí el sabor o el producto</option>
+            <% opciones.forEach(function (g) { %>
+              <optgroup label="<%= g.nombre %>">
+                <% g.opciones.forEach(function (o) { %>
+                  <option value="<%= o.valor %>" data-unidad="<%= o.unidad %>" <%= o.valor === elegido.que ? 'selected' : '' %>><%= o.nombre %></option>
+                <% }) %>
+              </optgroup>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label for="cantidad">Cantidad <span id="unidad-cantidad" class="pista-inline"></span></label>
+          <input id="cantidad" name="cantidad" class="solo-numeros" inputmode="numeric" maxlength="3" required
+                 data-mensaje="la cantidad es un número entero." autocomplete="off" value="<%= elegido.cantidad %>" placeholder="Por ejemplo: 3">
+        </div>
+      </div>
+      <button type="submit">Registrar</button>
+    </form>
+  </section>
+<% } else { %>
+  <p class="ayuda">
+    La producción se registra en la sucursal donde está la fábrica. Acá ves el stock de
+    helado de <strong><%= sucursal.nombre %></strong> y cambiás los tachos que se terminan.
+  </p>
+<% } %>
+
+<section class="panel">
+  <h2>Stock de helado en <%= sucursal.nombre %></h2>
+  <p class="ayuda">
+    Cuando se termina el tacho de un sabor, tocá <strong>Cambiar tacho</strong>: el que estaba
+    en el pozo queda vacío y se abre el lleno que vence primero.
+  </p>
+  <% if (stock.length === 0) { %>
+    <p class="ayuda">Todavía no hay tachos de helado en esta sucursal.</p>
+  <% } else { %>
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Sabor</th>
+          <th class="numero">En el pozo</th>
+          <th class="numero">Llenos</th>
+          <th class="numero">Litros</th>
+          <th>Próximo en vencer</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% stock.forEach(function (s) { %>
+          <tr>
+            <td><%= s.sabor %></td>
+            <td class="numero"><%= s.en_pozo %></td>
+            <td class="numero <%= s.llenos === 0 ? 'alerta' : '' %>"><%= s.llenos %></td>
+            <td class="numero"><%= Number(s.litros) %> L</td>
+            <td><%= s.proximo_vencimiento ? s.proximo_vencimiento.toLocaleDateString('es-AR') : '—' %></td>
+            <td class="acciones">
+              <form method="post" action="/fabricacion/cambiar-tacho">
+                <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
+                <input type="hidden" name="id_sabor" value="<%= s.id_sabor %>">
+                <button class="enlace" type="submit"><%= s.en_pozo > 0 ? 'Cambiar tacho' : 'Abrir tacho' %></button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
+
+<% if (puedeProducir) { %>
+  <section class="panel">
+    <h2>Últimas producciones</h2>
+    <% if (historial.length === 0) { %>
+      <p class="ayuda">Todavía no se registró ninguna producción.</p>
+    <% } else { %>
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Día</th>
+            <th>Qué</th>
+            <th class="numero">Cantidad</th>
+            <th>Receta</th>
+            <th>Cargó</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% historial.forEach(function (h) { %>
+            <% const n = h.es_helado ? Number(h.cantidad_real) / LITROS_POR_TACHO : Number(h.cantidad_real); %>
+            <tr>
+              <td><%= h.fecha_produccion.toLocaleDateString('es-AR') %></td>
+              <td><%= h.que %></td>
+              <td class="numero"><%= n %> <%= h.es_helado ? (n === 1 ? 'tacho' : 'tachos') : h.unidad %></td>
+              <td><%= h.con_receta ? 'Sí' : 'Sin receta: no descontó insumos' %></td>
+              <td><%= h.quien %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+<% } %>
+
+<script src="/solo-numeros.js"></script>
+<script>
+  // Al elegir que se produjo, dice en que se cuenta la cantidad: tachos de
+  // 10 litros para el helado, unidades para los productos.
+  (function () {
+    var que = document.getElementById('que');
+    var unidad = document.getElementById('unidad-cantidad');
+    if (!que || !unidad) return;
+    function mostrar() {
+      var opcion = que.options[que.selectedIndex];
+      unidad.textContent = opcion && opcion.dataset.unidad ? '(' + opcion.dataset.unidad + ')' : '';
+    }
+    que.addEventListener('change', mostrar);
+    mostrar();
+  })();
+</script>
+
+<%- include('../parciales/pie') %>

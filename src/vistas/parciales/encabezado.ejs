@@ -22,6 +22,7 @@
     proveedores: '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>',
     usuarios: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/>',
     productos: '<path d="M4 7h16v13H4z"/><path d="M4 7l2-3h12l2 3"/><path d="M9 11h6"/>',
+    fabricacion: '<path d="M3 20V10l5 3V10l5 3V6h4l1 14z"/><path d="M3 20h18"/>',
     insumos: '<path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/>',
   };
   const svg = (nombre) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + iconos[nombre] + '</svg>';
@@ -39,6 +40,7 @@
       <a class="<%= activo('/') %>" href="/"><%- svg('inicio') %> Inicio</a>
       <a class="<%= activo('/ventas') %>" href="/ventas"><%- svg('vender') %> Vender</a>
       <a class="<%= activo('/caja') %>" href="/caja"><%- svg('caja') %> Caja</a>
+      <a class="<%= activo('/fabricacion') %>" href="/fabricacion"><%- svg('fabricacion') %> Fabricación</a>
       <a class="<%= activo('/clientes') %>" href="/clientes"><%- svg('clientes') %> Clientes</a>
       <a class="<%= activo('/recetas') %>" href="/recetas"><%- svg('recetas') %> Recetas</a>
       <% if (usuario.rol === 'administrador') { %>

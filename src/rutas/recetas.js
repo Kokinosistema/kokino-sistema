@@ -51,11 +51,16 @@ const SQL_CANDIDATOS = `
          -- Con la linea: Americana y Vainilla existen en las dos, y sin
          -- esto el dueno ve dos renglones iguales y no sabe cual es cual.
          s.nombre || ' (' || lower(s.linea) || ')' AS nombre,
-         c.nombre       AS grupo
+         c.nombre       AS grupo,
+         -- En que unidad rinde la receta. El helado se produce en tachos de
+         -- 10 litros, asi que un sabor rinde en litros; un producto, en su
+         -- propia unidad. Asi la produccion siempre puede descontar los
+         -- insumos en proporcion, sin necesitar la densidad del sabor.
+         (SELECT id_unidad FROM unidades_medida WHERE abreviatura = 'lt') AS unidad_rendimiento
     FROM sabores s
     JOIN categorias c ON c.id_categoria = s.id_categoria
   UNION ALL
-  SELECT 'PRODUCTO', p.id_producto, p.nombre, c.nombre
+  SELECT 'PRODUCTO', p.id_producto, p.nombre, c.nombre, p.id_unidad_medida
     FROM productos p
     JOIN categorias c ON c.id_categoria = p.id_categoria
    WHERE p.tipo_origen = 'PRODUCIDO_DIRECTO'
@@ -93,6 +98,13 @@ router.get('/', async (req, res, siguiente) => {
     siguiente(error);
   }
 });
+
+// El candidato de una receta que ya existe, con su unidad de rendimiento.
+async function candidatoDeReceta(receta) {
+  const id = receta.id_sabor_resultado || receta.id_producto_resultado;
+  return (await traerCandidato(receta.clase, id))
+    || { clase: receta.clase, id, nombre: receta.nombre_resultado };
+}
 
 async function traerCandidato(clase, id) {
   if (!Number.isInteger(Number(id))) return undefined;
@@ -267,7 +279,7 @@ function leerIngredientes(cuerpo, insumos, unidades) {
   return { ingredientes, errores };
 }
 
-function leerCabecera(cuerpo, unidades) {
+function leerCabecera(cuerpo, unidades, candidato) {
   const errores = [];
   const rendimiento = leerCantidad(cuerpo.cantidad_rendimiento, 9999999.999);
   if (rendimiento === null) {
@@ -275,6 +287,12 @@ function leerCabecera(cuerpo, unidades) {
   }
   const unidad = unidades.find((u) => u.id_unidad === Number(cuerpo.id_unidad_rendimiento));
   if (!unidad) errores.push('Elegi en que unidad rinde la formula.');
+  else if (candidato && candidato.unidad_rendimiento && unidad.id_unidad !== candidato.unidad_rendimiento) {
+    const debida = unidades.find((u) => u.id_unidad === candidato.unidad_rendimiento);
+    errores.push(candidato.clase === 'SABOR'
+      ? 'Un sabor rinde en litros: el helado se produce en tachos de 10 litros, y así la producción descuenta los insumos en proporción.'
+      : 'Este producto rinde en ' + (debida ? debida.nombre.toLowerCase() : 'su unidad') + ', que es como se produce y se cuenta.');
+  }
 
   return {
     datos: { cantidad_rendimiento: rendimiento, id_unidad_rendimiento: unidad ? unidad.id_unidad : null },
@@ -312,7 +330,7 @@ router.post('/', exigirEdicion, async (req, res, siguiente) => {
 
     const insumos = await traerInsumos();
     const unidades = await traerUnidades();
-    const cabecera = leerCabecera(req.body, unidades);
+    const cabecera = leerCabecera(req.body, unidades, candidato);
     const detalle = leerIngredientes(req.body, insumos, unidades);
     const errores = cabecera.errores.concat(detalle.errores);
 
@@ -395,7 +413,7 @@ router.get('/:id', async (req, res, siguiente) => {
     }
 
     res.render('recetas/formulario', {
-      candidato: { clase: receta.clase, id: receta.id_sabor_resultado || receta.id_producto_resultado, nombre: receta.nombre_resultado },
+      candidato: await candidatoDeReceta(receta),
       receta,
       ingredientes,
       insumos: await traerInsumos(receta.id_receta),
@@ -423,7 +441,8 @@ router.post('/:id', exigirEdicion, async (req, res, siguiente) => {
 
     const insumos = await traerInsumos(receta.id_receta);
     const unidades = await traerUnidades();
-    const cabecera = leerCabecera(req.body, unidades);
+    const candidato = await candidatoDeReceta(receta);
+    const cabecera = leerCabecera(req.body, unidades, candidato);
     const detalle = leerIngredientes(req.body, insumos, unidades);
     const errores = cabecera.errores.concat(detalle.errores);
 
@@ -431,7 +450,7 @@ router.post('/:id', exigirEdicion, async (req, res, siguiente) => {
 
     if (errores.length > 0) {
       return res.status(400).render('recetas/formulario', {
-        candidato: { clase: receta.clase, id: receta.id_sabor_resultado || receta.id_producto_resultado, nombre: receta.nombre_resultado },
+        candidato,
         receta: Object.assign({}, receta, req.body),
         ingredientes: reconstruirParaVolver(req.body),
         insumos,

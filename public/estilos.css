@@ -342,6 +342,10 @@ input:focus, select:focus, textarea:focus {
 /* Cartel de error debajo de un campo, mientras se escribe (por ejemplo, el CUIT). */
 .error-campo { margin: 6px 0 0; color: var(--status-error); font-size: 13px; font-weight: 700; }
 .error-campo[hidden] { display: none; }
+/* Una aclaracion corta al lado del titulo de un campo, como la unidad. */
+.pista-inline { font-weight: 400; color: var(--text-secondary); }
+/* En una fila de campos, el que necesita mas lugar (una lista larga). */
+.formulario .fila > div.campo-ancho { flex: 2 1 320px; }
 input.con-error, input.con-error:focus { border-color: var(--status-error); }
 /* Casilla de verificacion con su texto al lado, no un campo a todo el ancho. */
 label.casilla { display: flex; align-items: center; gap: 8px; margin-top: 34px; font-size: 14px; color: var(--text-primary); }

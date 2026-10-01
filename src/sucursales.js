@@ -14,13 +14,13 @@ const { consultar } = require('./db');
 async function sucursalesDisponibles(usuario) {
   if (usuario.id_sucursal_asignada) {
     const { rows } = await consultar(
-      'SELECT id_sucursal, nombre FROM sucursales WHERE id_sucursal = $1',
+      'SELECT id_sucursal, nombre, tiene_fabrica FROM sucursales WHERE id_sucursal = $1',
       [usuario.id_sucursal_asignada]
     );
     return rows;
   }
   const { rows } = await consultar(
-    'SELECT id_sucursal, nombre FROM sucursales WHERE activa ORDER BY nombre'
+    'SELECT id_sucursal, nombre, tiene_fabrica FROM sucursales WHERE activa ORDER BY nombre'
   );
   return rows;
 }
