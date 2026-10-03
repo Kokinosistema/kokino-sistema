@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { consultar } = require('../db');
+const { metricasDelDueno } = require('../metricas');
 
 const router = express.Router();
 
@@ -29,7 +30,13 @@ router.get('/', async (req, res, siguiente) => {
               (SELECT count(*) FROM recetas)::int                  AS recetas`
     );
 
-    res.render('inicio', { sucursales: rows, totales: totales[0] });
+    // Las metricas de ventas son solo para los duenos: a los empleados ni se
+    // les calculan.
+    const metricas = req.session.usuario.rol === 'administrador'
+      ? await metricasDelDueno(req.sucursal.id_sucursal)
+      : null;
+
+    res.render('inicio', { sucursales: rows, totales: totales[0], metricas });
   } catch (error) {
     siguiente(error);
   }

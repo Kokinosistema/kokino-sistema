@@ -30,6 +30,10 @@
   </section>
 <% } %>
 
+<% if (metricas) { %>
+  <%- include('parciales/metricas') %>
+<% } %>
+
 <section class="tarjetas">
   <% sucursales.forEach(function (s) { %>
     <article class="tarjeta">

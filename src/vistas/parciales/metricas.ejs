@@ -1,0 +1,255 @@
+<%# Metricas del Inicio, solo para los duenos (la ruta ni las calcula para
+    los empleados). Los graficos son barras hechas con HTML y CSS: no
+    dependen de ninguna libreria ni de internet. %>
+<%
+  const m = metricas;
+  const fechaCorta = (d) => d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' }).replace('.', '');
+  const fechaHora = (f) => f.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' }) + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  const pct = (parte, total) => (total > 0 ? Math.round((parte / total) * 100) : 0);
+  const maximo = (lista, campo) => Math.max(0, ...lista.map((x) => x[campo]));
+  const TURNOS = { MANANA: 'mañana', TARDE: 'tarde', NOCHE: 'noche' };
+  // Para el numero arriba de cada barra: "$23,5 mil" en vez de "$23.500".
+  const compacto = (n) => (n >= 1000 ? '$' + (n / 1000).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' mil' : pesos(Math.round(n)));
+  const cantidad = (n, u) => (Number.isInteger(n) ? n : n.toLocaleString('es-AR', { maximumFractionDigits: 3 })) + ' ' + u;
+%>
+
+<section class="metricas" aria-labelledby="titulo-metricas">
+  <h2 id="titulo-metricas" class="titulo-metricas">Ventas de <%= sucursal.nombre %></h2>
+  <p class="ayuda">Sin contar las ventas anuladas.</p>
+
+  <div class="tarjetas-metricas">
+    <% m.resumen.forEach(function (p) { %>
+      <article class="tarjeta metrica">
+        <h3><%= p.nombre %></h3>
+        <p class="metrica-valor"><%= pesos(p.total) %></p>
+        <p class="variacion <%= p.varTotal.clase %>" title="<%= p.contra %>"><%= p.varTotal.texto %></p>
+        <dl class="metrica-detalle">
+          <div><dt>Ventas</dt><dd><%= p.ventas %> <span class="variacion <%= p.varVentas.clase %>"><%= p.varVentas.clase === 'neutra' ? '' : p.varVentas.texto %></span></dd></div>
+          <div><dt>Ticket promedio</dt><dd><%= pesos(Math.round(p.ticket)) %> <span class="variacion <%= p.varTicket.clase %>"><%= p.varTicket.clase === 'neutra' ? '' : p.varTicket.texto %></span></dd></div>
+        </dl>
+        <p class="pista"><%= p.contra.charAt(0).toUpperCase() + p.contra.slice(1) %>.</p>
+      </article>
+    <% }) %>
+  </div>
+
+  <section class="panel">
+    <h2>Últimos 14 días</h2>
+    <% const maxDia = maximo(m.dias, 'total'); %>
+    <div class="barras" role="list">
+      <% m.dias.forEach(function (d) { %>
+        <div class="barra <%= d.esHoy ? 'hoy' : '' %>" role="listitem"
+             title="<%= d.dia.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }) %>: <%= pesos(d.total) %> en <%= d.ventas %> <%= d.ventas === 1 ? 'venta' : 'ventas' %>">
+          <span class="barra-valor"><%= d.total > 0 ? compacto(d.total) : '' %></span>
+          <span class="barra-columna"><span style="height: <%= maxDia > 0 ? Math.max(pct(d.total, maxDia), d.total > 0 ? 2 : 0) : 0 %>%"></span></span>
+          <span class="barra-etiqueta"><%= d.esHoy ? 'hoy' : fechaCorta(d.dia) %></span>
+          <span class="solo-lector"><%= pesos(d.total) %></span>
+        </div>
+      <% }) %>
+    </div>
+  </section>
+
+  <div class="grilla-metricas">
+    <section class="panel">
+      <h2>Las dos sucursales</h2>
+      <table class="tabla">
+        <thead><tr><th>Sucursal</th><th class="numero">Hoy</th><th class="numero">Esta semana</th></tr></thead>
+        <tbody>
+          <% m.sucursales.forEach(function (s) { %>
+            <tr class="<%= s.id_sucursal === sucursal.id_sucursal ? 'destacada' : '' %>">
+              <td><%= s.nombre %></td>
+              <td class="numero"><%= pesos(s.hoy_total) %><br><span class="pista"><%= s.hoy_ventas %> <%= s.hoy_ventas === 1 ? 'venta' : 'ventas' %></span></td>
+              <td class="numero"><%= pesos(s.semana_total) %><br><span class="pista"><%= s.semana_ventas %> <%= s.semana_ventas === 1 ? 'venta' : 'ventas' %></span></td>
+            </tr>
+          <% }) %>
+          <% if (m.sucursales.length > 1) { %>
+            <tr class="total-fila">
+              <td>Total</td>
+              <td class="numero"><%= pesos(m.sucursales.reduce((a, s) => a + s.hoy_total, 0)) %></td>
+              <td class="numero"><%= pesos(m.sucursales.reduce((a, s) => a + s.semana_total, 0)) %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Cómo pagan <span class="pista-inline">(últimos 7 días)</span></h2>
+      <% const totalMedios = m.semana.medios.reduce((a, x) => a + x.total, 0); %>
+      <% if (totalMedios === 0) { %>
+        <p class="ayuda">No hubo ventas en los últimos 7 días.</p>
+      <% } else { m.semana.medios.forEach(function (x) { %>
+        <div class="barra-h">
+          <span class="barra-h-nombre"><%= x.nombre %></span>
+          <span class="barra-h-pista"><span style="width: <%= pct(x.total, totalMedios) %>%"></span></span>
+          <span class="barra-h-valor"><%= pct(x.total, totalMedios) %> % · <%= pesos(x.total) %></span>
+        </div>
+      <% }) } %>
+
+      <h2 class="subtitulo-panel">Por dónde compran</h2>
+      <% const totalCanales = m.semana.canales.reduce((a, x) => a + x.total, 0); %>
+      <% if (totalCanales === 0) { %>
+        <p class="ayuda">No hubo ventas en los últimos 7 días.</p>
+      <% } else { m.semana.canales.forEach(function (x) { %>
+        <div class="barra-h">
+          <span class="barra-h-nombre"><%= x.nombre %></span>
+          <span class="barra-h-pista"><span style="width: <%= pct(x.total, totalCanales) %>%"></span></span>
+          <span class="barra-h-valor"><%= pct(x.total, totalCanales) %> % · <%= x.ventas %> <%= x.ventas === 1 ? 'venta' : 'ventas' %></span>
+        </div>
+      <% }) } %>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Más vendidos <span class="pista-inline">(últimos 7 días)</span></h2>
+    <% if (m.semana.masVendidos.length === 0) { %>
+      <p class="ayuda">No hubo ventas en los últimos 7 días.</p>
+    <% } else { const maxProducto = m.semana.masVendidos[0].total; %>
+      <table class="tabla">
+        <thead><tr><th></th><th>Producto</th><th class="numero">Cantidad</th><th class="numero">Vendido</th><th class="columna-barra"></th></tr></thead>
+        <tbody>
+          <% m.semana.masVendidos.forEach(function (x, i) { %>
+            <tr>
+              <td class="numero puesto"><%= i + 1 %></td>
+              <td><%= x.nombre %></td>
+              <td class="numero"><%= cantidad(x.cantidad, x.unidad) %></td>
+              <td class="numero"><%= pesos(x.total) %></td>
+              <td class="columna-barra"><span class="barra-h-pista"><span style="width: <%= pct(x.total, maxProducto) %>%"></span></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+
+  <section class="panel">
+    <h2>Horas pico <span class="pista-inline">(promedio de las últimas 4 semanas)</span></h2>
+    <% if (m.pico.porHora.length === 0) { %>
+      <p class="ayuda">Todavía no hay ventas de días anteriores para calcular las horas pico.</p>
+    <% } else {
+         const maxHora = maximo(m.pico.porHora, 'promedio');
+         const maxDiaSemana = maximo(m.pico.porDia, 'promedio');
+         const mejorHora = m.pico.porHora.find((h) => h.promedio === maxHora);
+         const mejorDia = m.pico.porDia.find((d) => d.promedio === maxDiaSemana); %>
+      <p class="ayuda">
+        Se vende más los <strong><%= mejorDia.nombre %></strong> y entre las
+        <strong><%= mejorHora.hora %> y las <%= (mejorHora.hora + 1) % 24 %> h</strong>.
+        Las barras muestran cuánto se vende en promedio en cada hora y cada día.
+      </p>
+      <div class="grilla-metricas">
+        <div>
+          <h3 class="subtitulo-panel">Por hora</h3>
+          <div class="barras barras-chicas" role="list">
+            <% m.pico.porHora.forEach(function (h) { %>
+              <div class="barra <%= h === mejorHora ? 'hoy' : '' %>" role="listitem" title="De <%= h.hora %> a <%= (h.hora + 1) % 24 %> h: <%= pesos(Math.round(h.promedio)) %> por día en promedio">
+                <span class="barra-columna"><span style="height: <%= pct(h.promedio, maxHora) %>%"></span></span>
+                <span class="barra-etiqueta"><%= h.hora %></span>
+                <span class="solo-lector"><%= pesos(Math.round(h.promedio)) %></span>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+        <div>
+          <h3 class="subtitulo-panel">Por día de la semana</h3>
+          <div class="barras barras-chicas" role="list">
+            <% m.pico.porDia.forEach(function (d) { %>
+              <div class="barra <%= d === mejorDia ? 'hoy' : '' %>" role="listitem" title="Los <%= d.nombre %>: <%= pesos(Math.round(d.promedio)) %> en promedio">
+                <span class="barra-columna"><span style="height: <%= pct(d.promedio, maxDiaSemana) %>%"></span></span>
+                <span class="barra-etiqueta"><%= d.nombre.slice(0, 2) %></span>
+                <span class="solo-lector"><%= pesos(Math.round(d.promedio)) %></span>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+    <% } %>
+  </section>
+
+  <section class="panel">
+    <h2>Control de caja <span class="pista-inline">(últimos 7 días)</span></h2>
+    <div class="grilla-metricas">
+      <div>
+        <h3 class="subtitulo-panel">Ventas anuladas</h3>
+        <% if (m.control.anuladas.length === 0) { %>
+          <p class="ayuda">No se anuló ninguna venta.</p>
+        <% } else { %>
+          <p class="ayuda"><%= m.control.anuladas.length %> <%= m.control.anuladas.length === 1 ? 'venta anulada' : 'ventas anuladas' %> por <strong><%= pesos(m.control.totalAnulado) %></strong>.</p>
+          <ul class="lista-control">
+            <% m.control.anuladas.forEach(function (a) { %>
+              <li>
+                <strong><%= pesos(a.total) %></strong> · venta N° <%= a.id_venta %> de <%= a.vendio %> (<%= fechaHora(a.fecha_hora) %>)<br>
+                <span class="pista">Anuló <%= a.anulo %> el <%= fechaHora(a.fecha_anulacion) %>: <%= a.motivo_anulacion %></span>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </div>
+      <div>
+        <h3 class="subtitulo-panel">Cierres de caja</h3>
+        <% if (m.control.cierres === 0) { %>
+          <p class="ayuda">No se cerró ninguna caja.</p>
+        <% } else if (m.control.conDiferencia.length === 0) { %>
+          <p class="ayuda">Se <%= m.control.cierres === 1 ? 'cerró 1 caja' : 'cerraron ' + m.control.cierres + ' cajas' %> y en todas lo contado coincidió con lo que calculó el sistema.</p>
+        <% } else { %>
+          <p class="ayuda">De <%= m.control.cierres %> <%= m.control.cierres === 1 ? 'cierre' : 'cierres' %>, <strong><%= m.control.conDiferencia.length %></strong> <%= m.control.conDiferencia.length === 1 ? 'tuvo' : 'tuvieron' %> diferencia entre lo contado y lo que calculó el sistema.</p>
+          <ul class="lista-control">
+            <% m.control.conDiferencia.forEach(function (c) { %>
+              <li>
+                <strong class="<%= c.diferencia < 0 ? 'alerta' : '' %>"><%= c.diferencia > 0 ? 'Sobraron ' + pesos(c.diferencia) : 'Faltaron ' + pesos(-c.diferencia) %></strong>
+                · turno <%= TURNOS[c.turno] || c.turno %>, cerró <%= c.cerro %> (<%= fechaHora(c.fecha_cierre) %>)<br>
+                <span class="pista">Contó <%= pesos(c.declarado) %>; el sistema calculó <%= pesos(c.sistema) %>.</span>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Alertas de stock en <%= sucursal.nombre %></h2>
+    <% const a = m.alertas; %>
+    <% if (a.pocos.length === 0 && a.porVencer.length === 0 && a.faltantes.length === 0) { %>
+      <p class="ayuda">No hay alertas: ningún sabor abierto se está quedando sin reserva, nada vence en los próximos 30 días y los envíos llegaron completos.</p>
+    <% } else { %>
+      <div class="grilla-metricas">
+        <% if (a.pocos.length > 0) { %>
+          <div>
+            <h3 class="subtitulo-panel">Se están quedando sin reserva</h3>
+            <p class="pista">Sabores con tacho abierto y uno lleno o ninguno para reemplazarlo.</p>
+            <ul class="lista-control">
+              <% a.pocos.forEach(function (x) { %>
+                <li><%= x.sabor %>: <strong class="<%= x.llenos === 0 ? 'alerta' : '' %>"><%= x.llenos === 0 ? 'sin tachos llenos' : '1 tacho lleno' %></strong></li>
+              <% }) %>
+            </ul>
+          </div>
+        <% } %>
+        <% if (a.porVencer.length > 0) { %>
+          <div>
+            <h3 class="subtitulo-panel">Vencen pronto</h3>
+            <p class="pista">Tachos llenos o abiertos que vencen en los próximos 30 días.</p>
+            <ul class="lista-control">
+              <% a.porVencer.forEach(function (x) { %>
+                <li><%= x.sabor %>: <%= x.tachos %> <%= x.tachos === 1 ? 'tacho' : 'tachos' %>,
+                  <strong class="<%= x.vencido ? 'alerta' : '' %>"><%= x.vencido ? 'vencido el ' : 'vence el ' %><%= x.vence.toLocaleDateString('es-AR') %></strong></li>
+              <% }) %>
+            </ul>
+          </div>
+        <% } %>
+        <% if (a.faltantes.length > 0) { %>
+          <div>
+            <h3 class="subtitulo-panel">Envíos con faltantes</h3>
+            <p class="pista">Envíos de los últimos 30 días que no llegaron completos.</p>
+            <ul class="lista-control">
+              <% a.faltantes.forEach(function (x) {
+                   const partes = [];
+                   if (x.tachos > 0) partes.push(x.tachos + (x.tachos === 1 ? ' tacho' : ' tachos'));
+                   if (x.productos > 0) partes.push(x.productos + (x.productos === 1 ? ' producto' : ' productos')); %>
+                <li><a href="/envios/<%= x.id_traslado %>">Envío N° <%= x.id_traslado %></a> (<%= x.origen %> → <%= x.destino %>): faltó <%= partes.join(' y ') %></li>
+              <% }) %>
+            </ul>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </section>
+</section>

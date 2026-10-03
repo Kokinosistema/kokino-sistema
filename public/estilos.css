@@ -689,3 +689,51 @@ details.panel summary { cursor: pointer; font-weight: 700; }
 .aviso-envios ul { list-style: none; padding: 0; margin: 0; }
 .aviso-envios li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--border-soft); flex-wrap: wrap; }
 .aviso-envios .boton { padding: 6px 18px; }
+
+/* ---------- Métricas del Inicio (dueños) ---------- */
+
+.titulo-metricas { font-size: 20px; margin: 8px 0 4px; }
+.tarjetas-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin: 16px 0 24px; }
+.metrica { margin-bottom: 0; }
+.metrica h3 { margin: 0; font-size: 14px; color: var(--text-secondary); }
+.tarjeta .metrica-valor { font-family: var(--font-head); font-size: 30px; font-weight: 700; color: var(--brand-pressed); margin: 6px 0 2px; }
+.metrica-detalle { display: flex; gap: 24px; margin: 12px 0 8px; }
+.metrica-detalle dt { font-size: 12px; color: var(--text-secondary); }
+.metrica-detalle dd { margin: 2px 0 0; font-weight: 700; }
+.variacion, .tarjeta .variacion { font-size: 13px; font-weight: 700; margin: 0; }
+.metrica-detalle .variacion { font-size: 12px; }
+.variacion.sube, .tarjeta .variacion.sube { color: var(--brand-pressed); }
+.variacion.sube::before { content: '▲ '; font-size: 10px; }
+.variacion.baja, .tarjeta .variacion.baja { color: var(--status-error); }
+.variacion.baja::before { content: '▼ '; font-size: 10px; }
+.variacion.neutra, .tarjeta .variacion.neutra { color: var(--text-secondary); font-weight: 400; }
+.grilla-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+.grilla-metricas > .panel { margin-bottom: 24px; }
+.subtitulo-panel { font-size: 14px; margin: 20px 0 8px; }
+.grilla-metricas > div > .subtitulo-panel:first-child { margin-top: 0; }
+
+/* Barras verticales: los ultimos 14 dias y las horas pico. */
+.barras { display: flex; align-items: stretch; gap: 6px; height: 200px; }
+.barras-chicas { height: 140px; gap: 3px; justify-content: center; }
+.barras-chicas .barra { max-width: 44px; }
+.barra { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.barra-valor { font-size: 10px; color: var(--text-secondary); white-space: nowrap; height: 16px; }
+.barra-columna { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+.barra-columna span { display: block; width: 100%; background: var(--brand-primary); border-radius: 4px 4px 0 0; opacity: 0.55; }
+.barra.hoy .barra-columna span { opacity: 1; }
+.barra:hover .barra-columna span { background: var(--brand-hover); opacity: 1; }
+.barra-etiqueta { font-size: 11px; color: var(--text-secondary); margin-top: 4px; white-space: nowrap; }
+.barra.hoy .barra-etiqueta { font-weight: 700; color: var(--brand-pressed); }
+
+/* Barras horizontales: medios de pago, canales y mas vendidos. */
+.barra-h { display: grid; grid-template-columns: 130px 1fr auto; align-items: center; gap: 10px; margin: 8px 0; font-size: 14px; }
+.barra-h-pista { display: block; height: 10px; background: var(--bg-active); border-radius: var(--radius-pill); overflow: hidden; min-width: 60px; }
+.barra-h-pista span { display: block; height: 100%; background: var(--brand-primary); border-radius: var(--radius-pill); }
+.barra-h-valor { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+.columna-barra { width: 28%; }
+.puesto { color: var(--text-secondary); width: 32px; }
+.total-fila td { font-weight: 700; }
+.lista-control { list-style: none; padding: 0; margin: 8px 0 0; }
+.lista-control li { padding: 8px 0; border-top: 1px solid var(--border-soft); font-size: 14px; }
+.lista-control li:first-child { border-top: 0; }
+.lista-control a { color: var(--brand-pressed); font-weight: 700; }
