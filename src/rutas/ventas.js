@@ -190,8 +190,10 @@ async function mostrar(req, res, {
     // Cuantos de cada producto hay ya en el pedido, para mostrarlo en su tarjeta.
     enPedido: Object.fromEntries(lineas.map((l) => [l.id_producto, l.cantidad])),
     busqueda: limpiarBusqueda(busqueda),
-    canal: canal || 'MOSTRADOR',
-    medio: medio === VARIOS_MEDIOS ? VARIOS_MEDIOS : String(Number(medio) || (medios[0] && medios[0].id_medio_pago)),
+    // Sin nada elegido de entrada: quien cobra tiene que tocar el canal y el
+    // medio de pago en cada venta. Si vuelve con un error, queda lo que eligio.
+    canal: canal || '',
+    medio: medio === VARIOS_MEDIOS ? VARIOS_MEDIOS : (Number(medio) ? String(Number(medio)) : ''),
     montos,
     VARIOS_MEDIOS,
   });
