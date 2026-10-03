@@ -24,6 +24,9 @@
         </div>
         <div class="campo-ancho">
           <label for="que">Qué se produjo</label>
+          <input type="search" id="buscar-produccion" class="buscar-lista" autocomplete="off"
+                 placeholder="Buscar sabor o producto (por ejemplo: dulce nuez)" aria-label="Buscar sabor o producto">
+          <p id="sin-coincidencias" class="error-campo" hidden>Ningún sabor ni producto coincide con la búsqueda.</p>
           <select id="que" name="que" required>
             <option value="">Elegí el sabor o el producto</option>
             <% opciones.forEach(function (g) { %>
@@ -140,6 +143,43 @@
     }
     que.addEventListener('change', mostrar);
     mostrar();
+
+    // Buscador de la lista: deja a la vista solo los sabores y productos que
+    // coinciden, sin importar acentos ni mayusculas, y con cada palabra en
+    // cualquier orden ("dulce nuez" encuentra "Dulce de leche con nuez").
+    // Elige solo el primero que coincide, asi se pasa directo a la cantidad.
+    var buscar = document.getElementById('buscar-produccion');
+    var sinCoincidencias = document.getElementById('sin-coincidencias');
+    if (!buscar) return;
+    function normalizar(texto) {
+      return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    }
+    function filtrar() {
+      var palabras = normalizar(buscar.value).split(/\s+/).filter(Boolean);
+      var primera = null;
+      que.querySelectorAll('optgroup').forEach(function (grupo) {
+        var alguna = false;
+        grupo.querySelectorAll('option').forEach(function (opcion) {
+          var nombre = normalizar(opcion.textContent + ' ' + grupo.label);
+          var coincide = palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
+          opcion.hidden = !coincide;
+          opcion.disabled = !coincide;
+          if (coincide) { alguna = true; if (!primera) primera = opcion; }
+        });
+        grupo.hidden = !alguna;
+      });
+      sinCoincidencias.hidden = palabras.length === 0 || primera !== null;
+      if (palabras.length > 0) {
+        var actual = que.options[que.selectedIndex];
+        if (!actual || actual.hidden || !actual.value) que.value = primera ? primera.value : '';
+      }
+      mostrar();
+    }
+    buscar.addEventListener('input', filtrar);
+    // Enter en el buscador pasa a la cantidad en vez de enviar el formulario.
+    buscar.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); document.getElementById('cantidad').focus(); }
+    });
   })();
 </script>
 
