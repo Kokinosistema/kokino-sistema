@@ -1,6 +1,12 @@
 <%- include('../parciales/encabezado', { titulo: 'Recetas - Kokino' }) %>
 
-<h1>Recetas</h1>
+<div class="titulo-con-accion">
+  <h1>Recetas</h1>
+  <% if (puedeEditar) { %>
+    <%# Solo los duenos: agregar sabores es configuracion del negocio. %>
+    <a class="boton" href="/recetas/sabores/nuevo">+ Agregar sabor</a>
+  <% } %>
+</div>
 
 <p class="ayuda">
   <strong><%= conReceta %></strong> de <%= total %> formulas cargadas.

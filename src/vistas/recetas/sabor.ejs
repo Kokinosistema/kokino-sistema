@@ -1,0 +1,55 @@
+<%- include('../parciales/encabezado', { titulo: 'Nuevo sabor - Kokino' }) %>
+
+<a class="volver" href="/recetas">← Recetas</a>
+<h1>Nuevo sabor</h1>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<form method="post" action="/recetas/sabores" class="formulario" autocomplete="off">
+  <label for="nombre">Nombre <span class="obligatorio">*</span></label>
+  <input id="nombre" name="nombre" required maxlength="100" autofocus value="<%= sabor.nombre %>"
+         placeholder="Por ejemplo: Pistacho">
+
+  <p class="etiqueta-campo">Línea <span class="obligatorio">*</span></p>
+  <div class="grupo-botones">
+    <% LINEAS.forEach(function (l) { %>
+      <label class="opcion-boton">
+        <input type="radio" name="linea" value="<%= l.valor %>" <%= sabor.linea === l.valor ? 'checked' : '' %> required>
+        <span><%= l.texto %></span>
+      </label>
+    <% }) %>
+  </div>
+  <p class="pista">Las dos líneas se hacen en máquinas distintas. Un mismo sabor puede existir en las dos.</p>
+
+  <div class="fila">
+    <div>
+      <label for="id_categoria">Grupo <span class="obligatorio">*</span></label>
+      <select id="id_categoria" name="id_categoria" required>
+        <option value="">Elegí uno</option>
+        <% grupos.forEach(function (g) { %>
+          <option value="<%= g.id_categoria %>" <%= Number(sabor.id_categoria) === g.id_categoria ? 'selected' : '' %>><%= g.nombre %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label for="prioridad_produccion">Claro u oscuro</label>
+      <select id="prioridad_produccion" name="prioridad_produccion">
+        <% PRIORIDADES.forEach(function (p) { %>
+          <option value="<%= p.valor %>" <%= sabor.prioridad_produccion === p.valor ? 'selected' : '' %>><%= p.texto %></option>
+        <% }) %>
+      </select>
+      <p class="pista">Los claros se producen primero, para que no salgan manchados por el sabor anterior.</p>
+    </div>
+  </div>
+
+  <div class="botonera">
+    <button type="submit">Agregar sabor</button>
+    <a class="cancelar" href="/recetas">Cancelar</a>
+  </div>
+</form>
+
+<%- include('../parciales/pie') %>

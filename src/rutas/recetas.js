@@ -400,6 +400,77 @@ function reconstruirParaVolver(cuerpo) {
   }));
 }
 
+// ---------------------------------------------------------------------------
+// Agregar un sabor nuevo
+//
+// Los sabores son los que se producen en tachos y se cargan en recetas. Uno
+// nuevo aparece enseguida en esta lista, para cargarle la formula, y en
+// Fabricacion, para registrar su produccion. Va antes de /:id para que
+// "sabores" no se tome como un numero de receta.
+
+const LINEAS = [
+  { valor: 'ARTESANAL', texto: 'Artesanal' },
+  { valor: 'FAMILIAR', texto: 'Familiar' },
+];
+const PRIORIDADES = [
+  { valor: '', texto: 'Sin clasificar todavía' },
+  { valor: 'CLARO', texto: 'Claro (se produce primero)' },
+  { valor: 'OSCURO', texto: 'Oscuro (se produce después)' },
+];
+
+async function gruposDeSabor() {
+  const { rows } = await consultar("SELECT id_categoria, nombre FROM categorias WHERE tipo = 'SABOR' ORDER BY nombre");
+  return rows;
+}
+
+async function mostrarNuevoSabor(res, sabor, errores = [], estado = 200) {
+  res.status(estado).render('recetas/sabor', { sabor, errores, LINEAS, PRIORIDADES, grupos: await gruposDeSabor() });
+}
+
+router.get('/sabores/nuevo', exigirEdicion, async (req, res, siguiente) => {
+  try {
+    await mostrarNuevoSabor(res, { nombre: '', linea: '', id_categoria: '', prioridad_produccion: '' });
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+router.post('/sabores', exigirEdicion, async (req, res, siguiente) => {
+  const sabor = {
+    nombre: (req.body.nombre || '').trim(),
+    linea: req.body.linea || '',
+    id_categoria: Number(req.body.id_categoria) || '',
+    prioridad_produccion: req.body.prioridad_produccion || '',
+  };
+  try {
+    const errores = [];
+    if (sabor.nombre.length < 2 || sabor.nombre.length > 100) errores.push('Poné el nombre del sabor (de 2 a 100 letras).');
+    if (!LINEAS.some((l) => l.valor === sabor.linea)) errores.push('Elegí la línea: artesanal o familiar.');
+    const grupos = await gruposDeSabor();
+    if (!grupos.some((g) => g.id_categoria === sabor.id_categoria)) errores.push('Elegí el grupo del sabor.');
+    if (!PRIORIDADES.some((p) => p.valor === sabor.prioridad_produccion)) errores.push('Esa clasificación no es una de las posibles.');
+    // El mismo nombre puede existir en las dos lineas (como Americana), no dos veces en la misma.
+    if (sabor.nombre && sabor.linea) {
+      const { rows } = await consultar('SELECT 1 FROM sabores WHERE lower(nombre) = lower($1) AND linea = $2', [sabor.nombre, sabor.linea]);
+      if (rows.length > 0) errores.push('Ya hay un sabor ' + sabor.nombre + ' en la línea ' + sabor.linea.toLowerCase() + '.');
+    }
+    if (errores.length > 0) return mostrarNuevoSabor(res, sabor, errores, 400);
+
+    await consultar(
+      'INSERT INTO sabores (nombre, linea, id_categoria, prioridad_produccion) VALUES ($1, $2, $3, $4)',
+      [sabor.nombre, sabor.linea, sabor.id_categoria, sabor.prioridad_produccion || null]
+    );
+    req.session.aviso = 'Se agregó el sabor ' + sabor.nombre + ' (' + sabor.linea.toLowerCase() + '). '
+      + 'Ya se puede registrar su producción en Fabricación; cuando tengas la fórmula, cargala desde esta lista.';
+    res.redirect('/recetas');
+  } catch (error) {
+    if (error.code === '23505') {
+      return mostrarNuevoSabor(res, sabor, ['Ya hay un sabor ' + sabor.nombre + ' en esa línea.'], 409);
+    }
+    siguiente(error);
+  }
+});
+
 router.get('/:id', async (req, res, siguiente) => {
   try {
     const receta = await traerReceta(req.params.id);
