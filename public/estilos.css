@@ -496,7 +496,18 @@ form.producto { margin: 0; display: flex; }
 .cantidad form { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .venta .cantidad button[type="submit"].boton-secundario { margin: 0; padding: 0; width: 30px; height: 30px; font-size: 16px; line-height: 1; }
 .cantidad span { min-width: 24px; text-align: center; font-weight: 700; }
-.pedido form + form { margin-top: 12px; }
+/* Titulo del pedido con el basurero de vaciar arriba a la derecha. */
+.cabecera-pedido { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.cabecera-pedido h2 { margin: 0; }
+.cabecera-pedido form { margin: 0; }
+.pedido .cabecera-pedido button[type="submit"].vaciar-pedido {
+  display: grid; place-items: center;
+  width: 38px; height: 38px; margin: 0; padding: 0;
+  background: var(--bg-active); color: var(--brand-pressed);
+  border: 1px solid var(--brand-primary); border-radius: 50%;
+  cursor: pointer;
+}
+.pedido .cabecera-pedido button[type="submit"].vaciar-pedido:hover { background: var(--brand-primary); color: var(--text-on-brand); }
 .venta .pedido button.boton { width: 100%; }
 
 /* Pago con varios medios: un renglon por medio, con el monto a la derecha. */
