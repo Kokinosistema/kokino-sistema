@@ -124,6 +124,18 @@ a { color: var(--brand-pressed); }
 .menu a:hover { background: rgba(255, 255, 255, 0.14); }
 .menu a.activo { background: var(--brand-pressed); }
 .menu svg { width: 18px; height: 18px; flex-shrink: 0; }
+/* Cuantos envios hay para recibir, al lado de "Envios". */
+.menu .contador {
+  margin-left: auto;
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--text-on-brand);
+  color: var(--brand-pressed);
+  font-size: 12px;
+  text-align: center;
+}
+.solo-lector { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .pie-lateral { margin-top: auto; font-size: 12px; opacity: 0.9; padding: 0 4px; }
 
@@ -663,3 +675,9 @@ details.panel summary { cursor: pointer; font-weight: 700; }
   main { padding: 0; }
   .ticket { border: 0; padding: 0; max-width: none; }
 }
+
+.aviso-envios { border-left: 4px solid var(--brand-primary); }
+.aviso-envios h2 { margin-top: 0; }
+.aviso-envios ul { list-style: none; padding: 0; margin: 0; }
+.aviso-envios li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--border-soft); flex-wrap: wrap; }
+.aviso-envios .boton { padding: 6px 18px; }

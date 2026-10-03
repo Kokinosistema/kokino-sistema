@@ -10,6 +10,26 @@
   <% } %>
 </p>
 
+<% if (porRecibir.length > 0) { %>
+  <%# El aviso al entrar: lo que viene en camino a esta sucursal. %>
+  <section class="panel aviso-envios" role="status">
+    <h2><%= porRecibir.length === 1 ? 'Tenés un envío para recibir' : 'Tenés ' + porRecibir.length + ' envíos para recibir' %></h2>
+    <p class="ayuda">Cuando llegue la mercadería, controlala contra el ticket y recibila: recién ahí suma al stock de <%= sucursal.nombre %>.</p>
+    <ul>
+      <% porRecibir.forEach(function (e) {
+           const partes = [];
+           if (e.tachos > 0) partes.push(e.tachos + (e.tachos === 1 ? ' tacho' : ' tachos'));
+           if (e.productos > 0) partes.push(e.productos + (e.productos === 1 ? ' producto' : ' productos')); %>
+        <li>
+          <span>Envío N° <%= e.id_traslado %> desde <%= e.origen %>: <%= partes.join(' y ') %>
+            <span class="pista-inline">(salió el <%= e.fecha_envio.toLocaleDateString('es-AR') %> a las <%= e.fecha_envio.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) %>)</span></span>
+          <a class="boton" href="/envios/<%= e.id_traslado %>/recibir">Recibir</a>
+        </li>
+      <% }) %>
+    </ul>
+  </section>
+<% } %>
+
 <section class="tarjetas">
   <% sucursales.forEach(function (s) { %>
     <article class="tarjeta">

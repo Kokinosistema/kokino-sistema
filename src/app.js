@@ -63,6 +63,7 @@ function crearAplicacion() {
   app.use(exigirLogin);
   app.use(sucursalDeTrabajo);
   app.post('/sucursal', cambiarSucursal);
+  app.use(rutasEnvios.exponerPorRecibir);
 
   // Cada router se monta bajo su prefijo, no en la raiz. Importa mas de lo que
   // parece: adentro de estos routers hay un router.use(exigirRol(...)) que se

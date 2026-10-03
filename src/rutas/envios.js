@@ -397,4 +397,27 @@ router.post('/:id/cancelar', async (req, res, siguiente) => {
   }
 });
 
+// Aviso de envios por recibir: los que vienen en camino a la sucursal de
+// trabajo. Va en todas las pantallas (contador del menu) y en Inicio (el
+// cartel al entrar). Para el dueno sigue a la sucursal elegida arriba.
+async function exponerPorRecibir(req, res, siguiente) {
+  try {
+    const { rows } = await consultar(
+      `SELECT tr.id_traslado, tr.fecha_envio, so.nombre AS origen,
+              (SELECT count(*) FROM traslado_tachos tt WHERE tt.id_traslado = tr.id_traslado)::int AS tachos,
+              (SELECT count(*) FROM traslado_productos tp WHERE tp.id_traslado = tr.id_traslado)::int AS productos
+         FROM traslados tr
+         JOIN sucursales so ON so.id_sucursal = tr.id_sucursal_origen
+        WHERE tr.id_sucursal_destino = $1 AND tr.estado = 'EN_CAMINO'
+        ORDER BY tr.fecha_envio`,
+      [req.sucursal.id_sucursal]
+    );
+    res.locals.porRecibir = rows;
+    siguiente();
+  } catch (error) {
+    siguiente(error);
+  }
+}
+
 module.exports = router;
+module.exports.exponerPorRecibir = exponerPorRecibir;
