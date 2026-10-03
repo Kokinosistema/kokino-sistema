@@ -51,8 +51,8 @@
       <p class="ayuda">No hay tachos llenos ni productos propios con stock en <%= sucursal.nombre %> para enviar.</p>
     <% } else { %>
       <p class="ayuda">
-        Poné cuántos tachos de cada sabor van. Salen los que vencen primero. Después vas a ver el
-        ticket para revisarlo e imprimirlo antes de enviar.
+        Buscá cada sabor, poné cuántos tachos van y tocá <strong>Agregar</strong>. Salen los que vencen
+        primero. Después vas a ver el ticket para revisarlo e imprimirlo antes de enviar.
       </p>
       <form method="post" action="/envios/revisar" class="formulario">
         <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
@@ -69,30 +69,67 @@
         </div>
 
         <% if (sabores.length > 0) { %>
-          <label for="buscar-sabor">Helado</label>
-          <input type="search" id="buscar-sabor" class="buscador" placeholder="Buscá el sabor" autocomplete="off">
-          <table class="tabla" id="tabla-sabores">
-            <thead><tr><th>Sabor</th><th class="numero">Llenos</th><th>Vence primero</th><th class="numero">Tachos a enviar</th></tr></thead>
+          <%# Helado: se busca el sabor como en Fabricacion (al escribir se
+              despliega la lista; la flecha la abre entera), se pone cuantos
+              tachos y se agrega a la lista de lo que va. Lo que se envia son
+              los campos sabor_<id> de esa lista. %>
+          <h3 class="subtitulo-form">Helado</h3>
+          <div class="fila fila-agregar">
+            <div class="campo-ancho">
+              <label for="sabor-texto">Sabor</label>
+              <div class="combo" id="combo-sabor">
+                <input type="text" id="sabor-texto" class="combo-texto" autocomplete="off"
+                       role="combobox" aria-expanded="false" aria-controls="sabor-lista" aria-autocomplete="list"
+                       placeholder="Buscá el sabor (por ejemplo: dulce nuez)">
+                <button type="button" class="combo-flecha" aria-label="Mostrar la lista de sabores">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <ul id="sabor-lista" class="combo-lista" role="listbox" hidden>
+                  <% sabores.forEach(function (s, i) { %>
+                    <li class="combo-opcion" role="option" id="sabor-opcion-<%= i %>" aria-selected="false"
+                        data-valor="<%= s.id_sabor %>" data-nombre="<%= s.nombre %>" data-llenos="<%= s.llenos %>"
+                        data-vence="<%= s.vence.toLocaleDateString('es-AR') %>">
+                      <%= s.nombre %> <span class="combo-extra"><%= s.llenos %> <%= s.llenos === 1 ? 'lleno' : 'llenos' %></span>
+                    </li>
+                  <% }) %>
+                  <li class="combo-vacio" role="presentation" hidden>Ningún sabor con tachos llenos coincide con la búsqueda.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="campo-corto">
+              <label for="tachos-agregar">Tachos <span id="llenos-sabor" class="pista-inline"></span></label>
+              <input id="tachos-agregar" class="solo-numeros" inputmode="numeric" maxlength="3" autocomplete="off"
+                     placeholder="Ej.: 2" data-mensaje="la cantidad de tachos es un número entero.">
+            </div>
+            <div class="campo-boton">
+              <button type="button" class="boton-secundario" id="agregar-sabor">Agregar</button>
+            </div>
+          </div>
+          <p class="error-campo" id="error-agregar" role="alert" hidden></p>
+
+          <table class="tabla" id="tabla-van">
+            <thead><tr><th>Lo que va en el envío</th><th class="numero">Llenos</th><th>Vence primero</th><th class="numero">Tachos</th><th></th></tr></thead>
             <tbody>
-              <% sabores.forEach(function (s) { %>
-                <tr data-nombre="<%= s.nombre %>">
+              <% sabores.forEach(function (s) { if (!elegido.sabores[s.id_sabor]) return; %>
+                <tr data-sabor="<%= s.id_sabor %>">
                   <td><label for="sabor_<%= s.id_sabor %>"><%= s.nombre %></label></td>
                   <td class="numero"><%= s.llenos %></td>
                   <td><%= s.vence.toLocaleDateString('es-AR') %></td>
                   <td class="numero">
                     <input id="sabor_<%= s.id_sabor %>" name="sabor_<%= s.id_sabor %>" class="solo-numeros cantidad-corta"
-                           inputmode="numeric" maxlength="3" autocomplete="off" placeholder="0"
-                           data-mensaje="la cantidad de tachos es un número entero."
-                           value="<%= elegido.sabores[s.id_sabor] || '' %>">
+                           inputmode="numeric" maxlength="3" autocomplete="off" required
+                           data-mensaje="la cantidad de tachos es un número entero." value="<%= elegido.sabores[s.id_sabor] %>">
                   </td>
+                  <td class="acciones"><button type="button" class="enlace quitar">Quitar</button></td>
                 </tr>
               <% }) %>
+              <tr class="sin-sabores"><td colspan="5" class="ayuda">Todavía no agregaste helado. Buscá el sabor arriba.</td></tr>
             </tbody>
           </table>
         <% } %>
 
         <% if (productos.length > 0) { %>
-          <label>Productos propios</label>
+          <h3 class="subtitulo-form">Productos propios</h3>
           <table class="tabla">
             <thead><tr><th>Producto</th><th class="numero">Disponibles</th><th class="numero">A enviar</th></tr></thead>
             <tbody>
@@ -176,20 +213,167 @@
 
 <script src="/solo-numeros.js"></script>
 <script>
-  // Buscador de sabores: esconde las filas que no coinciden, sin importar
-  // acentos ni mayusculas. Lo ya escrito en las filas escondidas se envia igual.
+  // Helado del envio. La lista de sabores funciona como la de Fabricacion:
+  // siempre se abre para abajo, la flecha la abre y la cierra, y escribir
+  // la despliega con lo que coincide (sin importar acentos ni mayusculas, y
+  // con cada palabra en cualquier orden). Elegido el sabor se pone cuantos
+  // tachos y "Agregar" (o Enter) lo suma a "Lo que va en el envio". Si el
+  // sabor ya estaba, se cambia su cantidad. El servidor vuelve a controlar
+  // todo al revisar.
   (function () {
-    var buscador = document.getElementById('buscar-sabor');
-    if (!buscador) return;
-    var filas = document.querySelectorAll('#tabla-sabores tbody tr');
+    var combo = document.getElementById('combo-sabor');
+    if (!combo) return;
+    var texto = document.getElementById('sabor-texto');
+    var flecha = combo.querySelector('.combo-flecha');
+    var lista = document.getElementById('sabor-lista');
+    var vacio = lista.querySelector('.combo-vacio');
+    var opciones = Array.prototype.slice.call(lista.querySelectorAll('.combo-opcion'));
+    var cantidad = document.getElementById('tachos-agregar');
+    var pistaLlenos = document.getElementById('llenos-sabor');
+    var agregar = document.getElementById('agregar-sabor');
+    var error = document.getElementById('error-agregar');
+    var cuerpo = document.querySelector('#tabla-van tbody');
+    var sinSabores = cuerpo.querySelector('.sin-sabores');
+    var elegida = null;
+    var activa = -1;
+
     function normalizar(t) { return t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
-    buscador.addEventListener('input', function () {
-      var palabras = normalizar(buscador.value).split(/\s+/).filter(Boolean);
-      filas.forEach(function (f) {
-        var nombre = normalizar(f.dataset.nombre);
-        f.hidden = !palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
+    function visibles() { return opciones.filter(function (o) { return !o.hidden; }); }
+
+    function filtrar(consulta) {
+      var palabras = normalizar(consulta).split(/\s+/).filter(Boolean);
+      opciones.forEach(function (o) {
+        var nombre = normalizar(o.dataset.nombre);
+        o.hidden = !palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
       });
+      vacio.hidden = visibles().length > 0;
+      marcar(visibles().length > 0 ? 0 : -1);
+    }
+
+    function marcar(i) {
+      var v = visibles();
+      opciones.forEach(function (o) { o.classList.remove('activa'); o.setAttribute('aria-selected', 'false'); });
+      activa = i;
+      if (i >= 0 && v[i]) {
+        v[i].classList.add('activa');
+        v[i].setAttribute('aria-selected', 'true');
+        texto.setAttribute('aria-activedescendant', v[i].id);
+        v[i].scrollIntoView({ block: 'nearest' });
+      } else {
+        texto.removeAttribute('aria-activedescendant');
+      }
+    }
+
+    function abrir() { lista.hidden = false; combo.classList.add('abierto'); texto.setAttribute('aria-expanded', 'true'); }
+    function cerrar() { lista.hidden = true; combo.classList.remove('abierto'); texto.setAttribute('aria-expanded', 'false'); }
+
+    function mostrarError(mensaje) { error.textContent = mensaje ? 'Error: ' + mensaje : ''; error.hidden = !mensaje; }
+
+    function elegir(o) {
+      elegida = o;
+      texto.value = o.dataset.nombre;
+      pistaLlenos.textContent = '(hay ' + o.dataset.llenos + ')';
+      cerrar();
+      mostrarError('');
+      // Lo que hubiera en "Tachos" queda seleccionado: lo que se escribe lo reemplaza.
+      cantidad.focus();
+      cantidad.select();
+    }
+
+    function olvidar() { elegida = null; pistaLlenos.textContent = ''; }
+
+    // "Lo que va en el envio": un renglon por sabor, con la cantidad editable.
+    function actualizarVacio() { sinSabores.hidden = cuerpo.querySelectorAll('tr[data-sabor]').length > 0; }
+
+    function renglonNuevo(o, n) {
+      var tr = document.createElement('tr');
+      tr.dataset.sabor = o.dataset.valor;
+      var celdas = [o.dataset.nombre, o.dataset.llenos, o.dataset.vence];
+      var td;
+      td = document.createElement('td');
+      var etiqueta = document.createElement('label');
+      etiqueta.htmlFor = 'sabor_' + o.dataset.valor;
+      etiqueta.textContent = celdas[0];
+      td.appendChild(etiqueta); tr.appendChild(td);
+      td = document.createElement('td'); td.className = 'numero'; td.textContent = celdas[1]; tr.appendChild(td);
+      td = document.createElement('td'); td.textContent = celdas[2]; tr.appendChild(td);
+      td = document.createElement('td'); td.className = 'numero';
+      var campo = document.createElement('input');
+      campo.id = campo.name = 'sabor_' + o.dataset.valor;
+      campo.className = 'solo-numeros cantidad-corta';
+      campo.inputMode = 'numeric'; campo.maxLength = 3; campo.autocomplete = 'off'; campo.required = true;
+      campo.dataset.mensaje = 'la cantidad de tachos es un número entero.';
+      campo.value = n;
+      td.appendChild(campo); tr.appendChild(td);
+      td = document.createElement('td'); td.className = 'acciones';
+      var quitar = document.createElement('button');
+      quitar.type = 'button'; quitar.className = 'enlace quitar'; quitar.textContent = 'Quitar';
+      td.appendChild(quitar); tr.appendChild(td);
+      cuerpo.insertBefore(tr, sinSabores);
+    }
+
+    function agregarSabor() {
+      if (!elegida) { mostrarError('elegí un sabor de la lista.'); texto.focus(); return; }
+      var n = Number(cantidad.value);
+      var llenos = Number(elegida.dataset.llenos);
+      if (!cantidad.value || n < 1) { mostrarError('poné cuántos tachos de ' + elegida.dataset.nombre + ' van.'); cantidad.focus(); return; }
+      if (n > llenos) { mostrarError('de ' + elegida.dataset.nombre + ' hay ' + llenos + (llenos === 1 ? ' tacho lleno.' : ' tachos llenos.')); cantidad.focus(); return; }
+      var existente = document.getElementById('sabor_' + elegida.dataset.valor);
+      if (existente) existente.value = n; else renglonNuevo(elegida, n);
+      actualizarVacio();
+      mostrarError('');
+      texto.value = ''; cantidad.value = ''; olvidar();
+      texto.focus();
+    }
+
+    flecha.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    flecha.addEventListener('click', function () {
+      if (!lista.hidden) { cerrar(); return; }
+      filtrar(elegida && texto.value === elegida.dataset.nombre ? '' : texto.value);
+      abrir();
+      texto.focus();
     });
+
+    texto.addEventListener('focus', function () { texto.select(); });
+    texto.addEventListener('input', function () { olvidar(); filtrar(texto.value); abrir(); });
+    texto.addEventListener('keydown', function (e) {
+      var v = visibles();
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (lista.hidden) { filtrar(elegida ? '' : texto.value); abrir(); } else marcar(Math.min(activa + 1, v.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!lista.hidden) marcar(Math.max(activa - 1, 0));
+      } else if (e.key === 'Enter') {
+        // Enter elige en vez de enviar el formulario.
+        e.preventDefault();
+        if (!lista.hidden && v[activa]) elegir(v[activa]);
+        else if (elegida) cantidad.focus();
+        else { filtrar(texto.value); if (visibles()[0]) elegir(visibles()[0]); }
+      } else if (e.key === 'Escape') {
+        cerrar();
+      }
+    });
+
+    lista.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    lista.addEventListener('click', function (e) {
+      var o = e.target.closest('.combo-opcion');
+      if (o) elegir(o);
+    });
+    document.addEventListener('click', function (e) { if (!combo.contains(e.target)) cerrar(); });
+
+    cantidad.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); agregarSabor(); }
+    });
+    agregar.addEventListener('click', agregarSabor);
+
+    cuerpo.addEventListener('click', function (e) {
+      if (!e.target.classList.contains('quitar')) return;
+      e.target.closest('tr').remove();
+      actualizarVacio();
+    });
+
+    actualizarVacio();
   })();
 </script>
 
