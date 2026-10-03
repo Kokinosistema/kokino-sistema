@@ -1,0 +1,61 @@
+<%# El ticket que viaja con la mercaderia. Lo usan la revision antes de
+    enviar y la pagina de cada envio; al imprimir sale solo esto. %>
+<% const fechaHora = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); %>
+<article class="ticket">
+  <header class="ticket-cabecera">
+    <img src="/imagenes/logo-192.png" alt="" width="56" height="56">
+    <div>
+      <strong>Envío <%= ticket.numero ? 'N° ' + ticket.numero : '(sin enviar todavía)' %></strong><br>
+      <%= ticket.origen %> → <%= ticket.destino %><br>
+      <%= fechaHora(ticket.fecha) %> · Armó: <%= ticket.armo %>
+    </div>
+  </header>
+
+  <% if (ticket.renglones.length > 0) { %>
+    <h3>Helado</h3>
+    <table class="tabla-ticket">
+      <thead><tr><th>Sabor</th><th class="numero">Tachos</th><th>Códigos</th></tr></thead>
+      <tbody>
+        <% ticket.renglones.forEach(function (r) { %>
+          <tr>
+            <td><%= r.sabor %></td>
+            <td class="numero"><%= r.cantidad %></td>
+            <td class="codigos">
+              <% r.tachos.forEach(function (t) { %>
+                <span class="<%= t.recibido === false ? 'tachado' : '' %>"><%= t.codigo_barras %></span>
+              <% }) %>
+            </td>
+          </tr>
+        <% }) %>
+        <tr class="total"><td>Total</td><td class="numero"><%= ticket.renglones.reduce((n, r) => n + r.cantidad, 0) %></td><td></td></tr>
+      </tbody>
+    </table>
+  <% } %>
+
+  <% if (ticket.productos.length > 0) { %>
+    <h3>Productos</h3>
+    <table class="tabla-ticket">
+      <thead><tr><th>Producto</th><th class="numero">Cantidad</th><% if (ticket.recibido) { %><th class="numero">Llegaron</th><% } %></tr></thead>
+      <tbody>
+        <% ticket.productos.forEach(function (p) { %>
+          <tr>
+            <td><%= p.nombre %></td>
+            <td class="numero"><%= Number(p.cantidad) %> <%= p.unidad %></td>
+            <% if (ticket.recibido) { %><td class="numero"><%= Number(p.cantidad_recibida) %> <%= p.unidad %></td><% } %>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+
+  <% if (ticket.observaciones) { %>
+    <p><strong>Observaciones:</strong> <%= ticket.observaciones %></p>
+  <% } %>
+
+  <% if (!ticket.recibido) { %>
+    <div class="firmas">
+      <div>Entregó</div>
+      <div>Recibió (firma y aclaración)</div>
+    </div>
+  <% } %>
+</article>

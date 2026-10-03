@@ -1,0 +1,65 @@
+<%- include('../parciales/encabezado', { titulo: 'Envío N° ' + envio.id_traslado + ' - Kokino' }) %>
+
+<% const fechaHora = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); %>
+
+<h1 class="no-imprimir">Envío N° <%= envio.id_traslado %></h1>
+
+<div class="no-imprimir">
+  <% if (envio.estado === 'EN_CAMINO') { %>
+    <p class="ayuda">
+      En camino a <%= envio.destino %>. Todavía no suma en su stock: se mueve cuando lo reciban.
+    </p>
+  <% } else if (envio.estado === 'RECIBIDO') { %>
+    <p class="ayuda">
+      Lo recibió <%= envio.recibio %> en <%= envio.destino %> el <%= fechaHora(envio.fecha_recepcion) %>
+    </p>
+  <% } else { %>
+    <p class="ayuda">
+      Lo canceló <%= envio.cancelo %> el <%= fechaHora(envio.fecha_cancelacion) %> · Motivo: <%= envio.motivo_cancelacion %>.
+      Sus tachos volvieron a estar disponibles en <%= envio.origen %>.
+    </p>
+  <% } %>
+</div>
+
+<% const faltantes = tachos.filter((t) => t.recibido === false);
+   const productosFaltantes = productos.filter((p) => p.cantidad_recibida !== null && Number(p.cantidad_recibida) < Number(p.cantidad)); %>
+<% if (envio.estado === 'RECIBIDO' && (faltantes.length > 0 || productosFaltantes.length > 0)) { %>
+  <section class="panel no-imprimir">
+    <h2>Lo que no llegó</h2>
+    <ul>
+      <% faltantes.forEach(function (t) { %>
+        <li>Tacho <%= t.codigo_barras %> de <%= t.sabor %>: <%= t.motivo_faltante %></li>
+      <% }) %>
+      <% productosFaltantes.forEach(function (p) { %>
+        <li><%= p.nombre %>: llegaron <%= Number(p.cantidad_recibida) %> de <%= Number(p.cantidad) %>. <%= p.motivo_faltante %></li>
+      <% }) %>
+    </ul>
+  </section>
+<% } %>
+
+<%- include('_ticket', { ticket: {
+  numero: envio.id_traslado, origen: envio.origen, destino: envio.destino, fecha: envio.fecha_envio, armo: envio.armo,
+  renglones, productos, observaciones: envio.observaciones, recibido: envio.estado === 'RECIBIDO',
+} }) %>
+
+<div class="acciones-ticket no-imprimir">
+  <% if (envio.estado === 'EN_CAMINO' && esDestino) { %>
+    <a class="boton" href="/envios/<%= envio.id_traslado %>/recibir">Recibir</a>
+  <% } %>
+  <button type="button" class="boton-secundario" onclick="window.print()">Imprimir ticket</button>
+  <a class="boton-secundario" href="/envios">Volver a envíos</a>
+</div>
+
+<% if (envio.estado === 'EN_CAMINO' && esOrigen) { %>
+  <details class="panel no-imprimir">
+    <summary>Cancelar el envío</summary>
+    <p class="ayuda">Si la mercadería no salió, cancelalo: los tachos vuelven a estar disponibles en <%= envio.origen %>.</p>
+    <form method="post" action="/envios/<%= envio.id_traslado %>/cancelar" class="formulario">
+      <label for="motivo">Motivo</label>
+      <input id="motivo" name="motivo" required maxlength="300" placeholder="Por ejemplo: no pasó la camioneta">
+      <button type="submit">Cancelar el envío</button>
+    </form>
+  </details>
+<% } %>
+
+<%- include('../parciales/pie') %>

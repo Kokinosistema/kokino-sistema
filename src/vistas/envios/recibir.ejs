@@ -1,0 +1,88 @@
+<%- include('../parciales/encabezado', { titulo: 'Recibir envío - Kokino' }) %>
+
+<h1>Recibir el envío N° <%= envio.id_traslado %></h1>
+<p class="ayuda">
+  Controlá la mercadería contra el ticket que viene de <%= envio.origen %>. Destildá los tachos que no
+  llegaron y corregí la cantidad de los productos si llegaron menos; en los dos casos escribí qué pasó.
+  Al confirmar, lo que llegó pasa al stock de <%= sucursal.nombre %>.
+</p>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<form method="post" action="/envios/<%= envio.id_traslado %>/recibir" class="formulario formulario-ancho">
+  <% if (tachos.length > 0) { %>
+    <h2>Helado</h2>
+    <table class="tabla">
+      <thead><tr><th>Llegó</th><th>Sabor</th><th>Código</th><th>Si no llegó, qué pasó</th></tr></thead>
+      <tbody>
+        <% tachos.forEach(function (t) { %>
+          <tr class="renglon-recepcion">
+            <td><input type="checkbox" class="marca-llego" id="llego_<%= t.id_tacho %>" name="llego_<%= t.id_tacho %>" value="1"
+                       <%= t.recibido === false ? '' : 'checked' %> aria-label="Llegó el tacho <%= t.codigo_barras %>"></td>
+            <td><label for="llego_<%= t.id_tacho %>"><%= t.sabor %></label></td>
+            <td><%= t.codigo_barras %></td>
+            <td>
+              <input name="motivo_tacho_<%= t.id_tacho %>" class="motivo" maxlength="300" value="<%= t.motivo_faltante || '' %>"
+                     placeholder="Por ejemplo: no vino en la camioneta" aria-label="Motivo si no llegó el tacho <%= t.codigo_barras %>">
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+
+  <% if (productos.length > 0) { %>
+    <h2>Productos</h2>
+    <table class="tabla">
+      <thead><tr><th>Producto</th><th class="numero">Enviados</th><th class="numero">Llegaron</th><th>Si faltó, qué pasó</th></tr></thead>
+      <tbody>
+        <% productos.forEach(function (p) { %>
+          <tr class="renglon-recepcion" data-enviados="<%= Number(p.cantidad) %>">
+            <td><label for="recibido_<%= p.id_producto %>"><%= p.nombre %></label></td>
+            <td class="numero"><%= Number(p.cantidad) %> <%= p.unidad %></td>
+            <td class="numero">
+              <input id="recibido_<%= p.id_producto %>" name="recibido_<%= p.id_producto %>" class="solo-numeros cantidad-corta cantidad-llego"
+                     inputmode="numeric" maxlength="3" autocomplete="off" required
+                     data-mensaje="la cantidad es un número entero."
+                     value="<%= p.cantidad_recibida === null || p.cantidad_recibida === undefined ? Number(p.cantidad) : p.cantidad_recibida %>">
+            </td>
+            <td>
+              <input name="motivo_producto_<%= p.id_producto %>" class="motivo" maxlength="300" value="<%= p.motivo_faltante || '' %>"
+                     placeholder="Por ejemplo: llegaron rotos" aria-label="Motivo si faltó <%= p.nombre %>">
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+
+  <button type="submit">Confirmar lo que llegó</button>
+  <a class="boton-secundario" href="/envios/<%= envio.id_traslado %>">Volver</a>
+</form>
+
+<script src="/solo-numeros.js"></script>
+<script>
+  // El motivo se pide solo donde hace falta: en los tachos destildados y en
+  // los productos que llegaron menos. En el resto queda deshabilitado.
+  (function () {
+    document.querySelectorAll('.renglon-recepcion').forEach(function (fila) {
+      var motivo = fila.querySelector('.motivo');
+      var marca = fila.querySelector('.marca-llego');
+      var cantidad = fila.querySelector('.cantidad-llego');
+      function actualizar() {
+        var falta = marca ? !marca.checked : (cantidad.value !== '' && Number(cantidad.value) < Number(fila.dataset.enviados));
+        motivo.disabled = !falta;
+        motivo.required = falta;
+        fila.classList.toggle('con-faltante', falta);
+      }
+      (marca || cantidad).addEventListener(marca ? 'change' : 'input', actualizar);
+      actualizar();
+    });
+  })();
+</script>
+
+<%- include('../parciales/pie') %>

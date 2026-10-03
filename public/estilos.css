@@ -618,3 +618,48 @@ label.opcion-boton input:focus-visible + span { outline: 3px solid var(--bg-acti
   .venta { grid-template-columns: 1fr; }
   .pedido { position: static; }
 }
+
+/* ---------- Envíos ---------- */
+
+.tabla a.boton { color: var(--text-on-brand); padding: 6px 18px; }
+/* Nombre de un renglon que sirve de etiqueta de su campo: se ve como texto comun. */
+.tabla td label { display: inline; margin: 0; font: inherit; color: inherit; }
+.tabla input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--brand-primary); }
+.formulario a.boton-secundario { text-decoration: none; display: inline-block; }
+.buscador { max-width: 420px; margin: 4px 0 12px; }
+.tabla input.cantidad-corta { width: 80px; text-align: right; margin: 0; }
+.tabla input.motivo { margin: 0; }
+.tabla input.motivo:disabled { background: transparent; border-color: var(--border-soft); }
+.tabla tr.con-faltante td { background: rgba(226, 76, 59, 0.06); }
+.formulario-ancho { max-width: none; }
+.acciones-ticket { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0; }
+.acciones-ticket form { margin: 0; }
+.acciones-ticket .boton-secundario { margin-top: 0; text-decoration: none; }
+details.panel summary { cursor: pointer; font-weight: 700; }
+
+.ticket {
+  background: #FFFFFF;
+  color: #1E2624;
+  max-width: 560px;
+  padding: 20px 24px;
+  border: 1px dashed var(--brand-primary);
+  border-radius: var(--radius-sm);
+}
+.ticket-cabecera { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; line-height: 1.5; }
+.ticket h3 { margin: 16px 0 6px; font-size: 15px; }
+.tabla-ticket { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tabla-ticket th, .tabla-ticket td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #DDD; vertical-align: top; }
+.tabla-ticket .numero { text-align: right; }
+.tabla-ticket .total td { font-weight: 700; border-bottom: 0; }
+.tabla-ticket .codigos span { display: inline-block; margin-right: 8px; font-family: monospace; font-size: 12px; }
+.tabla-ticket .codigos .tachado { text-decoration: line-through; color: var(--status-error); }
+.firmas { display: flex; gap: 32px; margin-top: 48px; }
+.firmas div { flex: 1; border-top: 1px solid #1E2624; padding-top: 4px; font-size: 13px; text-align: center; }
+
+/* Al imprimir sale solo el ticket: sin menú, cabecera ni botones. */
+@media print {
+  .lateral, .cabecera, .aviso, .no-imprimir { display: none !important; }
+  body, .app { background: #FFFFFF !important; }
+  main { padding: 0; }
+  .ticket { border: 0; padding: 0; max-width: none; }
+}

@@ -1,0 +1,23 @@
+<%- include('../parciales/encabezado', { titulo: 'Revisar envío - Kokino' }) %>
+
+<h1 class="no-imprimir">Revisar el envío</h1>
+<p class="ayuda no-imprimir">
+  Fijate que esté todo bien. Al tocar <strong>Enviar</strong> los tachos dejan de estar disponibles en
+  <%= sucursal.nombre %> y el envío le aparece a <%= destino.nombre %> para recibirlo.
+  Podés imprimir el ticket ahora o después, desde la página del envío.
+</p>
+
+<%- include('_ticket', { ticket: {
+  numero: null, origen: sucursal.nombre, destino: destino.nombre, fecha, armo,
+  renglones, productos, observaciones: elegido.observaciones, recibido: false,
+} }) %>
+
+<div class="acciones-ticket no-imprimir">
+  <form method="post" action="/envios/enviar">
+    <button type="submit">Enviar</button>
+  </form>
+  <button type="button" class="boton-secundario" onclick="window.print()">Imprimir ticket</button>
+  <a class="boton-secundario" href="/envios">Volver a cambiar</a>
+</div>
+
+<%- include('../parciales/pie') %>

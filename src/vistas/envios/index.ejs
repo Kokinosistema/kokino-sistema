@@ -1,0 +1,196 @@
+<%- include('../parciales/encabezado', { titulo: 'Envíos - Kokino' }) %>
+
+<h1>Envíos</h1>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<%
+  const fecha = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  const contenido = (e) => {
+    const partes = [];
+    if (e.tachos > 0) partes.push(e.tachos + (e.tachos === 1 ? ' tacho' : ' tachos'));
+    if (e.productos > 0) partes.push(e.productos + (e.productos === 1 ? ' producto' : ' productos'));
+    return partes.join(' y ');
+  };
+  const paraRecibir = enCamino.filter((e) => e.id_sucursal_destino === sucursal.id_sucursal);
+  const enviados = enCamino.filter((e) => e.id_sucursal_origen === sucursal.id_sucursal);
+%>
+
+<% if (paraRecibir.length > 0) { %>
+  <section class="panel">
+    <h2>Para recibir en <%= sucursal.nombre %></h2>
+    <p class="ayuda">
+      Cuando llegue la mercadería, controlala contra el ticket y tocá <strong>Recibir</strong>.
+      Recién ahí pasa al stock de <%= sucursal.nombre %>.
+    </p>
+    <table class="tabla">
+      <thead><tr><th>N°</th><th>Desde</th><th>Salió</th><th>Qué trae</th><th></th></tr></thead>
+      <tbody>
+        <% paraRecibir.forEach(function (e) { %>
+          <tr>
+            <td><%= e.id_traslado %></td>
+            <td><%= e.origen %></td>
+            <td><%= fecha(e.fecha_envio) %></td>
+            <td><%= contenido(e) %></td>
+            <td class="acciones"><a class="boton" href="/envios/<%= e.id_traslado %>/recibir">Recibir</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+<% } %>
+
+<% if (puedeArmar) { %>
+  <section class="panel">
+    <h2>Armar un envío</h2>
+    <% if (sabores.length === 0 && productos.length === 0) { %>
+      <p class="ayuda">No hay tachos llenos ni productos propios con stock en <%= sucursal.nombre %> para enviar.</p>
+    <% } else { %>
+      <p class="ayuda">
+        Poné cuántos tachos de cada sabor van. Salen los que vencen primero. Después vas a ver el
+        ticket para revisarlo e imprimirlo antes de enviar.
+      </p>
+      <form method="post" action="/envios/revisar" class="formulario">
+        <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
+        <div class="fila">
+          <div>
+            <label for="id_destino">Va a</label>
+            <select id="id_destino" name="id_destino" required>
+              <% if (destinos.length !== 1) { %><option value="">Elegí la sucursal</option><% } %>
+              <% destinos.forEach(function (d) { %>
+                <option value="<%= d.id_sucursal %>" <%= Number(elegido.id_destino) === d.id_sucursal ? 'selected' : '' %>><%= d.nombre %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <% if (sabores.length > 0) { %>
+          <label for="buscar-sabor">Helado</label>
+          <input type="search" id="buscar-sabor" class="buscador" placeholder="Buscá el sabor" autocomplete="off">
+          <table class="tabla" id="tabla-sabores">
+            <thead><tr><th>Sabor</th><th class="numero">Llenos</th><th>Vence primero</th><th class="numero">Tachos a enviar</th></tr></thead>
+            <tbody>
+              <% sabores.forEach(function (s) { %>
+                <tr data-nombre="<%= s.nombre %>">
+                  <td><label for="sabor_<%= s.id_sabor %>"><%= s.nombre %></label></td>
+                  <td class="numero"><%= s.llenos %></td>
+                  <td><%= s.vence.toLocaleDateString('es-AR') %></td>
+                  <td class="numero">
+                    <input id="sabor_<%= s.id_sabor %>" name="sabor_<%= s.id_sabor %>" class="solo-numeros cantidad-corta"
+                           inputmode="numeric" maxlength="3" autocomplete="off" placeholder="0"
+                           data-mensaje="la cantidad de tachos es un número entero."
+                           value="<%= elegido.sabores[s.id_sabor] || '' %>">
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+
+        <% if (productos.length > 0) { %>
+          <label>Productos propios</label>
+          <table class="tabla">
+            <thead><tr><th>Producto</th><th class="numero">Disponibles</th><th class="numero">A enviar</th></tr></thead>
+            <tbody>
+              <% productos.forEach(function (p) { %>
+                <tr>
+                  <td><label for="producto_<%= p.id_producto %>"><%= p.nombre %></label></td>
+                  <td class="numero"><%= Number(p.disponible) %> <%= p.unidad %></td>
+                  <td class="numero">
+                    <input id="producto_<%= p.id_producto %>" name="producto_<%= p.id_producto %>" class="solo-numeros cantidad-corta"
+                           inputmode="numeric" maxlength="3" autocomplete="off" placeholder="0"
+                           data-mensaje="la cantidad es un número entero."
+                           value="<%= elegido.productos[p.id_producto] || '' %>">
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+
+        <label for="observaciones">Observaciones <span class="pista-inline">(opcional)</span></label>
+        <textarea id="observaciones" name="observaciones" rows="2" maxlength="500"
+                  placeholder="Por ejemplo: lo lleva Juan en la camioneta"><%= elegido.observaciones %></textarea>
+
+        <button type="submit">Revisar el ticket</button>
+      </form>
+    <% } %>
+  </section>
+<% } else if (paraRecibir.length === 0) { %>
+  <p class="ayuda">
+    Los envíos se arman en la sucursal donde está la fábrica. Cuando te manden uno a
+    <strong><%= sucursal.nombre %></strong>, aparece acá para recibirlo.
+  </p>
+<% } %>
+
+<% if (enviados.length > 0) { %>
+  <section class="panel">
+    <h2>En camino</h2>
+    <p class="ayuda">Salieron de <%= sucursal.nombre %> y todavía no los recibieron. Mientras tanto se pueden cancelar desde el ticket.</p>
+    <table class="tabla">
+      <thead><tr><th>N°</th><th>Va a</th><th>Salió</th><th>Qué lleva</th><th></th></tr></thead>
+      <tbody>
+        <% enviados.forEach(function (e) { %>
+          <tr>
+            <td><%= e.id_traslado %></td>
+            <td><%= e.destino %></td>
+            <td><%= fecha(e.fecha_envio) %></td>
+            <td><%= contenido(e) %></td>
+            <td class="acciones"><a class="enlace" href="/envios/<%= e.id_traslado %>">Ver ticket</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+<% } %>
+
+<% if (ultimos.length > 0) { %>
+  <section class="panel">
+    <h2>Últimos envíos</h2>
+    <table class="tabla">
+      <thead><tr><th>N°</th><th>Desde</th><th>Hacia</th><th>Salió</th><th>Qué llevaba</th><th>Cómo terminó</th><th></th></tr></thead>
+      <tbody>
+        <% ultimos.forEach(function (e) { %>
+          <tr>
+            <td><%= e.id_traslado %></td>
+            <td><%= e.origen %></td>
+            <td><%= e.destino %></td>
+            <td><%= fecha(e.fecha_envio) %></td>
+            <td><%= contenido(e) %></td>
+            <td>
+              <% if (e.estado === 'CANCELADO') { %>Cancelado
+              <% } else if (e.faltantes > 0) { %><span class="alerta">Recibido con faltantes</span>
+              <% } else { %>Recibido<% } %>
+            </td>
+            <td class="acciones"><a class="enlace" href="/envios/<%= e.id_traslado %>">Ver ticket</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+<% } %>
+
+<script src="/solo-numeros.js"></script>
+<script>
+  // Buscador de sabores: esconde las filas que no coinciden, sin importar
+  // acentos ni mayusculas. Lo ya escrito en las filas escondidas se envia igual.
+  (function () {
+    var buscador = document.getElementById('buscar-sabor');
+    if (!buscador) return;
+    var filas = document.querySelectorAll('#tabla-sabores tbody tr');
+    function normalizar(t) { return t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+    buscador.addEventListener('input', function () {
+      var palabras = normalizar(buscador.value).split(/\s+/).filter(Boolean);
+      filas.forEach(function (f) {
+        var nombre = normalizar(f.dataset.nombre);
+        f.hidden = !palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
+      });
+    });
+  })();
+</script>
+
+<%- include('../parciales/pie') %>
