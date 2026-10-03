@@ -1,6 +1,6 @@
-<%- include('../parciales/encabezado', { titulo: (esNuevo ? 'Nuevo cliente' : 'Editar cliente') + ' - Kokino' }) %>
+<%- include('../parciales/encabezado', { titulo: (esNuevo ? 'Nuevo cliente mayorista' : 'Editar cliente mayorista') + ' - Kokino' }) %>
 
-<h1><%= esNuevo ? 'Nuevo cliente' : 'Editar cliente' %></h1>
+<h1><%= esNuevo ? 'Nuevo cliente mayorista' : 'Editar cliente mayorista' %></h1>
 
 <% if (errores.length > 0) { %>
   <div class="error" role="alert">
@@ -21,19 +21,8 @@
   <div class="fila">
     <div>
       <label for="tipo_cliente">Tipo</label>
-      <% if (puedeCredito) { %>
-        <select id="tipo_cliente" name="tipo_cliente">
-          <% TIPOS.forEach(function (t) { %>
-            <option value="<%= t.valor %>" <%= cliente.tipo_cliente === t.valor ? 'selected' : '' %>>
-              <%= t.texto %>
-            </option>
-          <% }) %>
-        </select>
-      <% } else { %>
-        <input id="tipo_cliente" value="Minorista" disabled>
-        <input type="hidden" name="tipo_cliente" value="MINORISTA">
-        <p class="pista">Los mayoristas los cargan los duenos.</p>
-      <% } %>
+      <%# Solo se cargan mayoristas: el tipo queda fijo. %>
+      <input id="tipo_cliente" value="Mayorista" disabled>
     </div>
     <div>
       <label for="cuit">CUIT</label>

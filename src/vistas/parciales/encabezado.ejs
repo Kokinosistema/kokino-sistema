@@ -41,9 +41,9 @@
       <a class="<%= activo('/ventas') %>" href="/ventas"><%- svg('vender') %> Vender</a>
       <a class="<%= activo('/caja') %>" href="/caja"><%- svg('caja') %> Caja</a>
       <a class="<%= activo('/fabricacion') %>" href="/fabricacion"><%- svg('fabricacion') %> Fabricación</a>
-      <a class="<%= activo('/clientes') %>" href="/clientes"><%- svg('clientes') %> Clientes</a>
       <a class="<%= activo('/recetas') %>" href="/recetas"><%- svg('recetas') %> Recetas</a>
       <% if (usuario.rol === 'administrador') { %>
+        <a class="<%= activo('/clientes') %>" href="/clientes"><%- svg('clientes') %> Clientes mayoristas</a>
         <a class="<%= activo('/productos') %>" href="/productos"><%- svg('productos') %> Productos</a>
         <a class="<%= activo('/insumos') %>" href="/insumos"><%- svg('insumos') %> Insumos</a>
         <a class="<%= activo('/proveedores') %>" href="/proveedores"><%- svg('proveedores') %> Proveedores</a>

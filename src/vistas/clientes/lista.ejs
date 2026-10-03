@@ -1,28 +1,22 @@
-<%- include('../parciales/encabezado', { titulo: 'Clientes - Kokino' }) %>
+<%- include('../parciales/encabezado', { titulo: 'Clientes mayoristas - Kokino' }) %>
 
 <div class="titulo-con-accion">
-  <h1>Clientes</h1>
-  <a class="boton" href="/clientes/nuevo">Agregar cliente</a>
+  <h1>Clientes mayoristas</h1>
+  <a class="boton" href="/clientes/nuevo">Agregar cliente mayorista</a>
 </div>
 
 <p class="ayuda">
-  <% if (puedeCredito) { %>
-    La venta de mostrador es anonima y no genera cliente: aca van los mayoristas
-    y los pedidos que hace falta identificar.
-  <% } else { %>
-    Aca van los clientes de pedidos a domicilio o telefonicos. Los mayoristas
-    los manejan los duenos.
-  <% } %>
+  Los clientes mayoristas, con su cuenta corriente. La venta de mostrador es
+  anónima y no genera cliente. Esta pantalla la ven solo los dueños.
 </p>
 
 <% if (clientes.length === 0) { %>
-  <p class="ayuda">Todavia no hay clientes cargados.</p>
+  <p class="ayuda">Todavía no hay clientes mayoristas cargados.</p>
 <% } else { %>
   <table class="tabla">
     <thead>
       <tr>
         <th>Cliente</th>
-        <th>Tipo</th>
         <th>CUIT</th>
         <th>Telefono</th>
         <% if (puedeCredito) { %>
@@ -39,7 +33,6 @@
             <a href="/clientes/<%= c.id_cliente %>/editar"><%= c.nombre_razon_social %></a>
             <% if (!c.activo) { %><span class="etiqueta">dado de baja</span><% } %>
           </td>
-          <td><%= c.tipo_cliente === 'MAYORISTA' ? 'Mayorista' : 'Minorista' %></td>
           <td><%= c.cuit || '—' %></td>
           <td><%= c.telefono || '—' %></td>
           <% if (puedeCredito) { %>

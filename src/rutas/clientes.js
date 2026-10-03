@@ -2,25 +2,27 @@
 
 const express = require('express');
 const { consultar } = require('../db');
+const { exigirRol } = require('../middleware/sesion');
 const { normalizarCuit } = require('../cuit');
 const { normalizarTelefono } = require('../telefono');
 const { parsearMonto, MONTO_INVALIDO } = require('../dinero');
 
 const router = express.Router();
 
+// Clientes mayoristas: la cuenta corriente es dar credito, y eso es una
+// decision del negocio, no una tarea de mostrador. Desde el 2026-10-03 esta
+// pantalla es solo de los duenos y solo de mayoristas: la venta de mostrador
+// es anonima y no genera cliente, y los empleados no la ven.
+router.use(exigirRol('administrador'));
+
 const TIPOS = [
   { valor: 'MINORISTA', texto: 'Minorista' },
   { valor: 'MAYORISTA', texto: 'Mayorista' },
 ];
 
-// Quien atiende el telefono tiene que poder anotar a quien pide un pedido a
-// domicilio, asi que esta pantalla no es solo de los duenos. Pero todo lo que
-// tenga que ver con un mayorista si lo es: la cuenta corriente es dar credito,
-// y eso es una decision del negocio, no una tarea de mostrador.
-//
-// La regla queda entonces partida en dos, y se aplica en cada ruta:
-//   - empleado: puede ver y cargar clientes minoristas.
-//   - administrador: ademas, mayoristas, limite de cuenta corriente y plazo.
+// Antes los empleados podian cargar clientes minoristas y esta regla se
+// revisaba en cada ruta. Ahora todo el router exige administrador (arriba),
+// asi que estos chequeos quedan como segunda barrera.
 function esAdministrador(req) {
   return req.session.usuario.rol === 'administrador';
 }
@@ -38,7 +40,8 @@ function soloAdministrador(req, res) {
 function leerFormulario(cuerpo, puedeTocarCredito, valoresActuales) {
   const datos = {
     nombre_razon_social: (cuerpo.nombre_razon_social || '').trim(),
-    tipo_cliente: cuerpo.tipo_cliente || 'MINORISTA',
+    // Solo se cargan mayoristas: no se toma el tipo del formulario.
+    tipo_cliente: 'MAYORISTA',
     cuit: (cuerpo.cuit || '').trim(),
     telefono: (cuerpo.telefono || '').trim() || null,
     direccion: (cuerpo.direccion || '').trim() || null,
@@ -100,16 +103,15 @@ router.get('/', async (req, res, siguiente) => {
     const mostrarInactivos = req.query.inactivos === '1';
     const puedeCredito = esAdministrador(req);
 
-    // El empleado no ve los mayoristas: no son asunto suyo y ademas le
-    // mostrarian a quien se le fia y por cuanto.
+    // Solo los mayoristas, que son los clientes que maneja el sistema.
     const { rows } = await consultar(
       `SELECT id_cliente, nombre_razon_social, tipo_cliente, cuit, telefono,
               direccion, limite_cuenta_corriente, plazo_pago_dias, activo
          FROM clientes
         WHERE ($1 OR activo)
-          AND ($2 OR tipo_cliente = 'MINORISTA')
+          AND tipo_cliente = 'MAYORISTA'
         ORDER BY activo DESC, nombre_razon_social`,
-      [mostrarInactivos, puedeCredito]
+      [mostrarInactivos]
     );
 
     res.render('clientes/lista', { clientes: rows, mostrarInactivos, puedeCredito, TIPOS });
@@ -121,7 +123,7 @@ router.get('/', async (req, res, siguiente) => {
 router.get('/nuevo', (req, res) => {
   res.render('clientes/formulario', {
     cliente: {
-      nombre_razon_social: '', tipo_cliente: 'MINORISTA', cuit: '',
+      nombre_razon_social: '', tipo_cliente: 'MAYORISTA', cuit: '',
       telefono: '', direccion: '', limite_cuenta_corriente: '', plazo_pago_dias: '',
     },
     errores: [],
