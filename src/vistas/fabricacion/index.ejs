@@ -23,20 +23,31 @@
           <input id="fecha" name="fecha" type="date" required max="<%= hoy %>" value="<%= elegido.fecha %>">
         </div>
         <div class="campo-ancho">
-          <label for="que">Qué se produjo</label>
-          <input type="search" id="buscar-produccion" class="buscar-lista" autocomplete="off"
-                 placeholder="Buscar sabor o producto (por ejemplo: dulce nuez)" aria-label="Buscar sabor o producto">
-          <p id="sin-coincidencias" class="error-campo" hidden>Ningún sabor ni producto coincide con la búsqueda.</p>
-          <select id="que" name="que" required>
-            <option value="">Elegí el sabor o el producto</option>
-            <% opciones.forEach(function (g) { %>
-              <optgroup label="<%= g.nombre %>">
-                <% g.opciones.forEach(function (o) { %>
-                  <option value="<%= o.valor %>" data-unidad="<%= o.unidad %>" <%= o.valor === elegido.que ? 'selected' : '' %>><%= o.nombre %></option>
+          <label for="que-texto">Qué se produjo</label>
+          <%# Lista propia en vez de un select: el navegador abre los select para
+              arriba cuando queda poco lugar abajo, y esta siempre se abre para
+              abajo. El texto busca; la flecha abre y cierra la lista. %>
+          <% let nombreElegido = '';
+             opciones.forEach(function (g) { g.opciones.forEach(function (o) { if (o.valor === elegido.que) nombreElegido = o.nombre; }); }); %>
+          <div class="combo" id="combo-produccion">
+            <input type="hidden" name="que" id="que" value="<%= nombreElegido ? elegido.que : '' %>">
+            <input type="text" id="que-texto" class="combo-texto" autocomplete="off"
+                   role="combobox" aria-expanded="false" aria-controls="que-lista" aria-autocomplete="list"
+                   placeholder="Buscá el sabor o el producto (por ejemplo: dulce nuez)" value="<%= nombreElegido %>">
+            <button type="button" class="combo-flecha" aria-label="Mostrar la lista de sabores y productos">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <ul id="que-lista" class="combo-lista" role="listbox" hidden>
+              <% opciones.forEach(function (g, i) { %>
+                <li class="combo-grupo" role="presentation"><%= g.nombre %></li>
+                <% g.opciones.forEach(function (o, j) { %>
+                  <li class="combo-opcion" role="option" id="opcion-<%= i %>-<%= j %>" aria-selected="false"
+                      data-valor="<%= o.valor %>" data-unidad="<%= o.unidad %>" data-grupo="<%= g.nombre %>"><%= o.nombre %></li>
                 <% }) %>
-              </optgroup>
-            <% }) %>
-          </select>
+              <% }) %>
+              <li class="combo-vacio" role="presentation" hidden>Ningún sabor ni producto coincide con la búsqueda.</li>
+            </ul>
+          </div>
         </div>
         <div>
           <label for="cantidad">Cantidad <span id="unidad-cantidad" class="pista-inline"></span></label>
@@ -131,55 +142,139 @@
 
 <script src="/solo-numeros.js"></script>
 <script>
-  // Al elegir que se produjo, dice en que se cuenta la cantidad: tachos de
-  // 10 litros para el helado, unidades para los productos.
+  // Lista de "Que se produjo". Siempre se abre para abajo (es una lista
+  // propia, no un select). La flecha la abre y la cierra; tocar el texto no
+  // la abre, pero escribir si, con lo que coincide: sin importar acentos ni
+  // mayusculas, y con cada palabra en cualquier orden ("dulce nuez"
+  // encuentra "Dulce de leche con nuez"). Se elige con un clic o con Enter, y
+  // al elegir se pasa a la cantidad. Lo que se envia es el valor del campo
+  // oculto "que": si se cambia el texto sin elegir, queda vacio y el servidor
+  // pide elegir.
   (function () {
-    var que = document.getElementById('que');
+    var combo = document.getElementById('combo-produccion');
+    if (!combo) return;
+    var oculto = document.getElementById('que');
+    var texto = document.getElementById('que-texto');
+    var flecha = combo.querySelector('.combo-flecha');
+    var lista = document.getElementById('que-lista');
+    var vacio = lista.querySelector('.combo-vacio');
     var unidad = document.getElementById('unidad-cantidad');
-    if (!que || !unidad) return;
-    function mostrar() {
-      var opcion = que.options[que.selectedIndex];
-      unidad.textContent = opcion && opcion.dataset.unidad ? '(' + opcion.dataset.unidad + ')' : '';
-    }
-    que.addEventListener('change', mostrar);
-    mostrar();
+    var cantidad = document.getElementById('cantidad');
+    var opciones = Array.prototype.slice.call(lista.querySelectorAll('.combo-opcion'));
+    var grupos = lista.querySelectorAll('.combo-grupo');
+    var activa = -1;
 
-    // Buscador de la lista: deja a la vista solo los sabores y productos que
-    // coinciden, sin importar acentos ni mayusculas, y con cada palabra en
-    // cualquier orden ("dulce nuez" encuentra "Dulce de leche con nuez").
-    // Elige solo el primero que coincide, asi se pasa directo a la cantidad.
-    var buscar = document.getElementById('buscar-produccion');
-    var sinCoincidencias = document.getElementById('sin-coincidencias');
-    if (!buscar) return;
-    function normalizar(texto) {
-      return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    function normalizar(t) { return t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+    function visibles() { return opciones.filter(function (o) { return !o.hidden; }); }
+    function elegida() { return opciones.find(function (o) { return o.dataset.valor === oculto.value; }); }
+
+    // Al lado de "Cantidad": tachos de 10 L para el helado, unidades para los productos.
+    function mostrarUnidad() {
+      var o = elegida();
+      unidad.textContent = o ? '(' + o.dataset.unidad + ')' : '';
     }
-    function filtrar() {
-      var palabras = normalizar(buscar.value).split(/\s+/).filter(Boolean);
-      var primera = null;
-      que.querySelectorAll('optgroup').forEach(function (grupo) {
-        var alguna = false;
-        grupo.querySelectorAll('option').forEach(function (opcion) {
-          var nombre = normalizar(opcion.textContent + ' ' + grupo.label);
-          var coincide = palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
-          opcion.hidden = !coincide;
-          opcion.disabled = !coincide;
-          if (coincide) { alguna = true; if (!primera) primera = opcion; }
-        });
-        grupo.hidden = !alguna;
+
+    function filtrar(consulta) {
+      var palabras = normalizar(consulta).split(/\s+/).filter(Boolean);
+      opciones.forEach(function (o) {
+        var nombre = normalizar(o.textContent + ' ' + o.dataset.grupo);
+        o.hidden = !palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
       });
-      sinCoincidencias.hidden = palabras.length === 0 || primera !== null;
-      if (palabras.length > 0) {
-        var actual = que.options[que.selectedIndex];
-        if (!actual || actual.hidden || !actual.value) que.value = primera ? primera.value : '';
-      }
-      mostrar();
+      // El titulo de un grupo se ve solo si le queda alguna opcion a la vista.
+      grupos.forEach(function (g) {
+        var sig = g.nextElementSibling, alguna = false;
+        while (sig && !sig.classList.contains('combo-grupo')) {
+          if (sig.classList.contains('combo-opcion') && !sig.hidden) alguna = true;
+          sig = sig.nextElementSibling;
+        }
+        g.hidden = !alguna;
+      });
+      vacio.hidden = visibles().length > 0;
+      marcar(visibles().length > 0 ? 0 : -1);
     }
-    buscar.addEventListener('input', filtrar);
-    // Enter en el buscador pasa a la cantidad en vez de enviar el formulario.
-    buscar.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') { e.preventDefault(); document.getElementById('cantidad').focus(); }
+
+    function marcar(i) {
+      var v = visibles();
+      opciones.forEach(function (o) { o.classList.remove('activa'); o.setAttribute('aria-selected', 'false'); });
+      activa = i;
+      if (i >= 0 && v[i]) {
+        v[i].classList.add('activa');
+        v[i].setAttribute('aria-selected', 'true');
+        texto.setAttribute('aria-activedescendant', v[i].id);
+        v[i].scrollIntoView({ block: 'nearest' });
+      } else {
+        texto.removeAttribute('aria-activedescendant');
+      }
+    }
+
+    function abrir() {
+      lista.hidden = false;
+      combo.classList.add('abierto');
+      texto.setAttribute('aria-expanded', 'true');
+    }
+    function cerrar() {
+      lista.hidden = true;
+      combo.classList.remove('abierto');
+      texto.setAttribute('aria-expanded', 'false');
+    }
+
+    function elegir(o) {
+      oculto.value = o.dataset.valor;
+      texto.value = o.textContent.trim();
+      cerrar();
+      mostrarUnidad();
+      cantidad.focus();
+    }
+
+    // La flecha abre y cierra. Si el texto es el de lo ya elegido, muestra
+    // la lista entera; si no, lo que coincide con lo escrito.
+    flecha.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    flecha.addEventListener('click', function () {
+      if (!lista.hidden) { cerrar(); return; }
+      var o = elegida();
+      filtrar(o && texto.value === o.textContent.trim() ? '' : texto.value);
+      abrir();
+      texto.focus();
     });
+
+    // Al tocar el texto se selecciona entero: si ya habia algo elegido, lo
+    // que se escribe lo reemplaza en vez de mezclarse con el nombre anterior.
+    texto.addEventListener('focus', function () { texto.select(); });
+
+    texto.addEventListener('input', function () {
+      oculto.value = '';
+      mostrarUnidad();
+      filtrar(texto.value);
+      abrir();
+    });
+
+    texto.addEventListener('keydown', function (e) {
+      var v = visibles();
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (lista.hidden) { filtrar(elegida() ? '' : texto.value); abrir(); } else marcar(Math.min(activa + 1, v.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!lista.hidden) marcar(Math.max(activa - 1, 0));
+      } else if (e.key === 'Enter') {
+        // Enter elige la marcada (la primera que coincide) en vez de enviar.
+        e.preventDefault();
+        if (!lista.hidden && v[activa]) elegir(v[activa]);
+        else if (oculto.value) cantidad.focus();
+        else { filtrar(texto.value); if (visibles()[0]) elegir(visibles()[0]); }
+      } else if (e.key === 'Escape') {
+        cerrar();
+      }
+    });
+
+    lista.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    lista.addEventListener('click', function (e) {
+      var o = e.target.closest('.combo-opcion');
+      if (o) elegir(o);
+    });
+    document.addEventListener('click', function (e) { if (!combo.contains(e.target)) cerrar(); });
+
+    mostrarUnidad();
   })();
 </script>
 
