@@ -157,24 +157,35 @@
           <input type="hidden" name="id_sucursal" value="<%= elegida %>">
           <input type="hidden" name="categoria" value="<%= abierta ? abierta.id_categoria : '' %>">
 
-          <label>
-            Por dónde fue la venta
-            <select name="canal" required>
+          <%# Botones uno al lado del otro en vez de listas: se elige de un toque.
+              Por debajo son opciones (radio), asi que el servidor recibe lo mismo. %>
+          <fieldset class="opciones-boton">
+            <legend>Por dónde fue la venta</legend>
+            <div class="grupo-botones">
               <% CANALES.forEach(function (c) { %>
-                <option value="<%= c.valor %>" <%= c.valor === canal ? 'selected' : '' %>><%= c.texto %></option>
+                <label class="opcion-boton">
+                  <input type="radio" name="canal" value="<%= c.valor %>" <%= c.valor === canal ? 'checked' : '' %> required>
+                  <span><%= c.texto %></span>
+                </label>
               <% }) %>
-            </select>
-          </label>
+            </div>
+          </fieldset>
 
-          <label>
-            Con qué pagó
-            <select name="id_medio_pago" id="medio-pago" required>
+          <fieldset class="opciones-boton" id="medio-pago">
+            <legend>Con qué pagó</legend>
+            <div class="grupo-botones">
               <% medios.forEach(function (m) { %>
-                <option value="<%= m.id_medio_pago %>" <%= String(m.id_medio_pago) === medio ? 'selected' : '' %>><%= m.nombre %></option>
+                <label class="opcion-boton">
+                  <input type="radio" name="id_medio_pago" value="<%= m.id_medio_pago %>" <%= String(m.id_medio_pago) === medio ? 'checked' : '' %> required>
+                  <span><%= m.nombre %></span>
+                </label>
               <% }) %>
-              <option value="<%= VARIOS_MEDIOS %>" <%= medio === VARIOS_MEDIOS ? 'selected' : '' %>>Varios medios</option>
-            </select>
-          </label>
+              <label class="opcion-boton">
+                <input type="radio" name="id_medio_pago" value="<%= VARIOS_MEDIOS %>" <%= medio === VARIOS_MEDIOS ? 'checked' : '' %>>
+                <span>Varios medios</span>
+              </label>
+            </div>
+          </fieldset>
 
           <div id="pago-varios" class="pago-varios" data-total="<%= Math.round(total * 100) %>"
                <%= medio === VARIOS_MEDIOS ? '' : 'hidden' %>>
@@ -279,6 +290,7 @@
     var selector = document.getElementById('medio-pago');
     var bloque = document.getElementById('pago-varios');
     if (!selector || !bloque) return;
+    var opciones = selector.querySelectorAll('input[name="id_medio_pago"]');
 
     var total = Number(bloque.dataset.total);
     var aviso = document.getElementById('falta-pagar');
@@ -287,7 +299,8 @@
     var pesos = window.dineroKokino.pesos;
 
     function actualizar() {
-      var varios = selector.value === '<%= VARIOS_MEDIOS %>';
+      var elegida = selector.querySelector('input[name="id_medio_pago"]:checked');
+      var varios = Boolean(elegida) && elegida.value === '<%= VARIOS_MEDIOS %>';
       bloque.hidden = !varios;
       if (!varios) return;
       var pagado = 0;
@@ -299,7 +312,7 @@
       aviso.className = 'falta-pagar' + (diferencia === 0 ? ' completo' : '');
     }
 
-    selector.addEventListener('change', actualizar);
+    opciones.forEach(function (o) { o.addEventListener('change', actualizar); });
     campos.forEach(function (c) { c.addEventListener('input', actualizar); });
     actualizar();
   })();

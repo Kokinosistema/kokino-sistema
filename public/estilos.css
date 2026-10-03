@@ -496,6 +496,28 @@ form.producto { margin: 0; display: flex; }
 .cantidad form { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .venta .cantidad button[type="submit"].boton-secundario { margin: 0; padding: 0; width: 30px; height: 30px; font-size: 16px; line-height: 1; }
 .cantidad span { min-width: 24px; text-align: center; font-weight: 700; }
+/* Opciones como botones (canal de venta, medio de pago): uno al lado del
+   otro, y el elegido queda pintado del verde de la app. Por debajo son radio
+   buttons: el circulito se oculta pero sigue andando con el teclado. */
+fieldset.opciones-boton { border: 0; padding: 0; margin: 14px 0 0; min-width: 0; }
+fieldset.opciones-boton legend {
+  padding: 0; margin-bottom: 6px;
+  font-family: var(--font-head); font-weight: 700; font-size: 12px; color: var(--text-secondary);
+}
+.grupo-botones { display: flex; flex-wrap: wrap; gap: 8px; }
+label.opcion-boton { display: inline-flex; margin: 0; position: relative; font-size: inherit; color: inherit; }
+label.opcion-boton input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+label.opcion-boton span {
+  display: inline-block; padding: 7px 14px;
+  background: var(--bg-panel); color: var(--brand-pressed);
+  border: 1px solid var(--brand-primary); border-radius: var(--radius-pill);
+  font-family: var(--font-head); font-weight: 700; font-size: 13px;
+  cursor: pointer; user-select: none; transition: background 0.12s, color 0.12s;
+}
+label.opcion-boton span:hover { background: var(--bg-active); }
+label.opcion-boton input:checked + span { background: var(--brand-primary); color: var(--text-on-brand); }
+label.opcion-boton input:focus-visible + span { outline: 3px solid var(--bg-active); outline-offset: 1px; }
+
 /* Titulo del pedido con el basurero de vaciar arriba a la derecha. */
 .cabecera-pedido { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .cabecera-pedido h2 { margin: 0; }
