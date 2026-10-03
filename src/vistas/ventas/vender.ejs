@@ -44,22 +44,40 @@
             <a class="categoria" href="/ventas?categoria=<%= grupo.id_categoria %>">
               <span class="icono-categoria"><%- iconoCategoria(grupo.categoria) %></span>
               <span class="nombre-categoria"><%= grupo.categoria %></span>
-              <span class="cuantos"><%= grupo.productos.length %> producto<%= grupo.productos.length === 1 ? '' : 's' %></span>
+              <span class="cuantos">
+                <%= grupo.productos.length === 0 ? 'Sin productos todavía' : grupo.productos.length + ' producto' + (grupo.productos.length === 1 ? '' : 's') %>
+              </span>
             </a>
           <% }) %>
+          <% if (esDueno) { %>
+            <%# Solo los duenos: agregar categorias es configuracion del negocio. %>
+            <a class="categoria categoria-nueva" href="/productos/categorias/nueva?volver=ventas">
+              <span class="icono-categoria">+</span>
+              <span class="nombre-categoria">Agregar categoría</span>
+              <span class="cuantos">Y después sus productos</span>
+            </a>
+          <% } %>
         </div>
       <% } else { %>
         <div class="titulo-categoria">
           <a class="volver" href="/ventas">← Categorías</a>
-          <h2>
-            <span class="icono-categoria chico"><%- iconoCategoria(abierta.categoria) %></span>
-            <%= abierta.categoria %>
-          </h2>
+          <div class="titulo-con-accion">
+            <h2>
+              <span class="icono-categoria chico"><%- iconoCategoria(abierta.categoria) %></span>
+              <%= abierta.categoria %>
+            </h2>
+            <% if (esDueno) { %>
+              <a class="boton-secundario" href="/productos/nuevo?categoria=<%= abierta.id_categoria %>&volver=ventas">+ Agregar producto</a>
+            <% } %>
+          </div>
           <input type="search" id="buscar-producto" class="buscar" value="<%= busqueda %>"
                  placeholder="Buscar en <%= abierta.categoria %> por nombre"
                  aria-label="Buscar producto por nombre" autocomplete="off">
         </div>
         <p id="sin-resultados" class="ayuda" hidden>Ningún producto de esta categoría coincide con la búsqueda.</p>
+        <% if (abierta.productos.length === 0) { %>
+          <p class="ayuda">Esta categoría todavía no tiene productos. Agregá el primero con el botón de arriba.</p>
+        <% } %>
         <div class="productos">
           <% abierta.productos.forEach(function (p) { %>
             <form class="producto" method="post" action="/ventas/pedido" data-nombre="<%= p.nombre %>">
@@ -67,14 +85,15 @@
               <input type="hidden" name="categoria" value="<%= abierta.id_categoria %>">
               <input type="hidden" name="busqueda" value="<%= busqueda %>">
               <input type="hidden" name="id_producto" value="<%= p.id_producto %>">
-              <span class="nombre-producto"><%= p.nombre %></span>
-              <span class="precio-producto"><%= pesos(Number(p.precio)) %></span>
-              <div class="agregar">
-                <input type="number" name="cantidad" value="1" min="1" max="<%= CANTIDAD_MAXIMA %>"
-                       step="1" inputmode="numeric" aria-label="Cantidad de <%= p.nombre %>"
-                       onfocus="this.select()">
-                <button type="submit" name="accion" value="agregar">Agregar</button>
-              </div>
+              <%# La tarjeta entera es el boton: cada toque suma uno al pedido. %>
+              <button class="tarjeta-producto" type="submit" name="accion" value="agregar"
+                      aria-label="Sumar <%= p.nombre %> al pedido">
+                <span class="nombre-producto"><%= p.nombre %></span>
+                <span class="precio-producto"><%= pesos(Number(p.precio)) %></span>
+                <% if (enPedido[p.id_producto]) { %>
+                  <span class="en-pedido"><%= enPedido[p.id_producto] %> en el pedido</span>
+                <% } %>
+              </button>
             </form>
           <% }) %>
         </div>

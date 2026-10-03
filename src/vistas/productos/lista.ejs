@@ -1,6 +1,12 @@
 <%- include('../parciales/encabezado', { titulo: 'Productos - Kokino' }) %>
 
-<h1>Productos</h1>
+<div class="titulo-con-accion">
+  <h1>Productos</h1>
+  <div class="botones-titulo">
+    <a class="boton-secundario" href="/productos/categorias/nueva">Agregar categoría</a>
+    <a class="boton" href="/productos/nuevo">Agregar producto</a>
+  </div>
+</div>
 
 <p class="ayuda">
   Cuánto hay de cada producto en <strong><%= sucursal.nombre %></strong>. Lo que se

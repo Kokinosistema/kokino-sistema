@@ -355,6 +355,10 @@ label.casilla input { width: auto; margin: 0; accent-color: var(--brand-primary)
 .opciones-quien { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 4px; }
 .opciones-quien label.casilla { margin-top: 8px; }
 [data-quien][hidden] { display: none; }
+/* Opciones con explicacion: una debajo de la otra. */
+.opciones-columna { flex-direction: column; gap: 4px; }
+.opciones-columna label.casilla { align-items: flex-start; font-weight: 400; }
+.opciones-columna label.casilla input { margin-top: 3px; }
 .pista.sensible { color: #8A5A10; }
 .obligatorio { color: var(--status-error); }
 .botonera { display: flex; align-items: center; gap: 16px; margin-top: 24px; }
@@ -398,6 +402,8 @@ form > button[type="submit"]:not(.enlace):not(.salir) { margin-top: 20px; }
 
 .titulo-con-accion { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
 .titulo-con-accion h1 { margin: 0; }
+.botones-titulo { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.botones-titulo .boton-secundario { margin-top: 0; text-decoration: none; }
 
 .avance { height: 10px; background: var(--bg-active); border-radius: var(--radius-pill); overflow: hidden; margin: 8px 0 24px; max-width: 480px; }
 .avance-lleno { height: 100%; background: var(--brand-primary); }
@@ -450,21 +456,42 @@ form.producto[hidden] { display: none; }
 .volver { font-family: var(--font-head); font-weight: 700; font-size: 14px; color: var(--brand-pressed); text-decoration: none; }
 .volver:hover { text-decoration: underline; }
 .productos { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
-form.producto {
+form.producto { margin: 0; display: flex; }
+/* La tarjeta del producto es el boton: se toca y suma uno al pedido. Los
+   selectores llevan .venta .productos para ganarle a la regla general de los
+   botones de formulario (pildora verde con margen arriba). */
+.venta .productos button[type="submit"].tarjeta-producto {
+  width: 100%;
+  min-height: 84px;
   margin: 0;
   padding: 14px;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
+  text-align: left;
   background: var(--bg-panel);
+  color: var(--text-primary);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, transform 0.06s;
 }
+.venta .productos button[type="submit"].tarjeta-producto:hover { border-color: var(--brand-primary); background: var(--bg-active); }
+.venta .productos button[type="submit"].tarjeta-producto:active { transform: scale(0.98); }
 .nombre-producto { font-weight: 700; font-size: 14px; flex: 1; }
 .precio-producto { font-family: var(--font-head); font-weight: 700; color: var(--brand-pressed); }
-.agregar { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
-.agregar input { width: 64px; margin: 0; padding: 6px 8px; text-align: center; }
-.agregar button[type="submit"] { flex: 1; padding: 7px 12px; font-size: 14px; }
+.en-pedido {
+  font-size: 12px; font-weight: 700; color: var(--text-on-brand);
+  background: var(--brand-primary); border-radius: var(--radius-pill); padding: 1px 10px;
+}
+/* La tarjeta para agregar una categoria se distingue de las categorias. */
+.categoria-nueva { border: 2px dashed var(--brand-primary); box-shadow: none; background: transparent; }
+.categoria-nueva .icono-categoria { font-size: 34px; font-weight: 700; }
+.titulo-categoria .titulo-con-accion { margin: 6px 0 0; }
+.titulo-categoria .titulo-con-accion .boton-secundario { margin-top: 0; text-decoration: none; }
 .pedido { position: sticky; top: 24px; margin: 0; }
 .cantidad form { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .venta .cantidad button[type="submit"].boton-secundario { margin: 0; padding: 0; width: 30px; height: 30px; font-size: 16px; line-height: 1; }

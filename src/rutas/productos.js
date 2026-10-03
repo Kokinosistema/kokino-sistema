@@ -1,7 +1,8 @@
 'use strict';
 
 const express = require('express');
-const { consultar } = require('../db');
+const { consultar, conTransaccion } = require('../db');
+const { parsearMonto, MONTO_INVALIDO, pesos } = require('../dinero');
 const { exigirRol } = require('../middleware/sesion');
 
 const router = express.Router();
@@ -44,6 +45,160 @@ router.get('/', async (req, res, siguiente) => {
     siguiente(error);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Alta de categorias y productos
+//
+// Los duenos agregan categorias (como Cafeteria o Impulsivos) y productos,
+// con los mismos datos que tienen los que ya estan cargados. Se puede llegar
+// desde Vender o desde esta pantalla; "volver" dice a cual regresar.
+
+// Las tres formas en que sale un producto (productos.tipo_origen).
+const ORIGENES = [
+  { valor: 'PRODUCIDO_DIRECTO', texto: 'Lo producimos nosotros', ayuda: 'Tortas, impulsivos, cafetería: tiene receta propia.' },
+  { valor: 'PRODUCIDO_DESDE_SABOR', texto: 'Se arma con helado', ayuda: 'Térmicos, cucuruchos, familiares: lleva helado de los tachos.' },
+  { valor: 'COMPRADO_TERMINADO', texto: 'Lo compramos hecho', ayuda: 'Se compra terminado y se revende.' },
+];
+
+function volverA(volver, idCategoria) {
+  if (volver === 'ventas') return idCategoria ? '/ventas?categoria=' + idCategoria : '/ventas';
+  return '/productos';
+}
+
+async function categoriasDeProducto() {
+  const { rows } = await consultar(
+    "SELECT id_categoria, nombre FROM categorias WHERE tipo = 'PRODUCTO' ORDER BY nombre"
+  );
+  return rows;
+}
+
+router.get('/categorias/nueva', (req, res) => {
+  res.render('productos/categoria', { nombre: '', errores: [], volver: req.query.volver === 'ventas' ? 'ventas' : '' });
+});
+
+router.post('/categorias', async (req, res, siguiente) => {
+  const nombre = (req.body.nombre || '').trim();
+  const volver = req.body.volver === 'ventas' ? 'ventas' : '';
+  const errores = [];
+  if (nombre.length < 2 || nombre.length > 100) errores.push('Poné el nombre de la categoría (de 2 a 100 letras).');
+  try {
+    if (errores.length === 0) {
+      const { rows: iguales } = await consultar(
+        "SELECT 1 FROM categorias WHERE tipo = 'PRODUCTO' AND lower(nombre) = lower($1)", [nombre]
+      );
+      if (iguales.length > 0) errores.push('Ya hay una categoría de productos que se llama ' + nombre + '.');
+    }
+    if (errores.length > 0) return res.status(400).render('productos/categoria', { nombre, errores, volver });
+
+    const { rows: [categoria] } = await consultar(
+      "INSERT INTO categorias (nombre, tipo) VALUES ($1, 'PRODUCTO') RETURNING id_categoria",
+      [nombre]
+    );
+    // Una categoria sin productos no aparece en Vender: se sigue directo a
+    // cargarle el primero.
+    req.session.aviso = 'Se creó la categoría ' + nombre + '. Ahora agregale su primer producto.';
+    res.redirect('/productos/nuevo?categoria=' + categoria.id_categoria + (volver ? '&volver=' + volver : ''));
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(409).render('productos/categoria', {
+        nombre, errores: ['Ya hay una categoría de productos que se llama ' + nombre + '.'], volver,
+      });
+    }
+    siguiente(error);
+  }
+});
+
+async function mostrarNuevoProducto(res, { producto, errores = [], volver = '', estado = 200 }) {
+  const { rows: unidades } = await consultar(
+    'SELECT id_unidad, nombre, abreviatura FROM unidades_medida ORDER BY magnitud DESC, factor_a_base, nombre'
+  );
+  res.status(estado).render('productos/nuevo', {
+    producto, errores, volver, ORIGENES, unidades, categorias: await categoriasDeProducto(),
+  });
+}
+
+router.get('/nuevo', async (req, res, siguiente) => {
+  try {
+    const { rows: [unidad] } = await consultar("SELECT id_unidad FROM unidades_medida WHERE abreviatura = 'un'");
+    await mostrarNuevoProducto(res, {
+      producto: {
+        nombre: '', id_categoria: Number(req.query.categoria) || '', tipo_origen: '',
+        lleva_stock_propio: 'si', id_unidad_medida: unidad ? unidad.id_unidad : '', contenido: '1', precio: '',
+      },
+      volver: req.query.volver === 'ventas' ? 'ventas' : '',
+    });
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+router.post('/', async (req, res, siguiente) => {
+  const volver = req.body.volver === 'ventas' ? 'ventas' : '';
+  const producto = {
+    nombre: (req.body.nombre || '').trim(),
+    id_categoria: Number(req.body.id_categoria) || '',
+    tipo_origen: req.body.tipo_origen || '',
+    lleva_stock_propio: req.body.lleva_stock_propio === 'no' ? 'no' : 'si',
+    id_unidad_medida: Number(req.body.id_unidad_medida) || '',
+    contenido: (req.body.contenido || '').trim(),
+    precio: (req.body.precio || '').trim(),
+  };
+  try {
+    const errores = [];
+    if (producto.nombre.length < 2 || producto.nombre.length > 150) errores.push('Poné el nombre del producto.');
+    const { rows: categoria } = await consultar(
+      "SELECT 1 FROM categorias WHERE id_categoria = $1 AND tipo = 'PRODUCTO'", [producto.id_categoria || null]
+    );
+    if (categoria.length === 0) errores.push('Elegí la categoría.');
+    if (!ORIGENES.some((o) => o.valor === producto.tipo_origen)) errores.push('Elegí de dónde sale el producto.');
+    const { rows: unidad } = await consultar(
+      'SELECT 1 FROM unidades_medida WHERE id_unidad = $1', [producto.id_unidad_medida || null]
+    );
+    if (unidad.length === 0) errores.push('Elegí en qué se vende.');
+    // El contenido admite coma decimal y tres decimales, como en la base.
+    const contenido = /^\d+(,\d{1,3})?$/.test(producto.contenido) ? Number(producto.contenido.replace(',', '.')) : null;
+    if (!contenido || contenido <= 0) errores.push('Poné cuánto contiene una unidad: un número mayor que cero (por ejemplo, 1 o 0,250).');
+    const precio = parsearMonto(producto.precio, { permitirCero: false });
+    if (precio === null) errores.push('Poné el precio de venta: ' + MONTO_INVALIDO + '.');
+    if (producto.nombre) {
+      const { rows: iguales } = await consultar('SELECT 1 FROM productos WHERE lower(nombre) = lower($1)', [producto.nombre]);
+      if (iguales.length > 0) errores.push('Ya hay un producto que se llama ' + producto.nombre + '.');
+    }
+    if (errores.length > 0) return mostrarNuevoProducto(res, { producto, errores, volver, estado: 400 });
+
+    // El producto y su precio, juntos o nada: un producto sin precio no
+    // aparece en Vender.
+    await conTransaccion(async (ejecutar) => {
+      const { rows: [nuevo] } = await ejecutar(
+        `INSERT INTO productos (nombre, id_categoria, tipo_origen, id_unidad_medida, contenido, lleva_stock_propio)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id_producto`,
+        [producto.nombre, producto.id_categoria, producto.tipo_origen, producto.id_unidad_medida,
+          contenido, producto.lleva_stock_propio === 'si']
+      );
+      await ejecutar(
+        "INSERT INTO precios (id_producto, tipo_precio, precio) VALUES ($1, 'MINORISTA', $2)",
+        [nuevo.id_producto, precio]
+      );
+    });
+
+    req.session.aviso = 'Se agregó ' + producto.nombre + ' a ' + (await nombreDeCategoria(producto.id_categoria))
+      + ', a ' + pesos(precio) + '. Ya se puede vender.';
+    res.redirect(volverA(volver, producto.id_categoria));
+  } catch (error) {
+    if (error.code === '23505') {
+      return mostrarNuevoProducto(res, {
+        producto, errores: ['Ya hay un producto que se llama ' + producto.nombre + '.'], volver, estado: 409,
+      });
+    }
+    siguiente(error);
+  }
+});
+
+async function nombreDeCategoria(id) {
+  const { rows: [c] } = await consultar('SELECT nombre FROM categorias WHERE id_categoria = $1', [id]);
+  return c ? c.nombre : 'la categoría';
+}
 
 async function mostrarProducto(req, res, siguiente, { errores = [], elegido = {}, estado = 200 } = {}) {
   const id = Number(req.params.id);

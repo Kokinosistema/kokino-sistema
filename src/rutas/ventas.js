@@ -115,6 +115,22 @@ async function mostrar(req, res, {
     grupo.productos.push(p);
   }
 
+  // Los duenos ven tambien las categorias que todavia no tienen productos a
+  // la venta, para poder cargarles el primero desde aca. El empleado no: para
+  // el no hay nada que vender ahi.
+  const esDueno = req.session.usuario.rol === 'administrador';
+  if (esDueno) {
+    const { rows: todas } = await consultar(
+      "SELECT id_categoria, nombre FROM categorias WHERE tipo = 'PRODUCTO' ORDER BY nombre"
+    );
+    for (const c of todas) {
+      if (!catalogo.some((g) => g.id_categoria === c.id_categoria)) {
+        catalogo.push({ id_categoria: c.id_categoria, categoria: c.nombre, productos: [] });
+      }
+    }
+    catalogo.sort((a, b) => a.categoria.localeCompare(b.categoria, 'es'));
+  }
+
   // Sin categoria elegida (o con una que no existe) se muestra la grilla de
   // categorias; con una, sus productos.
   const abierta = catalogo.find((g) => g.id_categoria === Number(categoria)) || null;
@@ -170,7 +186,9 @@ async function mostrar(req, res, {
 
   res.status(estado).render('ventas/vender', {
     sucursales, elegida, caja, catalogo, abierta, lineas, total, medios, ultimas,
-    CANALES, errores, CANTIDAD_MAXIMA,
+    CANALES, errores, CANTIDAD_MAXIMA, esDueno,
+    // Cuantos de cada producto hay ya en el pedido, para mostrarlo en su tarjeta.
+    enPedido: Object.fromEntries(lineas.map((l) => [l.id_producto, l.cantidad])),
     busqueda: limpiarBusqueda(busqueda),
     canal: canal || 'MOSTRADOR',
     medio: medio === VARIOS_MEDIOS ? VARIOS_MEDIOS : String(Number(medio) || (medios[0] && medios[0].id_medio_pago)),

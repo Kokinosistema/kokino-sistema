@@ -1,0 +1,28 @@
+<%- include('../parciales/encabezado', { titulo: 'Nueva categoría - Kokino' }) %>
+
+<h1>Nueva categoría de productos</h1>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<form method="post" action="/productos/categorias" class="formulario">
+  <input type="hidden" name="volver" value="<%= volver %>">
+  <label for="nombre">Nombre <span class="obligatorio">*</span></label>
+  <input id="nombre" name="nombre" required maxlength="100" autofocus value="<%= nombre %>"
+         placeholder="Por ejemplo: Batidos">
+  <p class="pista">
+    Es como Cafetería o Impulsivos: agrupa productos en la pantalla de Vender. Después de
+    crearla vas a cargar su primer producto, porque una categoría sin productos no aparece
+    en Vender.
+  </p>
+
+  <div class="botonera">
+    <button type="submit">Crear categoría</button>
+    <a class="cancelar" href="<%= volver === 'ventas' ? '/ventas' : '/productos' %>">Cancelar</a>
+  </div>
+</form>
+
+<%- include('../parciales/pie') %>

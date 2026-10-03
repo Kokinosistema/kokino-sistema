@@ -1,0 +1,81 @@
+<%- include('../parciales/encabezado', { titulo: 'Nuevo producto - Kokino' }) %>
+
+<h1>Nuevo producto</h1>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<form method="post" action="/productos" class="formulario" autocomplete="off">
+  <input type="hidden" name="volver" value="<%= volver %>">
+
+  <div class="fila">
+    <div class="campo-ancho">
+      <label for="nombre">Nombre <span class="obligatorio">*</span></label>
+      <input id="nombre" name="nombre" required maxlength="150" autofocus value="<%= producto.nombre %>"
+             placeholder="Por ejemplo: Batido de frutilla">
+    </div>
+    <div>
+      <label for="id_categoria">Categoría <span class="obligatorio">*</span></label>
+      <select id="id_categoria" name="id_categoria" required>
+        <option value="">Elegí una</option>
+        <% categorias.forEach(function (c) { %>
+          <option value="<%= c.id_categoria %>" <%= Number(producto.id_categoria) === c.id_categoria ? 'selected' : '' %>><%= c.nombre %></option>
+        <% }) %>
+      </select>
+    </div>
+  </div>
+
+  <p class="etiqueta-campo">De dónde sale <span class="obligatorio">*</span></p>
+  <div class="opciones-quien opciones-columna">
+    <% ORIGENES.forEach(function (o) { %>
+      <label class="casilla">
+        <input type="radio" name="tipo_origen" value="<%= o.valor %>" <%= producto.tipo_origen === o.valor ? 'checked' : '' %> required>
+        <span><strong><%= o.texto %></strong> <span class="pista-inline">— <%= o.ayuda %></span></span>
+      </label>
+    <% }) %>
+  </div>
+
+  <p class="etiqueta-campo">¿Se cuenta en stock? <span class="obligatorio">*</span></p>
+  <div class="opciones-quien opciones-columna">
+    <label class="casilla">
+      <input type="radio" name="lleva_stock_propio" value="si" <%= producto.lleva_stock_propio !== 'no' ? 'checked' : '' %>>
+      <span><strong>Sí</strong> <span class="pista-inline">— se guardan unidades y se cuentan (alfajores, tortas, palitos).</span></span>
+    </label>
+    <label class="casilla">
+      <input type="radio" name="lleva_stock_propio" value="no" <%= producto.lleva_stock_propio === 'no' ? 'checked' : '' %>>
+      <span><strong>No</strong> <span class="pista-inline">— se arma recién al venderlo (un térmico, un café).</span></span>
+    </label>
+  </div>
+
+  <div class="fila">
+    <div>
+      <label for="id_unidad_medida">Se vende por <span class="obligatorio">*</span></label>
+      <select id="id_unidad_medida" name="id_unidad_medida" required>
+        <% unidades.forEach(function (u) { %>
+          <option value="<%= u.id_unidad %>" <%= Number(producto.id_unidad_medida) === u.id_unidad ? 'selected' : '' %>><%= u.nombre %> (<%= u.abreviatura %>)</option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label for="contenido">Cuánto contiene <span class="obligatorio">*</span></label>
+      <input id="contenido" name="contenido" inputmode="decimal" required value="<%= producto.contenido %>"
+             placeholder="Por ejemplo: 1">
+      <p class="pista">En esa unidad: una torta es 1 unidad; un térmico de 1/4 son 0,250 kg; un familiar, 3 litros.</p>
+    </div>
+    <div>
+      <label for="precio">Precio de venta <span class="obligatorio">*</span></label>
+      <input id="precio" name="precio" type="text" inputmode="decimal" autocomplete="off" class="dinero" required
+             value="<%= producto.precio %>" placeholder="$0">
+    </div>
+  </div>
+
+  <div class="botonera">
+    <button type="submit">Agregar producto</button>
+    <a class="cancelar" href="<%= volver === 'ventas' ? (producto.id_categoria ? '/ventas?categoria=' + producto.id_categoria : '/ventas') : '/productos' %>">Cancelar</a>
+  </div>
+</form>
+
+<%- include('../parciales/pie') %>
