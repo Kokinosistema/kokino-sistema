@@ -67,7 +67,13 @@
               <%= abierta.categoria %>
             </h2>
             <% if (esDueno) { %>
-              <a class="boton-secundario" href="/productos/nuevo?categoria=<%= abierta.id_categoria %>&volver=ventas">+ Agregar producto</a>
+              <%# Solo los administradores: agregar y editar productos es configuracion. %>
+              <div class="botones-apilados">
+                <a class="boton-secundario" href="/productos/nuevo?categoria=<%= abierta.id_categoria %>&volver=ventas">+ Agregar producto</a>
+                <% if (abierta.productos.length > 0) { %>
+                  <a class="boton-secundario" href="/productos/categorias/<%= abierta.id_categoria %>/editar?volver=ventas">Editar productos</a>
+                <% } %>
+              </div>
             <% } %>
           </div>
           <input type="search" id="buscar-producto" class="buscar" value="<%= busqueda %>"

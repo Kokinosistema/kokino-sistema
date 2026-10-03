@@ -1,0 +1,50 @@
+<%- include('../parciales/encabezado', { titulo: 'Editar ' + categoria.nombre + ' - Kokino' }) %>
+
+<a class="volver" href="<%= volver === 'ventas' ? '/ventas?categoria=' + categoria.id_categoria : '/productos' %>">← Volver</a>
+<h1>Editar productos de <%= categoria.nombre %></h1>
+<p class="ayuda">
+  Cambiá el nombre o el precio de los productos que haga falta y guardá todo junto.
+  Un precio nuevo rige desde hoy; las ventas ya hechas conservan el precio al que se vendieron.
+</p>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<% if (filas.length === 0) { %>
+  <p class="ayuda">Esta categoría todavía no tiene productos.</p>
+<% } else { %>
+  <form method="post" action="/productos/categorias/<%= categoria.id_categoria %>/editar" class="panel" autocomplete="off">
+    <input type="hidden" name="volver" value="<%= volver %>">
+    <table class="tabla tabla-edicion">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th class="numero">Precio de venta</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% filas.forEach(function (f) { %>
+          <tr>
+            <td>
+              <input type="hidden" name="id_producto" value="<%= f.id_producto %>">
+              <input name="nombre" required maxlength="150" value="<%= f.nombre %>" aria-label="Nombre del producto">
+            </td>
+            <td class="numero">
+              <input name="precio" type="text" inputmode="decimal" class="dinero" required
+                     value="<%= f.precio %>" placeholder="$0" aria-label="Precio de <%= f.nombre %>">
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <div class="botonera">
+      <button type="submit">Guardar cambios</button>
+      <a class="cancelar" href="<%= volver === 'ventas' ? '/ventas?categoria=' + categoria.id_categoria : '/productos' %>">Cancelar</a>
+    </div>
+  </form>
+<% } %>
+
+<%- include('../parciales/pie') %>

@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { consultar, conTransaccion } = require('../db');
-const { parsearMonto, MONTO_INVALIDO, pesos } = require('../dinero');
+const { parsearMonto, MONTO_INVALIDO, pesos, aCentavos } = require('../dinero');
 const { exigirRol } = require('../middleware/sesion');
 
 const router = express.Router();
@@ -199,6 +199,157 @@ async function nombreDeCategoria(id) {
   const { rows: [c] } = await consultar('SELECT nombre FROM categorias WHERE id_categoria = $1', [id]);
   return c ? c.nombre : 'la categoría';
 }
+
+// ---------------------------------------------------------------------------
+// Editar los productos de una categoria: nombre y precio
+//
+// Solo los duenos (todo este router lleva exigirRol). Se guardan todos los
+// cambios juntos o ninguno. Un cambio de precio no pisa el anterior: se
+// cierra con la fecha de hoy y se abre el nuevo, como pide la tabla precios,
+// asi las ventas viejas siguen mostrando el precio al que se vendieron.
+
+async function productosDeCategoria(idCategoria) {
+  const { rows } = await consultar(
+    `SELECT p.id_producto, p.nombre,
+            (SELECT pr.precio FROM precios pr
+              WHERE pr.id_producto = p.id_producto AND pr.tipo_precio = 'MINORISTA'
+                AND pr.fecha_vigencia_hasta IS NULL) AS precio
+       FROM productos p
+      WHERE p.id_categoria = $1 AND p.activo
+      ORDER BY p.nombre`,
+    [idCategoria]
+  );
+  return rows;
+}
+
+async function mostrarEdicion(res, { categoria, filas, errores = [], volver = '', estado = 200 }) {
+  res.status(estado).render('productos/editar', { categoria, filas, errores, volver });
+}
+
+router.get('/categorias/:id/editar', async (req, res, siguiente) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return siguiente();
+    const { rows: [categoria] } = await consultar(
+      "SELECT id_categoria, nombre FROM categorias WHERE id_categoria = $1 AND tipo = 'PRODUCTO'", [id]
+    );
+    if (!categoria) return siguiente();
+    const filas = (await productosDeCategoria(id)).map((p) => ({
+      id_producto: p.id_producto,
+      nombre: p.nombre,
+      // El precio se muestra en formato argentino, listo para editar.
+      precio: p.precio === null ? '' : pesos(p.precio),
+    }));
+    await mostrarEdicion(res, { categoria, filas, volver: req.query.volver === 'ventas' ? 'ventas' : '' });
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+router.post('/categorias/:id/editar', async (req, res, siguiente) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return siguiente();
+    const volver = req.body.volver === 'ventas' ? 'ventas' : '';
+    const { rows: [categoria] } = await consultar(
+      "SELECT id_categoria, nombre FROM categorias WHERE id_categoria = $1 AND tipo = 'PRODUCTO'", [id]
+    );
+    if (!categoria) return siguiente();
+
+    const actuales = await productosDeCategoria(id);
+    const porId = new Map(actuales.map((p) => [p.id_producto, p]));
+
+    // Llegan como listas paralelas, un renglon por producto.
+    const aLista = (v) => (Array.isArray(v) ? v : v === undefined ? [] : [v]);
+    const ids = aLista(req.body.id_producto);
+    const nombres = aLista(req.body.nombre);
+    const precios = aLista(req.body.precio);
+    const filas = ids.map((idProducto, i) => ({
+      id_producto: Number(idProducto),
+      nombre: typeof nombres[i] === 'string' ? nombres[i].trim() : '',
+      precio: typeof precios[i] === 'string' ? precios[i].trim() : '',
+    }));
+
+    const errores = [];
+    const cambios = [];
+    const vistos = new Set();
+    for (const f of filas) {
+      const actual = porId.get(f.id_producto);
+      if (!actual) { errores.push('Un producto ya no está en esta categoría: volvé a abrir la pantalla.'); continue; }
+      if (f.nombre.length < 2 || f.nombre.length > 150) {
+        errores.push('El producto "' + actual.nombre + '" necesita un nombre (de 2 a 150 letras).');
+        continue;
+      }
+      const clave = f.nombre.toLowerCase();
+      if (vistos.has(clave)) errores.push('Hay dos productos que se llamarían "' + f.nombre + '".');
+      vistos.add(clave);
+      const precio = parsearMonto(f.precio);
+      if (precio === null) {
+        errores.push('El precio de "' + f.nombre + '": ' + MONTO_INVALIDO + '.');
+        continue;
+      }
+      const cambiaNombre = f.nombre !== actual.nombre;
+      const cambiaPrecio = actual.precio === null || aCentavos(precio) !== aCentavos(actual.precio);
+      if (cambiaNombre || cambiaPrecio) cambios.push({ id: f.id_producto, nombre: f.nombre, precio, cambiaNombre, cambiaPrecio });
+    }
+
+    // Un nombre nuevo no puede ser el de otro producto, de esta categoria o de
+    // otra. Salvo que ese otro producto tambien cambie de nombre en este mismo
+    // guardado: ahi el nombre queda libre.
+    const renombrados = new Set(cambios.filter((x) => x.cambiaNombre).map((x) => x.id));
+    for (const c of cambios.filter((x) => x.cambiaNombre)) {
+      const { rows } = await consultar(
+        'SELECT id_producto FROM productos WHERE lower(nombre) = lower($1) AND id_producto <> $2', [c.nombre, c.id]
+      );
+      if (rows.some((r) => !renombrados.has(r.id_producto))) {
+        errores.push('Ya hay otro producto que se llama "' + c.nombre + '".');
+      }
+    }
+    if (errores.length > 0) return mostrarEdicion(res, { categoria, filas, errores, volver, estado: 400 });
+
+    if (cambios.length === 0) {
+      req.session.aviso = 'No había nada para cambiar.';
+      return res.redirect(volverA(volver, id));
+    }
+
+    try {
+      await conTransaccion(async (ejecutar) => {
+        for (const c of cambios) {
+          if (c.cambiaNombre) {
+            await ejecutar('UPDATE productos SET nombre = $1 WHERE id_producto = $2', [c.nombre, c.id]);
+          }
+          if (c.cambiaPrecio) {
+            await ejecutar(
+              `UPDATE precios SET fecha_vigencia_hasta = current_date
+                WHERE id_producto = $1 AND tipo_precio = 'MINORISTA' AND fecha_vigencia_hasta IS NULL`,
+              [c.id]
+            );
+            await ejecutar(
+              "INSERT INTO precios (id_producto, tipo_precio, precio) VALUES ($1, 'MINORISTA', $2)",
+              [c.id, c.precio]
+            );
+          }
+        }
+      });
+    } catch (error) {
+      // Dos productos que intercambian nombres en el mismo guardado chocan
+      // con el nombre unico a mitad de camino: se explica en vez de fallar.
+      if (error.code === '23505') {
+        return mostrarEdicion(res, {
+          categoria, filas, volver, estado: 409,
+          errores: ['Dos productos no pueden tener el mismo nombre. Si estás intercambiando nombres, hacelo en dos pasos.'],
+        });
+      }
+      throw error;
+    }
+
+    req.session.aviso = (cambios.length === 1 ? 'Se guardó el cambio de 1 producto' : 'Se guardaron los cambios de ' + cambios.length + ' productos')
+      + ' de ' + categoria.nombre + '.';
+    res.redirect(volverA(volver, id));
+  } catch (error) {
+    siguiente(error);
+  }
+});
 
 async function mostrarProducto(req, res, siguiente, { errores = [], elegido = {}, estado = 200 } = {}) {
   const id = Number(req.params.id);

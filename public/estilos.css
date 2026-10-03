@@ -492,6 +492,12 @@ form.producto { margin: 0; display: flex; }
 .categoria-nueva .icono-categoria { font-size: 34px; font-weight: 700; }
 .titulo-categoria .titulo-con-accion { margin: 6px 0 0; }
 .titulo-categoria .titulo-con-accion .boton-secundario { margin-top: 0; text-decoration: none; }
+/* Botones uno debajo del otro, del mismo ancho (Agregar y Editar productos). */
+.botones-apilados { display: flex; flex-direction: column; gap: 8px; }
+.botones-apilados .boton-secundario { text-align: center; }
+/* Tabla con campos para editar: los campos ocupan su celda, sin margen arriba. */
+.tabla-edicion input { margin: 0; }
+.tabla-edicion td.numero input { max-width: 180px; text-align: right; }
 .pedido { position: sticky; top: 24px; margin: 0; }
 .cantidad form { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .venta .cantidad button[type="submit"].boton-secundario { margin: 0; padding: 0; width: 30px; height: 30px; font-size: 16px; line-height: 1; }
