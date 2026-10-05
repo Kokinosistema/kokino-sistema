@@ -1,0 +1,174 @@
+<%- include('../parciales/encabezado', { titulo: 'Llegó mercadería - Kokino' }) %>
+
+<% const fechaHora = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); %>
+
+<h1>Llegó mercadería</h1>
+<p class="ayuda">
+  Cuando llega algo de un proveedor (alfajores, cucuruchos, térmicos, café, materia prima), buscalo,
+  poné cuánto llegó y tocá <strong>Agregar</strong>. Al registrar, suma al stock de
+  <strong><%= sucursal.nombre %></strong>. No hace falta poner precios.
+</p>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<form method="post" action="/mercaderia" class="formulario formulario-ancho panel" id="form-mercaderia" autocomplete="off">
+  <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
+
+  <div class="fila fila-agregar">
+    <div class="campo-ancho">
+      <label for="item-texto">Qué llegó</label>
+      <div class="combo" id="combo-item">
+        <input type="text" id="item-texto" class="combo-texto" autocomplete="off"
+               role="combobox" aria-expanded="false" aria-controls="item-lista" aria-autocomplete="list"
+               placeholder="Buscá el producto o el insumo (por ejemplo: cucurucho)">
+        <button type="button" class="combo-flecha" aria-label="Mostrar la lista">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <ul id="item-lista" class="combo-lista" role="listbox" hidden>
+          <% let grupo = null; opciones.forEach(function (o, i) { %>
+            <% if (o.grupo !== grupo) { grupo = o.grupo; %><li class="combo-grupo" role="presentation"><%= o.grupo %></li><% } %>
+            <li class="combo-opcion" role="option" id="item-opcion-<%= i %>" aria-selected="false"
+                data-valor="<%= o.valor %>" data-nombre="<%= o.nombre %>" data-unidad="<%= o.unidad %>" data-entero="<%= o.entero ? '1' : '' %>">
+              <%= o.nombre %> <span class="combo-extra"><%= o.unidad %></span>
+            </li>
+          <% }) %>
+          <li class="combo-vacio" role="presentation" hidden>Nada coincide con la búsqueda.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="campo-corto">
+      <label for="cantidad-agregar">Cantidad <span id="unidad-item" class="pista-inline"></span></label>
+      <input id="cantidad-agregar" inputmode="decimal" autocomplete="off" placeholder="Ej.: 24">
+    </div>
+    <div class="campo-boton">
+      <button type="button" class="boton-secundario" id="agregar-item">Agregar</button>
+    </div>
+  </div>
+  <p class="error-campo" id="error-agregar" role="alert" hidden></p>
+
+  <table class="tabla" id="tabla-llego">
+    <thead><tr><th>Lo que llegó</th><th class="numero">Cantidad</th><th></th></tr></thead>
+    <tbody>
+      <% elegido.renglones.forEach(function (r) { const o = opciones.find((x) => x.valor === r.valor); if (!o) return; %>
+        <tr class="renglon" data-valor="<%= o.valor %>">
+          <td><%= o.nombre %><input type="hidden" name="renglon_item" value="<%= o.valor %>"></td>
+          <td class="numero"><input name="renglon_cantidad" class="cantidad-corta" inputmode="decimal" required value="<%= r.cantidad %>" aria-label="Cantidad de <%= o.nombre %>"> <%= o.unidad %></td>
+          <td class="acciones"><button type="button" class="enlace quitar">Quitar</button></td>
+        </tr>
+      <% }) %>
+      <tr class="sin-sabores"><td colspan="3" class="ayuda">Todavía no agregaste nada. Buscalo arriba.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="fila">
+    <div>
+      <label for="id_proveedor">Proveedor <span class="pista-inline">(opcional)</span></label>
+      <select id="id_proveedor" name="id_proveedor">
+        <option value="">— Sin elegir —</option>
+        <% proveedores.forEach(function (p) { %>
+          <option value="<%= p.id_proveedor %>" <%= String(p.id_proveedor) === elegido.id_proveedor ? 'selected' : '' %>><%= p.razon_social %></option>
+        <% }) %>
+      </select>
+      <% if (proveedores.length === 0) { %><p class="pista">Todavía no hay proveedores cargados.</p><% } %>
+    </div>
+    <div>
+      <label for="numero_remito">N° de remito <span class="pista-inline">(opcional)</span></label>
+      <input id="numero_remito" name="numero_remito" maxlength="50" value="<%= elegido.numero_remito %>" placeholder="Por ejemplo: 0001-00012345">
+    </div>
+  </div>
+  <label for="observaciones">Observaciones <span class="pista-inline">(opcional)</span></label>
+  <textarea id="observaciones" name="observaciones" rows="2" maxlength="500" placeholder="Por ejemplo: faltó una caja, la traen el lunes"><%= elegido.observaciones %></textarea>
+
+  <div class="botonera"><button type="submit">Registrar lo que llegó</button></div>
+</form>
+
+<section class="panel">
+  <h2>Últimos ingresos en <%= sucursal.nombre %></h2>
+  <% if (ultimos.length === 0) { %>
+    <p class="ayuda">Todavía no se registró mercadería en esta sucursal.</p>
+  <% } else { %>
+    <ul class="lista-control">
+      <% ultimos.forEach(function (i) { %>
+        <li>
+          <strong><%= fechaHora(i.fecha_hora) %></strong> · <%= i.quien %>
+          <%= i.proveedor ? '· ' + i.proveedor : '' %><%= i.numero_remito ? ' · remito ' + i.numero_remito : '' %><br>
+          <span class="pista"><%= i.detalle %><%= i.observaciones ? ' — ' + i.observaciones : '' %></span>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</section>
+
+<script src="/combo-sabores.js"></script>
+<script>
+  // Armado de lo que llego: se busca el producto o insumo (con la misma
+  // lista con buscador que en Envios y Mayoristas), se pone la cantidad y se
+  // agrega. Si ya estaba, se cambia la cantidad. El servidor vuelve a
+  // controlar todo al registrar.
+  (function () {
+    var cantidad = document.getElementById('cantidad-agregar');
+    var unidad = document.getElementById('unidad-item');
+    var error = document.getElementById('error-agregar');
+    var cuerpo = document.querySelector('#tabla-llego tbody');
+    var vacio = cuerpo.querySelector('.sin-sabores');
+    var combo = comboSabores(document.getElementById('combo-item'), {
+      alElegir: function (o) {
+        unidad.textContent = '(' + o.dataset.unidad + ')';
+        cantidad.placeholder = o.dataset.entero ? 'Ej.: 24' : 'Ej.: 2,5';
+        mostrarError('');
+        cantidad.focus(); cantidad.select();
+      },
+      alEscribir: function () { unidad.textContent = ''; },
+    });
+    function mostrarError(m) { error.textContent = m ? 'Error: ' + m : ''; error.hidden = !m; }
+    function actualizar() { vacio.hidden = cuerpo.querySelectorAll('tr.renglon').length > 0; }
+
+    function agregar() {
+      var o = combo.elegida();
+      if (!o) { mostrarError('elegí qué llegó de la lista.'); document.getElementById('item-texto').focus(); return; }
+      var texto = cantidad.value.trim();
+      var valido = o.dataset.entero ? /^\d{1,6}$/.test(texto) : /^\d{1,6}(,\d{1,3})?$/.test(texto);
+      if (!valido || Number(texto.replace(',', '.')) <= 0) {
+        mostrarError(o.dataset.entero ? 'la cantidad de ' + o.dataset.nombre + ' es un número entero (' + o.dataset.unidad + ').' : 'la cantidad de ' + o.dataset.nombre + ' va en ' + o.dataset.unidad + ', con coma para los decimales (por ejemplo: 2,5).');
+        cantidad.focus();
+        return;
+      }
+      var existente = cuerpo.querySelector('tr.renglon[data-valor="' + o.dataset.valor + '"]');
+      if (existente) {
+        existente.querySelector('[name=renglon_cantidad]').value = texto;
+      } else {
+        var tr = document.createElement('tr');
+        tr.className = 'renglon'; tr.dataset.valor = o.dataset.valor;
+        var td1 = document.createElement('td'); td1.textContent = o.dataset.nombre;
+        var oculto = document.createElement('input'); oculto.type = 'hidden'; oculto.name = 'renglon_item'; oculto.value = o.dataset.valor; td1.appendChild(oculto);
+        var td2 = document.createElement('td'); td2.className = 'numero';
+        var campo = document.createElement('input'); campo.name = 'renglon_cantidad'; campo.className = 'cantidad-corta';
+        campo.inputMode = 'decimal'; campo.required = true; campo.value = texto; campo.setAttribute('aria-label', 'Cantidad de ' + o.dataset.nombre);
+        td2.appendChild(campo); td2.appendChild(document.createTextNode(' ' + o.dataset.unidad));
+        var td3 = document.createElement('td'); td3.className = 'acciones';
+        var quitar = document.createElement('button'); quitar.type = 'button'; quitar.className = 'enlace quitar'; quitar.textContent = 'Quitar';
+        td3.appendChild(quitar);
+        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+        cuerpo.insertBefore(tr, vacio);
+      }
+      mostrarError('');
+      combo.limpiar(); cantidad.value = ''; unidad.textContent = '';
+      actualizar();
+      document.getElementById('item-texto').focus();
+    }
+    document.getElementById('agregar-item').addEventListener('click', agregar);
+    cantidad.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); agregar(); } });
+    cuerpo.addEventListener('click', function (e) {
+      if (!e.target.classList.contains('quitar')) return;
+      e.target.closest('tr').remove();
+      actualizar();
+    });
+    actualizar();
+  })();
+</script>
+
+<%- include('../parciales/pie') %>

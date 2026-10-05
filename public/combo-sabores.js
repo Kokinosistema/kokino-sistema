@@ -17,6 +17,7 @@
     var lista = combo.querySelector('.combo-lista');
     var vacio = lista.querySelector('.combo-vacio');
     var opciones = Array.prototype.slice.call(lista.querySelectorAll('.combo-opcion'));
+    var grupos = lista.querySelectorAll('.combo-grupo');
     var elegida = null;
     var activa = -1;
 
@@ -27,6 +28,16 @@
       opciones.forEach(function (o) {
         var nombre = normalizar(o.dataset.nombre);
         o.hidden = !palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
+      });
+      // El titulo de un grupo (si la lista tiene) se ve solo si le queda
+      // alguna opcion a la vista.
+      grupos.forEach(function (g) {
+        var sig = g.nextElementSibling, alguna = false;
+        while (sig && !sig.classList.contains('combo-grupo')) {
+          if (sig.classList.contains('combo-opcion') && !sig.hidden) alguna = true;
+          sig = sig.nextElementSibling;
+        }
+        g.hidden = !alguna;
       });
       vacio.hidden = visibles().length > 0;
       marcar(visibles().length > 0 ? 0 : -1);

@@ -21,6 +21,7 @@ const rutasFabricacion = require('./rutas/fabricacion');
 const rutasEnvios = require('./rutas/envios');
 const rutasMayoristas = require('./rutas/mayoristas');
 const rutasCostos = require('./rutas/costos');
+const rutasMercaderia = require('./rutas/mercaderia');
 const rutasSucursales = require('./rutas/sucursales');
 
 function crearAplicacion() {
@@ -88,6 +89,7 @@ function crearAplicacion() {
   app.use('/fabricacion', rutasFabricacion);
   app.use('/envios', rutasEnvios);
   app.use('/costos', rutasCostos);
+  app.use('/mercaderia', rutasMercaderia);
   app.use('/sucursales', rutasSucursales);
 
   app.use((req, res) => {
