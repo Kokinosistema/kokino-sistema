@@ -19,6 +19,7 @@ const rutasInsumos = require('./rutas/insumos');
 const rutasProductos = require('./rutas/productos');
 const rutasFabricacion = require('./rutas/fabricacion');
 const rutasEnvios = require('./rutas/envios');
+const rutasMayoristas = require('./rutas/mayoristas');
 
 function crearAplicacion() {
   const app = express();
@@ -73,6 +74,9 @@ function crearAplicacion() {
   app.use(rutasInicio);
   app.use('/proveedores', rutasProveedores);
   app.use('/usuarios', rutasUsuarios);
+  // Antes que clientes: sus direcciones (/clientes/precios...) no tienen que
+  // caer en el /:id del router de clientes.
+  app.use('/clientes', rutasMayoristas);
   app.use('/clientes', rutasClientes);
   app.use('/recetas', rutasRecetas);
   app.use('/caja', rutasCaja);

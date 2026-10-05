@@ -763,3 +763,7 @@ details.panel summary { cursor: pointer; font-weight: 700; }
 .lista-tachos form { margin: 0; }
 .lista-tachos .boton-secundario { margin-top: 0; min-width: 96px; }
 .lista-tachos .sin-coincidencias { color: var(--status-error); font-weight: 700; font-size: 13px; }
+
+/* ---------- Mayoristas ---------- */
+
+.tabla-edicion td .pista { display: block; }

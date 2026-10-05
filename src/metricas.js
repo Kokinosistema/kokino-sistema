@@ -5,7 +5,9 @@ const { consultar } = require('./db');
 // Metricas del Inicio de los duenos (pedidas por la usuaria el 2026-10-03).
 // Todo es de la sucursal de trabajo (la elegida arriba), salvo la
 // comparacion entre sucursales. Las ventas anuladas no cuentan en ningun
-// numero de ventas: aparecen aparte, en el control de caja.
+// numero de ventas: aparecen aparte, en el control de caja. Son las ventas
+// de mostrador: las mayoristas (tachos enteros) tienen sus propias
+// estadisticas en la solapa de mayoristas.
 //
 // El total de una venta es la suma de sus renglones (cantidad por precio
 // cobrado). No hay ganancia ni margen: casi ningun producto tiene costo
@@ -21,6 +23,7 @@ const ventas = (desde) => `
          (SELECT sum(d.cantidad * d.precio_unitario_aplicado) FROM venta_detalle d WHERE d.id_venta = v.id_venta) AS total
     FROM ventas v
    WHERE v.fecha_anulacion IS NULL
+     AND v.tipo_venta = 'MINORISTA'
      AND ($1::int IS NULL OR v.id_sucursal = $1)
      AND v.fecha_hora >= ${desde}`;
 
@@ -111,7 +114,8 @@ async function ultimaSemana(idSucursal) {
     `SELECT m.nombre, coalesce(sum(p.monto), 0) AS total
        FROM medios_pago m
        LEFT JOIN (pagos_venta p JOIN ventas v ON v.id_venta = p.id_venta
-                   AND v.fecha_anulacion IS NULL AND v.id_sucursal = $1 AND v.fecha_hora >= ${ULTIMOS_7})
+                   AND v.fecha_anulacion IS NULL AND v.tipo_venta = 'MINORISTA'
+                   AND v.id_sucursal = $1 AND v.fecha_hora >= ${ULTIMOS_7})
               ON p.id_medio_pago = m.id_medio_pago
       WHERE m.activo
       GROUP BY m.id_medio_pago, m.nombre
@@ -134,7 +138,8 @@ async function ultimaSemana(idSucursal) {
        JOIN ventas v ON v.id_venta = d.id_venta
        JOIN productos p ON p.id_producto = d.id_producto
        JOIN unidades_medida u ON u.id_unidad = p.id_unidad_medida
-      WHERE v.fecha_anulacion IS NULL AND v.id_sucursal = $1 AND v.fecha_hora >= ${ULTIMOS_7}
+      WHERE v.fecha_anulacion IS NULL AND v.tipo_venta = 'MINORISTA'
+        AND v.id_sucursal = $1 AND v.fecha_hora >= ${ULTIMOS_7}
       GROUP BY p.id_producto, p.nombre, u.abreviatura
       ORDER BY total DESC, p.nombre
       LIMIT 10`,
@@ -188,7 +193,8 @@ async function controlDeCaja(idSucursal) {
             ${NOMBRE('v.id_usuario')} AS vendio, ${NOMBRE('v.id_usuario_anulacion')} AS anulo,
             (SELECT sum(d.cantidad * d.precio_unitario_aplicado) FROM venta_detalle d WHERE d.id_venta = v.id_venta) AS total
        FROM ventas v
-      WHERE v.fecha_anulacion IS NOT NULL AND v.id_sucursal = $1 AND v.fecha_anulacion >= ${ULTIMOS_7}
+      WHERE v.fecha_anulacion IS NOT NULL AND v.tipo_venta = 'MINORISTA'
+        AND v.id_sucursal = $1 AND v.fecha_anulacion >= ${ULTIMOS_7}
       ORDER BY v.fecha_anulacion DESC`,
     [idSucursal]
   );
