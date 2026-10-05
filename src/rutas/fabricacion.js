@@ -28,8 +28,9 @@ function hoy() {
 
 // Lo que se puede producir: los sabores, en tachos de 10 litros, y los
 // productos que se fabrican con stock propio (impulsivos y la reposteria
-// propia), en su unidad. Van agrupados para que la lista de 70 opciones se
-// pueda recorrer.
+// propia), en su unidad, y los potes Familiar y Diet, en potes (su stock se
+// cuenta por pote, igual que al venderlos). Van agrupados para que la lista
+// de 80 opciones se pueda recorrer.
 async function opcionesDeProduccion() {
   const { rows: sabores } = await consultar(
     `SELECT 'sabor:' || s.id_sabor AS valor, s.nombre || ' (' || lower(s.linea) || ')' AS nombre,
@@ -38,11 +39,12 @@ async function opcionesDeProduccion() {
       ORDER BY c.nombre, s.nombre, s.linea`
   );
   const { rows: productos } = await consultar(
-    `SELECT 'producto:' || p.id_producto AS valor, p.nombre, c.nombre AS grupo, u.nombre AS unidad
+    `SELECT 'producto:' || p.id_producto AS valor, p.nombre, c.nombre AS grupo,
+            CASE WHEN p.tipo_origen = 'PRODUCIDO_DESDE_SABOR' THEN 'potes' ELSE u.nombre END AS unidad
        FROM productos p
        JOIN categorias c ON c.id_categoria = p.id_categoria
        JOIN unidades_medida u ON u.id_unidad = p.id_unidad_medida
-      WHERE p.tipo_origen = 'PRODUCIDO_DIRECTO' AND p.lleva_stock_propio AND p.activo
+      WHERE p.tipo_origen IN ('PRODUCIDO_DIRECTO', 'PRODUCIDO_DESDE_SABOR') AND p.lleva_stock_propio AND p.activo
       ORDER BY c.nombre, p.nombre`
   );
   const grupos = [];
@@ -81,7 +83,9 @@ async function mostrar(req, res, { errores = [], elegido = {}, estado = 200 } = 
     ({ rows: historial } = await consultar(
       `SELECT p.fecha_produccion, p.cantidad_real, p.id_receta IS NOT NULL AS con_receta,
               coalesce(s.nombre || ' (' || lower(s.linea) || ')', pr.nombre) AS que,
-              p.id_sabor IS NOT NULL AS es_helado, u.abreviatura AS unidad,
+              p.id_sabor IS NOT NULL AS es_helado,
+              CASE WHEN pr.tipo_origen = 'PRODUCIDO_DESDE_SABOR' THEN 'potes' ELSE u.abreviatura END AS unidad,
+              coalesce(pr.tipo_origen = 'PRODUCIDO_DESDE_SABOR', false) AS es_pote,
               e.nombre AS quien
          FROM produccion p
          LEFT JOIN sabores s ON s.id_sabor = p.id_sabor
@@ -155,7 +159,9 @@ router.post('/produccion', async (req, res, siguiente) => {
         const { rows: [cosa] } = await ejecutar(
           esHelado
             ? "SELECT nombre || ' (' || lower(linea) || ')' AS nombre FROM sabores WHERE id_sabor = $1"
-            : "SELECT p.nombre, lower(u.nombre) AS unidad FROM productos p JOIN unidades_medida u ON u.id_unidad = p.id_unidad_medida WHERE p.id_producto = $1",
+            : `SELECT p.nombre, CASE WHEN p.tipo_origen = 'PRODUCIDO_DESDE_SABOR' THEN 'pote' ELSE lower(u.nombre) END AS unidad,
+                      p.tipo_origen = 'PRODUCIDO_DESDE_SABOR' AS es_pote
+                 FROM productos p JOIN unidades_medida u ON u.id_unidad = p.id_unidad_medida WHERE p.id_producto = $1`,
           [id]
         );
         if (!cosa) return { error: 'Elegí qué se produjo.' };
@@ -214,7 +220,7 @@ router.post('/produccion', async (req, res, siguiente) => {
       ? cantidad + (cantidad === 1 ? ' tacho' : ' tachos') + ' de ' + resultado.cosa.nombre
       : cantidad + ' ' + (cantidad === 1 ? resultado.cosa.unidad : resultado.cosa.unidad + (resultado.cosa.unidad.endsWith('d') ? 'es' : 's')) + ' de ' + resultado.cosa.nombre;
     req.session.aviso = (cantidad === 1 ? 'Se registró ' : 'Se registraron ') + cuanto + '.'
-      + (resultado.conReceta ? '' : ' Todavía no tiene receta, así que no se descontaron insumos.');
+      + (resultado.conReceta || resultado.cosa.es_pote ? '' : ' Todavía no tiene receta, así que no se descontaron insumos.');
     res.redirect('/fabricacion');
   } catch (error) {
     siguiente(error);

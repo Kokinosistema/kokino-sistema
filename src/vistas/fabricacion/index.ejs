@@ -130,7 +130,7 @@
               <td><%= h.fecha_produccion.toLocaleDateString('es-AR') %></td>
               <td><%= h.que %></td>
               <td class="numero"><%= n %> <%= h.es_helado ? (n === 1 ? 'tacho' : 'tachos') : h.unidad %></td>
-              <td><%= h.con_receta ? 'Sí' : 'Sin receta: no descontó insumos' %></td>
+              <td><%= h.es_pote ? 'No lleva' : (h.con_receta ? 'Sí' : 'Sin receta: no descontó insumos') %></td>
               <td><%= h.quien %></td>
             </tr>
           <% }) %>
