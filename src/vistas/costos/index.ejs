@@ -1,0 +1,137 @@
+<%- include('../parciales/encabezado', { titulo: 'Costos - Kokino' }) %>
+
+<%
+  const valor = (tipo, f) => {
+    const clave = tipo + '_' + f.id;
+    if (valores[clave] !== undefined) return valores[clave];
+    return f.costo === null ? '' : pesos(f.costo);
+  };
+  const margen = (f) => (f.costo === null || !f.precio ? null : Math.round(((f.precio - f.costo) / f.precio) * 100));
+  const sinCostoProductos = productos.filter((f) => f.costo === null).length;
+  const sinCostoInsumos = insumos.filter((f) => f.costo === null).length;
+%>
+
+<h1>Costos</h1>
+<p class="ayuda">
+  Lo que le cuesta a Kokino cada producto que revende y cada insumo. Cambiá los que haga falta y
+  guardá: un costo nuevo rige desde hoy y el anterior queda en el historial. El costo de lo que se
+  fabrica (helado, palitos, tortas propias) no se carga acá: sale de su receta y del costo de sus insumos.
+</p>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<form method="post" action="/costos" autocomplete="off" id="form-costos">
+  <section class="panel">
+    <div class="titulo-con-accion">
+      <h2>Productos que se revenden</h2>
+      <span class="pista"><%= sinCostoProductos === 0 ? 'Todos tienen costo' : sinCostoProductos + (sinCostoProductos === 1 ? ' sin costo' : ' sin costo cargado') %></span>
+    </div>
+    <input type="search" class="buscador-tabla" data-tabla="tabla-productos" placeholder="Buscá el producto" aria-label="Buscar producto">
+    <table class="tabla tabla-edicion" id="tabla-productos">
+      <thead><tr><th>Producto</th><th>Categoría</th><th class="numero">Precio de venta</th><th class="numero">Costo</th><th class="numero">Margen</th></tr></thead>
+      <tbody>
+        <% productos.forEach(function (f) { const m = margen(f); %>
+          <tr data-nombre="<%= f.nombre %> <%= f.categoria %>" data-precio="<%= f.precio === null ? '' : f.precio %>">
+            <td><label for="producto_<%= f.id %>"><%= f.nombre %></label></td>
+            <td><%= f.categoria %></td>
+            <td class="numero"><%= f.precio === null ? '—' : pesos(f.precio) %></td>
+            <td class="numero">
+              <input id="producto_<%= f.id %>" name="producto_<%= f.id %>" class="dinero costo" inputmode="decimal" value="<%= valor('producto', f) %>" placeholder="Sin cargar">
+              <span class="pista"><%= f.costo === null ? 'por ' + f.unidad : 'desde el ' + f.desde.toLocaleDateString('es-AR') %></span>
+            </td>
+            <td class="numero margen <%= m !== null && m < 0 ? 'alerta' : '' %>"><%= m === null ? '—' : m + ' %' %></td>
+          </tr>
+        <% }) %>
+        <tr class="sin-coincidencias" hidden><td colspan="5" class="ayuda">Ningún producto coincide con la búsqueda.</td></tr>
+      </tbody>
+    </table>
+    <p class="pista">Margen: qué parte del precio de venta queda después de pagar el costo.</p>
+    <div class="botonera"><button type="submit">Guardar costos</button></div>
+  </section>
+
+  <section class="panel">
+    <div class="titulo-con-accion">
+      <h2>Insumos</h2>
+      <span class="pista"><%= sinCostoInsumos === 0 ? 'Todos tienen costo' : sinCostoInsumos + (sinCostoInsumos === 1 ? ' sin costo' : ' sin costo cargado') %></span>
+    </div>
+    <input type="search" class="buscador-tabla" data-tabla="tabla-insumos" placeholder="Buscá el insumo" aria-label="Buscar insumo">
+    <table class="tabla tabla-edicion" id="tabla-insumos">
+      <thead><tr><th>Insumo</th><th>Categoría</th><th class="numero">Costo por unidad de compra</th></tr></thead>
+      <tbody>
+        <% insumos.forEach(function (f) { %>
+          <tr data-nombre="<%= f.nombre %> <%= f.categoria %>">
+            <td><label for="insumo_<%= f.id %>"><%= f.nombre %></label></td>
+            <td><%= f.categoria %></td>
+            <td class="numero">
+              <input id="insumo_<%= f.id %>" name="insumo_<%= f.id %>" class="dinero costo" inputmode="decimal" value="<%= valor('insumo', f) %>" placeholder="Sin cargar">
+              <span class="pista">por <%= f.unidad %><%= f.costo === null ? '' : ' · desde el ' + f.desde.toLocaleDateString('es-AR') %></span>
+            </td>
+          </tr>
+        <% }) %>
+        <tr class="sin-coincidencias" hidden><td colspan="3" class="ayuda">Ningún insumo coincide con la búsqueda.</td></tr>
+      </tbody>
+    </table>
+    <div class="botonera"><button type="submit">Guardar costos</button></div>
+  </section>
+</form>
+
+<% if (historial.length > 0) { %>
+  <section class="panel">
+    <h2>Últimos cambios de costo</h2>
+    <table class="tabla">
+      <thead><tr><th>Qué</th><th></th><th class="numero">Costo</th><th>Desde</th><th>Hasta</th></tr></thead>
+      <tbody>
+        <% historial.forEach(function (h) { %>
+          <tr class="<%= h.hasta ? 'inactiva' : '' %>">
+            <td><%= h.nombre %></td>
+            <td><span class="pista"><%= h.tipo %></span></td>
+            <td class="numero"><%= pesos(h.costo) %></td>
+            <td><%= h.desde.toLocaleDateString('es-AR') %></td>
+            <td><%= h.hasta ? h.hasta.toLocaleDateString('es-AR') : 'vigente' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+<% } %>
+
+<script>
+  // Buscadores de cada tabla (sin importar acentos ni mayusculas; lo escrito
+  // en las filas escondidas se guarda igual) y margen recalculado al tipear.
+  (function () {
+    function normalizar(t) { return t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+    document.querySelectorAll('.buscador-tabla').forEach(function (buscador) {
+      var tabla = document.getElementById(buscador.dataset.tabla);
+      var filas = tabla.querySelectorAll('tbody tr[data-nombre]');
+      var vacio = tabla.querySelector('.sin-coincidencias');
+      buscador.addEventListener('input', function () {
+        var palabras = normalizar(buscador.value).split(/\s+/).filter(Boolean);
+        var alguna = false;
+        filas.forEach(function (f) {
+          var nombre = normalizar(f.dataset.nombre);
+          f.hidden = !palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
+          if (!f.hidden) alguna = true;
+        });
+        vacio.hidden = alguna;
+      });
+    });
+    var dinero = window.dineroKokino;
+    document.getElementById('tabla-productos').addEventListener('input', function (e) {
+      if (!e.target.classList.contains('costo')) return;
+      var fila = e.target.closest('tr');
+      var celda = fila.querySelector('.margen');
+      var precio = Number(fila.dataset.precio);
+      if (!e.target.value || !precio) { celda.textContent = '—'; celda.classList.remove('alerta'); return; }
+      var costo = dinero.centavos(e.target.value) / 100;
+      var m = Math.round(((precio - costo) / precio) * 100);
+      celda.textContent = m + ' %';
+      celda.classList.toggle('alerta', m < 0);
+    });
+  })();
+</script>
+
+<%- include('../parciales/pie') %>

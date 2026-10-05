@@ -786,3 +786,11 @@ td.acciones > * + * { margin-left: 12px; }
 .metrica-valor-chico.deuda { color: var(--text-primary); }
 .barra-h-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .barra-h-ancha { grid-template-columns: minmax(140px, 240px) 1fr auto; }
+
+/* ---------- Costos y sucursales ---------- */
+
+.buscador-tabla { max-width: 420px; margin: 0 0 12px; }
+.tabla-edicion input.costo { width: 150px; text-align: right; margin: 0; }
+.tabla-edicion tr[hidden] { display: none; }
+.titulo-con-accion h2 { margin: 0; }
+input.campo-corto-solo { max-width: 160px; }

@@ -1,0 +1,39 @@
+<%- include('../parciales/encabezado', { titulo: 'Sucursales - Kokino' }) %>
+
+<h1>Sucursales</h1>
+<p class="ayuda">
+  Los datos de cada sucursal. El <strong>punto de venta de AFIP</strong> es el número que AFIP le asigna
+  a cada sucursal para facturar (se da de alta en la web de AFIP, con clave fiscal). Hasta que esté
+  cargado, esa sucursal no puede emitir facturas electrónicas.
+</p>
+
+<div class="grilla-metricas">
+  <% lista.forEach(function (s) {
+       const v = valores[s.id_sucursal] || {
+         direccion: s.direccion || '', telefono: s.telefono || '',
+         punto_venta_afip: s.punto_venta_afip === null ? '' : String(s.punto_venta_afip),
+       };
+       const errs = errores[s.id_sucursal] || []; %>
+    <form method="post" action="/sucursales/<%= s.id_sucursal %>" class="formulario" autocomplete="off">
+      <h2><%= s.nombre %><% if (s.tiene_fabrica) { %> <span class="etiqueta">con fábrica</span><% } %></h2>
+      <% if (errs.length > 0) { %>
+        <ul class="errores" role="alert"><% errs.forEach(function (e) { %><li><%= e %></li><% }) %></ul>
+      <% } %>
+      <label for="direccion-<%= s.id_sucursal %>">Dirección</label>
+      <input id="direccion-<%= s.id_sucursal %>" name="direccion" maxlength="255" value="<%= v.direccion %>">
+      <label for="telefono-<%= s.id_sucursal %>">Teléfono</label>
+      <input id="telefono-<%= s.id_sucursal %>" name="telefono" class="solo-numeros" inputmode="numeric" maxlength="<%= MAXIMO_TELEFONO %>"
+             data-mensaje="el teléfono solo lleva números." value="<%= v.telefono %>" placeholder="Por ejemplo: 3816103791">
+      <label for="pv-<%= s.id_sucursal %>">Punto de venta de AFIP</label>
+      <input id="pv-<%= s.id_sucursal %>" name="punto_venta_afip" class="solo-numeros campo-corto-solo" inputmode="numeric" maxlength="5"
+             data-mensaje="el punto de venta es un número." value="<%= v.punto_venta_afip %>" placeholder="Sin cargar">
+      <p class="pista">
+        <%= s.punto_venta_afip === null ? 'Todavía sin cargar: esta sucursal no puede facturar.' : 'Las facturas de esta sucursal salen con el punto de venta ' + String(s.punto_venta_afip).padStart(5, '0') + '.' %>
+      </p>
+      <div class="botonera"><button type="submit">Guardar</button></div>
+    </form>
+  <% }) %>
+</div>
+
+<script src="/solo-numeros.js"></script>
+<%- include('../parciales/pie') %>
