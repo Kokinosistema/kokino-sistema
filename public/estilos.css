@@ -794,3 +794,4 @@ td.acciones > * + * { margin-left: 12px; }
 .tabla-edicion tr[hidden] { display: none; }
 .titulo-con-accion h2 { margin: 0; }
 input.campo-corto-solo { max-width: 160px; }
+.tabla-edicion input.contado { width: 110px; text-align: right; margin: 0; }

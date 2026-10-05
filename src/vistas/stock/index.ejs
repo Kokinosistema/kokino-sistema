@@ -1,0 +1,213 @@
+<%- include('../parciales/encabezado', { titulo: 'Cargar stock - Kokino' }) %>
+
+<%
+  const numero = (n) => Number(n).toLocaleString('es-AR', { maximumFractionDigits: 3 });
+  const fecha = (d) => new Date(d).toLocaleDateString('es-AR');
+%>
+
+<h1>Cargar stock de <%= sucursal.nombre %></h1>
+<p class="ayuda">
+  Lo que ya hay en <strong><%= sucursal.nombre %></strong> cuando se empieza a usar el sistema. Para la otra
+  sucursal, cambiala arriba. Lo que llegue después se registra en <strong>Llegó mercadería</strong>, y el
+  helado nuevo en <strong>Fabricación</strong>.
+</p>
+
+<section class="panel" id="helado">
+  <h2>Helado: los tachos que hay en los freezers</h2>
+  <p class="ayuda">
+    Cargá los tachos <strong>llenos</strong> de cada sabor con la fecha de vencimiento que tienen escrita.
+    Si de un sabor hay tachos con vencimientos distintos, agregalos por separado. El tacho que está
+    abierto en el pozo no se carga: cuando se termine, tocá <strong>Cambiar tacho</strong> y el sistema
+    abre uno de los llenos.
+  </p>
+
+  <% if (erroresHelado.length > 0) { %>
+    <ul class="errores" role="alert"><% erroresHelado.forEach(function (e) { %><li><%= e %></li><% }) %></ul>
+  <% } %>
+
+  <form method="post" action="/stock/helado" class="formulario formulario-ancho" id="form-helado" autocomplete="off">
+    <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
+    <div class="fila fila-agregar">
+      <div class="campo-ancho">
+        <label for="sabor-texto">Sabor</label>
+        <div class="combo" id="combo-sabor">
+          <input type="text" id="sabor-texto" class="combo-texto" autocomplete="off"
+                 role="combobox" aria-expanded="false" aria-controls="sabor-lista" aria-autocomplete="list"
+                 placeholder="Buscá el sabor (por ejemplo: dulce nuez)">
+          <button type="button" class="combo-flecha" aria-label="Mostrar la lista de sabores">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <ul id="sabor-lista" class="combo-lista" role="listbox" hidden>
+            <% let grupo = null; sabores.forEach(function (s, i) { %>
+              <% if (s.grupo !== grupo) { grupo = s.grupo; %><li class="combo-grupo" role="presentation"><%= s.grupo %></li><% } %>
+              <li class="combo-opcion" role="option" id="sabor-opcion-<%= i %>" aria-selected="false"
+                  data-valor="<%= s.id_sabor %>" data-nombre="<%= s.nombre %>"><%= s.nombre %></li>
+            <% }) %>
+            <li class="combo-vacio" role="presentation" hidden>Ningún sabor coincide con la búsqueda.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="campo-corto">
+        <label for="tachos-agregar">Tachos llenos</label>
+        <input id="tachos-agregar" class="solo-numeros" inputmode="numeric" maxlength="3" autocomplete="off"
+               placeholder="Ej.: 3" data-mensaje="la cantidad de tachos es un número entero.">
+      </div>
+      <div class="campo-medio">
+        <label for="vence-agregar">Vencen el</label>
+        <input id="vence-agregar" type="date">
+      </div>
+      <div class="campo-boton">
+        <button type="button" class="boton-secundario" id="agregar-sabor">Agregar</button>
+      </div>
+    </div>
+    <p class="error-campo" id="error-agregar" role="alert" hidden></p>
+
+    <table class="tabla" id="tabla-helado">
+      <thead><tr><th>Sabor</th><th class="numero">Tachos</th><th>Vencen el</th><th></th></tr></thead>
+      <tbody>
+        <% helado.renglones.forEach(function (r) { const s = sabores.find((x) => x.id_sabor === Number(r.id_sabor)); if (!s) return; %>
+          <tr class="renglon">
+            <td><%= s.nombre %><input type="hidden" name="renglon_sabor" value="<%= r.id_sabor %>"></td>
+            <td class="numero"><input name="renglon_cantidad" class="solo-numeros cantidad-corta" inputmode="numeric" maxlength="3" required value="<%= r.cantidad %>" aria-label="Tachos"></td>
+            <td><input name="renglon_vence" type="date" required value="<%= r.vence %>" aria-label="Vencen el"></td>
+            <td class="acciones"><button type="button" class="enlace quitar">Quitar</button></td>
+          </tr>
+        <% }) %>
+        <tr class="sin-sabores"><td colspan="4" class="ayuda">Todavía no agregaste tachos. Buscá el sabor arriba.</td></tr>
+      </tbody>
+    </table>
+    <div class="botonera"><button type="submit">Cargar los tachos</button></div>
+  </form>
+
+  <% if (cargas.length > 0) { %>
+    <h3 class="subtitulo-panel">Ya cargados en <%= sucursal.nombre %></h3>
+    <table class="tabla">
+      <thead><tr><th>Sabor</th><th class="numero">Tachos</th><th class="numero">Siguen llenos</th><th>Vencen el</th><th>Cargado</th><th></th></tr></thead>
+      <tbody>
+        <% cargas.forEach(function (c) { %>
+          <tr>
+            <td><%= c.sabor %></td>
+            <td class="numero"><%= c.tachos %></td>
+            <td class="numero"><%= c.llenos %></td>
+            <td><%= fecha(c.fecha_vencimiento) %></td>
+            <td><%= fecha(c.created_at) %></td>
+            <td class="acciones">
+              <% if (c.se_puede_borrar) { %>
+                <form method="post" action="/stock/helado/<%= c.id_lote %>/borrar" onsubmit="return confirm('¿Borrar esta carga de <%= c.tachos %> tachos de <%= c.sabor %>?')">
+                  <button type="submit" class="enlace">Borrar</button>
+                </form>
+              <% } else { %>
+                <span class="pista">ya se usó</span>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
+
+<form method="post" action="/stock/contado" autocomplete="off" id="productos">
+  <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
+  <% if (errores.length > 0) { %>
+    <ul class="errores" role="alert"><% errores.forEach(function (e) { %><li><%= e %></li><% }) %></ul>
+  <% } %>
+
+  <% [['producto', 'Productos', productos, 'Alfajores, repostería, impulsivos y potes que hay guardados.'],
+      ['insumo', 'Insumos', insumos, 'Cucuruchos, térmicos, café, materia prima…']].forEach(function (b) {
+       const [tipo, titulo, filas, ayuda] = b; %>
+    <section class="panel">
+      <h2><%= titulo %></h2>
+      <p class="ayuda">
+        <%= ayuda %> Escribí cuánto hay contado solo en lo que quieras cargar o corregir; lo que dejes vacío no cambia.
+      </p>
+      <input type="search" class="buscador-tabla" data-tabla="tabla-<%= tipo %>" placeholder="Buscá en <%= titulo.toLowerCase() %>" aria-label="Buscar en <%= titulo.toLowerCase() %>">
+      <table class="tabla tabla-edicion" id="tabla-<%= tipo %>">
+        <thead><tr><th><%= titulo === 'Productos' ? 'Producto' : 'Insumo' %></th><th>Categoría</th><th class="numero">En el sistema</th><th class="numero">Hay contado</th></tr></thead>
+        <tbody>
+          <% filas.forEach(function (f) { const clave = tipo + '_' + f.id; %>
+            <tr data-nombre="<%= f.nombre %> <%= f.categoria %>">
+              <td><label for="<%= clave %>"><%= f.nombre %></label></td>
+              <td><%= f.categoria %></td>
+              <td class="numero"><%= numero(f.stock) %> <%= f.unidad %><% if (!f.ya_cargado) { %><span class="pista">sin cargar</span><% } %></td>
+              <td class="numero">
+                <input id="<%= clave %>" name="<%= clave %>" class="cantidad-corta contado" inputmode="decimal" value="<%= valores[clave] || '' %>"
+                       placeholder="<%= f.entero ? 'Ej.: 12' : 'Ej.: 2,5' %>"> <span class="pista-inline"><%= f.unidad %></span>
+              </td>
+            </tr>
+          <% }) %>
+          <tr class="sin-coincidencias" hidden><td colspan="4" class="ayuda">Nada coincide con la búsqueda.</td></tr>
+        </tbody>
+      </table>
+      <div class="botonera"><button type="submit">Guardar lo contado</button></div>
+    </section>
+  <% }) %>
+</form>
+
+<script src="/solo-numeros.js"></script>
+<script src="/combo-sabores.js"></script>
+<script>
+  (function () {
+    // Helado: sabor con la lista con buscador, tachos y vencimiento.
+    var cantidad = document.getElementById('tachos-agregar');
+    var vence = document.getElementById('vence-agregar');
+    var error = document.getElementById('error-agregar');
+    var cuerpo = document.querySelector('#tabla-helado tbody');
+    var vacio = cuerpo.querySelector('.sin-sabores');
+    var combo = comboSabores(document.getElementById('combo-sabor'), {
+      alElegir: function () { mostrarError(''); cantidad.focus(); cantidad.select(); },
+    });
+    function mostrarError(m) { error.textContent = m ? 'Error: ' + m : ''; error.hidden = !m; }
+    function actualizar() { vacio.hidden = cuerpo.querySelectorAll('tr.renglon').length > 0; }
+    function agregar() {
+      var o = combo.elegida();
+      if (!o) { mostrarError('elegí un sabor de la lista.'); document.getElementById('sabor-texto').focus(); return; }
+      if (!/^\d{1,3}$/.test(cantidad.value) || Number(cantidad.value) < 1) { mostrarError('poné cuántos tachos llenos hay de ' + o.dataset.nombre + '.'); cantidad.focus(); return; }
+      if (!vence.value) { mostrarError('poné cuándo vencen.'); vence.focus(); return; }
+      var tr = document.createElement('tr'); tr.className = 'renglon';
+      var td1 = document.createElement('td'); td1.textContent = o.dataset.nombre;
+      var h = document.createElement('input'); h.type = 'hidden'; h.name = 'renglon_sabor'; h.value = o.dataset.valor; td1.appendChild(h);
+      var td2 = document.createElement('td'); td2.className = 'numero';
+      var c = document.createElement('input'); c.name = 'renglon_cantidad'; c.className = 'solo-numeros cantidad-corta'; c.inputMode = 'numeric'; c.maxLength = 3; c.required = true; c.value = cantidad.value; c.setAttribute('aria-label', 'Tachos');
+      td2.appendChild(c);
+      var td3 = document.createElement('td');
+      var v = document.createElement('input'); v.name = 'renglon_vence'; v.type = 'date'; v.required = true; v.value = vence.value; v.setAttribute('aria-label', 'Vencen el');
+      td3.appendChild(v);
+      var td4 = document.createElement('td'); td4.className = 'acciones';
+      var q = document.createElement('button'); q.type = 'button'; q.className = 'enlace quitar'; q.textContent = 'Quitar'; td4.appendChild(q);
+      tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+      cuerpo.insertBefore(tr, vacio);
+      mostrarError(''); combo.limpiar(); cantidad.value = '';
+      actualizar();
+      document.getElementById('sabor-texto').focus();
+    }
+    document.getElementById('agregar-sabor').addEventListener('click', agregar);
+    cantidad.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); vence.focus(); } });
+    vence.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); agregar(); } });
+    cuerpo.addEventListener('click', function (e) {
+      if (!e.target.classList.contains('quitar')) return;
+      e.target.closest('tr').remove(); actualizar();
+    });
+    actualizar();
+
+    // Buscadores de las tablas de productos e insumos.
+    function normalizar(t) { return t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+    document.querySelectorAll('.buscador-tabla').forEach(function (buscador) {
+      var tabla = document.getElementById(buscador.dataset.tabla);
+      var filas = tabla.querySelectorAll('tbody tr[data-nombre]');
+      var nada = tabla.querySelector('.sin-coincidencias');
+      buscador.addEventListener('input', function () {
+        var palabras = normalizar(buscador.value).split(/\s+/).filter(Boolean);
+        var alguna = false;
+        filas.forEach(function (f) {
+          var nombre = normalizar(f.dataset.nombre);
+          f.hidden = !palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
+          if (!f.hidden) alguna = true;
+        });
+        nada.hidden = alguna;
+      });
+    });
+  })();
+</script>
+
+<%- include('../parciales/pie') %>

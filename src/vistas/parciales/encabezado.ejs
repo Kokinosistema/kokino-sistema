@@ -25,6 +25,7 @@
     fabricacion: '<path d="M3 20V10l5 3V10l5 3V6h4l1 14z"/><path d="M3 20h18"/>',
     envios: '<rect x="3" y="6" width="11" height="12" rx="1.5"/><path d="M14 12h7M18 9l3 3-3 3"/>',
     mercaderia: '<path d="M4 9l8-4 8 4v8l-8 4-8-4z"/><path d="M12 9v6M9.5 12.5L12 15l2.5-2.5"/>',
+    stock: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/>',
     costos: '<circle cx="12" cy="12" r="8.5"/><path d="M14.5 9.2c-.5-.9-1.4-1.4-2.5-1.4-1.5 0-2.6.8-2.6 2s1.1 1.7 2.6 2.1 2.7.9 2.7 2.2-1.2 2.1-2.7 2.1c-1.2 0-2.2-.6-2.7-1.5"/><path d="M12 6.3v1.5M12 16.3v1.4"/>',
     sucursales: '<path d="M4 10l1.5-5h13L20 10"/><path d="M4 10c0 1.4 1.1 2.5 2.7 2.5S9.3 11.4 9.3 10c0 1.4 1.2 2.5 2.7 2.5s2.7-1.1 2.7-2.5c0 1.4 1.1 2.5 2.6 2.5S20 11.4 20 10"/><path d="M5.5 12.3V20h13v-7.7"/><path d="M10 20v-4.5h4V20"/>',
     insumos: '<path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/>',
@@ -56,6 +57,7 @@
         <a class="<%= activo('/clientes') %>" href="/clientes"><%- svg('clientes') %> Clientes mayoristas</a>
         <a class="<%= activo('/productos') %>" href="/productos"><%- svg('productos') %> Productos</a>
         <a class="<%= activo('/insumos') %>" href="/insumos"><%- svg('insumos') %> Insumos</a>
+        <a class="<%= activo('/stock') %>" href="/stock"><%- svg('stock') %> Cargar stock</a>
         <a class="<%= activo('/costos') %>" href="/costos"><%- svg('costos') %> Costos</a>
         <a class="<%= activo('/proveedores') %>" href="/proveedores"><%- svg('proveedores') %> Proveedores</a>
         <a class="<%= activo('/usuarios') %>" href="/usuarios"><%- svg('usuarios') %> Usuarios</a>
