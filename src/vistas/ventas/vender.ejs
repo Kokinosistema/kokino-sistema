@@ -17,7 +17,46 @@
   const iconoCategoria = (nombre) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + (trazos[nombre] || generico) + '</svg>';
 %>
 
-<h1>Vender</h1>
+<div class="titulo-vender">
+  <h1>Vender</h1>
+  <%# A mano del mostrador: cuando se termina un tacho se cambia desde aca,
+      sin ir a Fabricacion. El cambio lo hace la ruta de Fabricacion y vuelve
+      a esta misma pantalla. %>
+  <button type="button" class="boton" id="abrir-cambio-tacho">Cambiar tacho</button>
+</div>
+
+<dialog id="cambio-tacho" class="dialogo" aria-labelledby="titulo-cambio-tacho">
+  <div class="dialogo-cabecera">
+    <h2 id="titulo-cambio-tacho">Cambiar tacho</h2>
+    <button type="button" class="dialogo-cerrar" aria-label="Cerrar">×</button>
+  </div>
+  <% if (tachos.length === 0) { %>
+    <p class="ayuda">No hay tachos de helado en <%= sucursal.nombre %>.</p>
+  <% } else { %>
+    <p class="ayuda">
+      Tocá el sabor que se terminó: el tacho del pozo queda vacío y se abre el lleno que vence primero.
+    </p>
+    <input type="search" id="buscar-tacho" placeholder="Buscá el sabor" autocomplete="off" aria-label="Buscar el sabor">
+    <ul class="lista-tachos">
+      <% tachos.forEach(function (t) { %>
+        <li data-nombre="<%= t.sabor %>">
+          <span>
+            <strong><%= t.sabor %></strong><br>
+            <span class="pista"><%= t.en_pozo > 0 ? 'Abierto en el pozo' : 'Sin tacho abierto' %> ·
+              <span class="<%= t.llenos === 0 ? 'alerta' : '' %>"><%= t.llenos === 0 ? 'no quedan llenos' : t.llenos + (t.llenos === 1 ? ' lleno' : ' llenos') %></span></span>
+          </span>
+          <form method="post" action="/fabricacion/cambiar-tacho">
+            <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
+            <input type="hidden" name="id_sabor" value="<%= t.id_sabor %>">
+            <input type="hidden" name="volver" value="/ventas<%= abierta ? '?categoria=' + abierta.id_categoria : '' %>">
+            <button type="submit" class="boton-secundario"><%= t.en_pozo > 0 ? (t.llenos > 0 ? 'Cambiar' : 'Terminar') : 'Abrir' %></button>
+          </form>
+        </li>
+      <% }) %>
+      <li class="sin-coincidencias" hidden>Ningún sabor coincide con la búsqueda.</li>
+    </ul>
+  <% } %>
+</dialog>
 
 <% if (errores.length > 0) { %>
   <ul class="errores">
@@ -321,6 +360,38 @@
     opciones.forEach(function (o) { o.addEventListener('change', actualizar); });
     campos.forEach(function (c) { c.addEventListener('input', actualizar); });
     actualizar();
+  })();
+</script>
+
+<script>
+  // Ventana de "Cambiar tacho": se abre con el boton, se cierra con la cruz,
+  // con Escape o tocando afuera, y el buscador filtra los sabores (sin
+  // importar acentos ni mayusculas).
+  (function () {
+    var dialogo = document.getElementById('cambio-tacho');
+    var abrir = document.getElementById('abrir-cambio-tacho');
+    var buscador = document.getElementById('buscar-tacho');
+    abrir.addEventListener('click', function () {
+      dialogo.showModal();
+      if (buscador) { buscador.value = ''; filtrar(); buscador.focus(); }
+    });
+    dialogo.querySelector('.dialogo-cerrar').addEventListener('click', function () { dialogo.close(); });
+    dialogo.addEventListener('click', function (e) { if (e.target === dialogo) dialogo.close(); });
+    if (!buscador) return;
+    var filas = dialogo.querySelectorAll('.lista-tachos li[data-nombre]');
+    var vacio = dialogo.querySelector('.sin-coincidencias');
+    function normalizar(t) { return t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+    function filtrar() {
+      var palabras = normalizar(buscador.value).split(/\s+/).filter(Boolean);
+      var alguna = false;
+      filas.forEach(function (f) {
+        var nombre = normalizar(f.dataset.nombre);
+        f.hidden = !palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
+        if (!f.hidden) alguna = true;
+      });
+      vacio.hidden = alguna;
+    }
+    buscador.addEventListener('input', filtrar);
   })();
 </script>
 

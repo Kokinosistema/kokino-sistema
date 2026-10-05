@@ -228,14 +228,23 @@ function quedan(n) {
 // Cambiar el tacho de un sabor: el del pozo se termino (queda vacio) y se
 // abre el lleno mas viejo, el primero en vencer. Es la baja normal del stock
 // de helado a peso, que no se descuenta en cada venta.
+// El cambio de tacho tambien se hace desde Vender, a mano del mostrador: de
+// ahi se vuelve a Vender (a la misma categoria). Solo se acepta esa
+// direccion, para que el formulario no pueda mandar a cualquier lado.
+function volverDeCambio(cuerpo) {
+  const volver = typeof cuerpo.volver === 'string' ? cuerpo.volver : '';
+  return /^\/ventas(\?categoria=\d+)?$/.test(volver) ? volver : '/fabricacion';
+}
+
 router.post('/cambiar-tacho', async (req, res, siguiente) => {
   try {
+    const volver = volverDeCambio(req.body);
     if (Number(req.body.id_sucursal) !== req.sucursal.id_sucursal) {
       req.session.aviso = CAMBIO_DE_SUCURSAL;
-      return res.redirect('/fabricacion');
+      return res.redirect(volver);
     }
     const idSabor = Number(req.body.id_sabor);
-    if (!Number.isInteger(idSabor)) return res.redirect('/fabricacion');
+    if (!Number.isInteger(idSabor)) return res.redirect(volver);
 
     const resultado = await conTransaccion(async (ejecutar) => {
       // Tomados hasta el final: dos personas cambiando el mismo sabor a la
@@ -271,7 +280,7 @@ router.post('/cambiar-tacho', async (req, res, siguiente) => {
     } else {
       req.session.aviso = 'Se terminó el tacho de ' + resultado.sabor + '. No quedan tachos llenos de este sabor en ' + req.sucursal.nombre + '.';
     }
-    res.redirect('/fabricacion');
+    res.redirect(volver);
   } catch (error) {
     siguiente(error);
   }

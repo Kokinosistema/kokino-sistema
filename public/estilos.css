@@ -737,3 +737,29 @@ details.panel summary { cursor: pointer; font-weight: 700; }
 .lista-control li { padding: 8px 0; border-top: 1px solid var(--border-soft); font-size: 14px; }
 .lista-control li:first-child { border-top: 0; }
 .lista-control a { color: var(--brand-pressed); font-weight: 700; }
+
+/* ---------- Cambiar tacho desde Vender ---------- */
+
+.titulo-vender { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.titulo-vender h1 { margin-bottom: 0; }
+.dialogo {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  border: 0;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  padding: 20px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+.dialogo::backdrop { background: rgba(30, 38, 36, 0.35); }
+.dialogo-cabecera { display: flex; align-items: center; justify-content: space-between; }
+.dialogo-cabecera h2 { margin: 0; font-size: 18px; }
+.dialogo-cerrar { background: none; border: 0; font-size: 26px; line-height: 1; cursor: pointer; color: var(--text-secondary); padding: 0 4px; }
+.dialogo-cerrar:hover { color: var(--brand-pressed); }
+.lista-tachos { list-style: none; padding: 0; margin: 12px 0 0; }
+.lista-tachos li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border-soft); }
+.lista-tachos li[hidden] { display: none; }
+.lista-tachos form { margin: 0; }
+.lista-tachos .boton-secundario { margin-top: 0; min-width: 96px; }
+.lista-tachos .sin-coincidencias { color: var(--status-error); font-weight: 700; font-size: 13px; }
