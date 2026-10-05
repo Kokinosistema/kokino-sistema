@@ -1,0 +1,84 @@
+<%- include('../parciales/encabezado', { titulo: 'Venta N° ' + venta.id_venta + ' - Kokino' }) %>
+
+<% const fechaHora = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); %>
+
+<a class="volver no-imprimir" href="/clientes/<%= venta.id_cliente %>">← <%= venta.nombre_razon_social %></a>
+<h1 class="no-imprimir">Venta N° <%= venta.id_venta %></h1>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores no-imprimir" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<% if (venta.fecha_anulacion) { %>
+  <p class="aviso-atencion no-imprimir">Anulada por <%= venta.anulo %> el <%= fechaHora(venta.fecha_anulacion) %>: <%= venta.motivo_anulacion %>. Sus tachos volvieron al stock.</p>
+<% } %>
+
+<div class="grilla-ticket">
+  <div>
+    <%- include('_remito', { remito: {
+      numero: venta.id_venta, sucursal: venta.sucursal, fecha: venta.fecha_hora, vendio: venta.vendio,
+      cliente: venta, renglones, total: venta.total, observaciones: null,
+      pago: venta.fecha_anulacion ? 'venta anulada' : (saldo <= 0 ? 'pagado' : (cobrado > 0 ? 'pagó ' + pesos(cobrado) + ', debe ' + pesos(saldo) : 'a cuenta')),
+    } }) %>
+    <div class="acciones-ticket no-imprimir">
+      <button type="button" class="boton-secundario" onclick="window.print()">Imprimir remito</button>
+      <a class="boton-secundario" href="/clientes/<%= venta.id_cliente %>">Volver al cliente</a>
+    </div>
+  </div>
+
+  <div class="no-imprimir">
+    <section class="panel">
+      <h2>Cobros</h2>
+      <% if (cobros.length === 0) { %>
+        <p class="ayuda">Todavía no se cobró nada de esta venta.</p>
+      <% } else { %>
+        <ul class="lista-control">
+          <% cobros.forEach(function (c) { %>
+            <li><strong><%= pesos(c.monto) %></strong> en <%= c.medio.toLowerCase() %> · <%= fechaHora(c.fecha_hora) %> · <%= c.quien %></li>
+          <% }) %>
+        </ul>
+      <% } %>
+      <p class="metrica-valor-chico <%= saldo > 0 && !venta.fecha_anulacion ? 'deuda' : 'neutra' %>">
+        <%= venta.fecha_anulacion ? 'Anulada' : (saldo > 0 ? 'Debe ' + pesos(saldo) : 'Paga') %>
+      </p>
+
+      <% if (!venta.fecha_anulacion && saldo > 0) { %>
+        <form method="post" action="/clientes/ventas/<%= venta.id_venta %>/cobros" class="formulario" autocomplete="off">
+          <label for="monto">Pagó</label>
+          <input id="monto" name="monto" class="dinero" inputmode="decimal" required placeholder="<%= pesos(saldo) %>" value="<%= valores.monto || '' %>">
+          <fieldset class="opciones-boton">
+            <legend>Con qué pagó</legend>
+            <div class="grupo-botones">
+              <% medios.forEach(function (m) { %>
+                <label class="opcion-boton">
+                  <input type="radio" name="id_medio_pago" value="<%= m.id_medio_pago %>" <%= String(m.id_medio_pago) === String(valores.id_medio_pago) ? 'checked' : '' %> required>
+                  <span><%= m.nombre %></span>
+                </label>
+              <% }) %>
+            </div>
+          </fieldset>
+          <button type="submit">Registrar cobro</button>
+        </form>
+      <% } %>
+    </section>
+
+    <% if (!venta.fecha_anulacion) { %>
+      <details class="panel">
+        <summary>Anular la venta</summary>
+        <p class="ayuda">
+          Si la venta estaba mal o no se entregó, anulala: los tachos vuelven al stock de <%= venta.sucursal %>.
+          <% if (cobrado > 0) { %>Lo cobrado queda registrado; la plata se devuelve por fuera del sistema.<% } %>
+        </p>
+        <form method="post" action="/clientes/ventas/<%= venta.id_venta %>/anular" class="formulario">
+          <label for="motivo">Motivo</label>
+          <input id="motivo" name="motivo" required maxlength="300" placeholder="Por ejemplo: se cargó el sabor equivocado">
+          <button type="submit">Anular la venta</button>
+        </form>
+      </details>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../parciales/pie') %>

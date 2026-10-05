@@ -767,3 +767,20 @@ details.panel summary { cursor: pointer; font-weight: 700; }
 /* ---------- Mayoristas ---------- */
 
 .tabla-edicion td .pista { display: block; }
+.formulario .fila-agregar > div.campo-medio { flex: 0 1 200px; }
+.metrica-valor-chico { font-family: var(--font-head); font-size: 22px; font-weight: 700; color: var(--brand-pressed); margin: 0 0 6px; }
+.metrica-valor-chico.neutra { color: var(--text-secondary); }
+.remito-cliente { margin: 4px 0 12px; line-height: 1.5; }
+.grilla-ticket { display: grid; grid-template-columns: minmax(0, 580px) minmax(280px, 1fr); gap: 24px; align-items: start; }
+.grilla-ticket .ticket { max-width: none; }
+@media (max-width: 860px) { .grilla-ticket { grid-template-columns: 1fr; } }
+.lista-control li.anulada { color: var(--text-secondary); text-decoration: line-through; }
+.lista-control li.anulada .pista { text-decoration: none; }
+.anular-en-linea { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.anular-en-linea input { margin: 0; max-width: 260px; padding: 4px 8px; font-size: 13px; }
+#tabla-van tfoot td { padding: 12px 14px; }
+#tabla-van input.precio-renglon { width: 130px; text-align: right; margin: 0; }
+@media print { .grilla-ticket { display: block; } }
+td.acciones form { display: inline; }
+td.acciones > * + * { margin-left: 12px; }
+.metrica-valor-chico.deuda { color: var(--text-primary); }

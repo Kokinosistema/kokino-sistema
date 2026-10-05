@@ -3,7 +3,7 @@
 const express = require('express');
 const { consultar, conTransaccion } = require('../db');
 const { exigirRol } = require('../middleware/sesion');
-const { parsearMonto, MONTO_INVALIDO, aCentavos } = require('../dinero');
+const { parsearMonto, MONTO_INVALIDO, aCentavos, pesos } = require('../dinero');
 
 const router = express.Router();
 
@@ -104,6 +104,450 @@ router.post('/precios', async (req, res, siguiente) => {
     });
     req.session.aviso = cambios.length === 1 ? 'Se guardó el precio nuevo. Rige desde hoy.' : 'Se guardaron ' + cambios.length + ' precios nuevos. Rigen desde hoy.';
     res.redirect('/clientes/precios');
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Clientes, cuenta y stock
+
+const NOMBRE_USUARIO = (col) => `(SELECT concat_ws(' ', e.nombre, e.apellido) FROM usuarios u
+  JOIN empleados e ON e.id_empleado = u.id_empleado WHERE u.id_usuario = ${col})`;
+
+async function traerCliente(id) {
+  if (!Number.isInteger(id)) return null;
+  const { rows: [c] } = await consultar(
+    "SELECT * FROM clientes WHERE id_cliente = $1 AND tipo_cliente = 'MAYORISTA'", [id]
+  );
+  return c || null;
+}
+
+// Lo que debe el cliente (ventas no anuladas menos lo cobrado), cuanto de eso
+// esta vencido segun su plazo de pago, y cuantos envases retornables tiene
+// sin devolver.
+async function cuentaDe(cliente) {
+  const { rows: [r] } = await consultar(
+    `WITH v AS (
+       SELECT vt.id_venta, vt.fecha_hora, vt.total,
+              vt.total - coalesce((SELECT sum(p.monto) FROM pagos_venta p WHERE p.id_venta = vt.id_venta), 0) AS saldo
+         FROM ventas_totales vt
+        WHERE vt.id_cliente = $1 AND vt.tipo_venta = 'MAYORISTA' AND NOT vt.anulada
+     )
+     SELECT coalesce(sum(saldo), 0) AS deuda,
+            coalesce(sum(saldo) FILTER (WHERE $2::int IS NOT NULL AND fecha_hora::date + $2::int < current_date), 0) AS vencido,
+            (SELECT count(*) FROM venta_tachos vt JOIN ventas ve ON ve.id_venta = vt.id_venta
+              WHERE ve.id_cliente = $1 AND ve.fecha_anulacion IS NULL AND vt.envase = 'RETORNABLE')::int
+            - (SELECT coalesce(sum(cantidad), 0) FROM devoluciones_envases d
+                WHERE d.id_cliente = $1 AND d.fecha_anulacion IS NULL)::int AS envases
+       FROM v`,
+    [cliente.id_cliente, cliente.plazo_pago_dias]
+  );
+  return { deuda: Number(r.deuda), vencido: Number(r.vencido), envases: r.envases };
+}
+
+// Sabores con tachos llenos en la sucursal, con su linea para el precio sugerido.
+async function saboresDisponibles(idSucursal) {
+  const { rows } = await consultar(
+    `SELECT s.id_sabor, s.nombre || ' (' || lower(s.linea) || ')' AS nombre, s.linea,
+            count(*)::int AS llenos, min(l.fecha_vencimiento) AS vence
+       FROM tachos t
+       JOIN lotes l ON l.id_lote = t.id_lote
+       JOIN sabores s ON s.id_sabor = l.id_sabor
+      WHERE t.id_sucursal = $1 AND t.estado = 'LLENO'
+      GROUP BY s.id_sabor, s.nombre, s.linea
+      ORDER BY s.nombre, s.linea`,
+    [idSucursal]
+  );
+  return rows;
+}
+
+async function mediosDePago() {
+  const { rows } = await consultar('SELECT id_medio_pago, nombre FROM medios_pago WHERE activo ORDER BY id_medio_pago');
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Ficha del cliente
+
+router.get('/:id', async (req, res, siguiente) => {
+  try {
+    const cliente = await traerCliente(Number(req.params.id));
+    if (!cliente) return siguiente();
+    const cuenta = await cuentaDe(cliente);
+    const { rows: ventas } = await consultar(
+      `SELECT vt.id_venta, vt.fecha_hora, vt.total, vt.anulada, s.nombre AS sucursal,
+              vt.total - coalesce((SELECT sum(p.monto) FROM pagos_venta p WHERE p.id_venta = vt.id_venta), 0) AS saldo,
+              (SELECT count(*) FROM venta_tachos t WHERE t.id_venta = vt.id_venta)::int AS tachos
+         FROM ventas_totales vt
+         JOIN ventas v ON v.id_venta = vt.id_venta
+         JOIN sucursales s ON s.id_sucursal = v.id_sucursal
+        WHERE vt.id_cliente = $1 AND vt.tipo_venta = 'MAYORISTA'
+        ORDER BY vt.fecha_hora DESC
+        LIMIT 50`,
+      [cliente.id_cliente]
+    );
+    const { rows: devoluciones } = await consultar(
+      `SELECT d.id_devolucion, d.cantidad, d.fecha_hora, d.observaciones, d.fecha_anulacion, d.motivo_anulacion,
+              ${NOMBRE_USUARIO('d.id_usuario')} AS quien
+         FROM devoluciones_envases d
+        WHERE d.id_cliente = $1
+        ORDER BY d.fecha_hora DESC
+        LIMIT 20`,
+      [cliente.id_cliente]
+    );
+    res.render('mayoristas/ficha', { cliente, cuenta, ventas, devoluciones, errores: [] });
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Vender: armar, revisar y confirmar
+//
+// Lo elegido se guarda en la sesion mientras se revisa, como en Envios. Se
+// vende desde la sucursal de trabajo: los tachos salen de ahi (los que vencen
+// primero) y la base no deja vender uno que este en otra sucursal.
+
+const PAGOS = [
+  { valor: 'AHORA', texto: 'Pagó ahora' },
+  { valor: 'CUENTA', texto: 'Queda a cuenta' },
+];
+const lista = (v) => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
+
+function borradorDe(req, cliente) {
+  const b = req.session.ventaMayorista;
+  return b && b.id_cliente === cliente.id_cliente && b.id_sucursal === req.sucursal.id_sucursal ? b : null;
+}
+
+// Controla lo elegido contra el stock y arma los renglones con numeros.
+// Lo usan revisar y confirmar, asi lo que se guarda pasa por el mismo control.
+async function controlarVenta(borrador, cliente, idSucursal) {
+  const errores = [];
+  const disponibles = await saboresDisponibles(idSucursal);
+  const renglones = [];
+  const pedidosPorSabor = {};
+  borrador.renglones.forEach((r) => {
+    const sabor = disponibles.find((s) => s.id_sabor === Number(r.id_sabor));
+    if (!sabor) { errores.push('Un sabor elegido ya no tiene tachos llenos en esta sucursal: sacalo de la lista.'); return; }
+    if (!/^\d{1,3}$/.test(r.cantidad) || Number(r.cantidad) < 1) { errores.push('La cantidad de ' + sabor.nombre + ' tiene que ser un número entero.'); return; }
+    if (!ENVASES.some((e) => e.valor === r.envase)) { errores.push('Elegí el envase de ' + sabor.nombre + '.'); return; }
+    const precio = parsearMonto(r.precio);
+    if (precio === null) { errores.push('El precio por tacho de ' + sabor.nombre + ': ' + MONTO_INVALIDO + '.'); return; }
+    pedidosPorSabor[sabor.id_sabor] = (pedidosPorSabor[sabor.id_sabor] || 0) + Number(r.cantidad);
+    renglones.push({ id_sabor: sabor.id_sabor, sabor: sabor.nombre, envase: r.envase, cantidad: Number(r.cantidad), precio });
+  });
+  for (const [idSabor, pedidos] of Object.entries(pedidosPorSabor)) {
+    const sabor = disponibles.find((s) => s.id_sabor === Number(idSabor));
+    if (pedidos > sabor.llenos) errores.push('De ' + sabor.nombre + ' hay ' + sabor.llenos + (sabor.llenos === 1 ? ' tacho lleno' : ' tachos llenos') + ': no se pueden vender ' + pedidos + '.');
+  }
+  if (borrador.renglones.length === 0) errores.push('Agregá al menos un sabor.');
+  if (!PAGOS.some((p) => p.valor === borrador.pago)) errores.push('Elegí si pagó ahora o queda a cuenta.');
+  if (borrador.pago === 'AHORA' && !(await mediosDePago()).some((m) => m.id_medio_pago === Number(borrador.id_medio_pago))) {
+    errores.push('Elegí con qué pagó.');
+  }
+  if (borrador.pago === 'CUENTA' && cliente.limite_cuenta_corriente === null) {
+    errores.push(cliente.nombre_razon_social + ' no tiene cuenta corriente habilitada. Para venderle a cuenta, cargale un límite en Editar cliente.');
+  }
+  const total = renglones.reduce((s, r) => s + aCentavos(r.precio) * r.cantidad, 0) / 100;
+  return { renglones, total, errores };
+}
+
+async function mostrarArmado(req, res, cliente, { borrador, errores = [], estado = 200 }) {
+  res.status(estado).render('mayoristas/vender', {
+    cliente, borrador, errores, ENVASES, PAGOS,
+    sabores: await saboresDisponibles(req.sucursal.id_sucursal),
+    precios: await preciosVigentes(),
+    medios: await mediosDePago(),
+    cuenta: await cuentaDe(cliente),
+  });
+}
+
+router.get('/:id/vender', async (req, res, siguiente) => {
+  try {
+    const cliente = await traerCliente(Number(req.params.id));
+    if (!cliente) return siguiente();
+    if (!cliente.activo) {
+      req.session.aviso = cliente.nombre_razon_social + ' está dado de baja: reactivalo para venderle.';
+      return res.redirect('/clientes/' + cliente.id_cliente);
+    }
+    const borrador = borradorDe(req, cliente) || { renglones: [], pago: '', id_medio_pago: '', observaciones: '' };
+    await mostrarArmado(req, res, cliente, { borrador });
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+router.post('/:id/vender', async (req, res, siguiente) => {
+  try {
+    const cliente = await traerCliente(Number(req.params.id));
+    if (!cliente || !cliente.activo) return siguiente();
+    if (Number(req.body.id_sucursal) !== req.sucursal.id_sucursal) {
+      req.session.aviso = 'Cambiaste de sucursal mientras armabas la venta: revisala de nuevo.';
+      return res.redirect('/clientes/' + cliente.id_cliente + '/vender');
+    }
+    const sabores = lista(req.body.renglon_sabor);
+    const envases = lista(req.body.renglon_envase);
+    const cantidades = lista(req.body.renglon_cantidad);
+    const precios = lista(req.body.renglon_precio);
+    const borrador = {
+      id_cliente: cliente.id_cliente,
+      id_sucursal: req.sucursal.id_sucursal,
+      renglones: sabores.map((s, i) => ({
+        id_sabor: String(s), envase: String(envases[i] || ''),
+        cantidad: String(cantidades[i] || '').trim(), precio: String(precios[i] || '').trim(),
+      })),
+      pago: typeof req.body.pago === 'string' ? req.body.pago : '',
+      id_medio_pago: typeof req.body.id_medio_pago === 'string' ? req.body.id_medio_pago : '',
+      observaciones: (typeof req.body.observaciones === 'string' ? req.body.observaciones : '').trim().slice(0, 500),
+    };
+    req.session.ventaMayorista = borrador;
+    const { errores } = await controlarVenta(borrador, cliente, req.sucursal.id_sucursal);
+    if (errores.length > 0) return mostrarArmado(req, res, cliente, { borrador, errores, estado: 400 });
+    res.redirect('/clientes/' + cliente.id_cliente + '/vender/revisar');
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+router.get('/:id/vender/revisar', async (req, res, siguiente) => {
+  try {
+    const cliente = await traerCliente(Number(req.params.id));
+    if (!cliente) return siguiente();
+    const borrador = borradorDe(req, cliente);
+    if (!borrador) return res.redirect('/clientes/' + cliente.id_cliente + '/vender');
+    const control = await controlarVenta(borrador, cliente, req.sucursal.id_sucursal);
+    if (control.errores.length > 0) return mostrarArmado(req, res, cliente, { borrador, errores: control.errores, estado: 400 });
+    // Los tachos que saldrian: los que vencen primero de cada sabor.
+    for (const r of control.renglones) {
+      const ya = control.renglones.filter((x) => x.id_sabor === r.id_sabor && x !== r && control.renglones.indexOf(x) < control.renglones.indexOf(r))
+        .reduce((s, x) => s + x.cantidad, 0);
+      const { rows } = await consultar(
+        `SELECT t.codigo_barras FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote
+          WHERE t.id_sucursal = $1 AND t.estado = 'LLENO' AND l.id_sabor = $2
+          ORDER BY l.fecha_vencimiento, t.id_tacho OFFSET $3 LIMIT $4`,
+        [req.sucursal.id_sucursal, r.id_sabor, ya, r.cantidad]
+      );
+      r.codigos = rows.map((x) => x.codigo_barras);
+    }
+    const cuenta = await cuentaDe(cliente);
+    const medio = (await mediosDePago()).find((m) => m.id_medio_pago === Number(borrador.id_medio_pago));
+    res.render('mayoristas/revisar', {
+      cliente, borrador, cuenta, ENVASES, ...control,
+      medio: medio ? medio.nombre : '',
+      superaLimite: borrador.pago === 'CUENTA' && cliente.limite_cuenta_corriente !== null
+        && cuenta.deuda + control.total > Number(cliente.limite_cuenta_corriente),
+      fecha: new Date(), vendio: req.session.usuario.nombre,
+    });
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+router.post('/:id/vender/confirmar', async (req, res, siguiente) => {
+  try {
+    const cliente = await traerCliente(Number(req.params.id));
+    if (!cliente) return siguiente();
+    const borrador = borradorDe(req, cliente);
+    if (!borrador) return res.redirect('/clientes/' + cliente.id_cliente + '/vender');
+    const control = await controlarVenta(borrador, cliente, req.sucursal.id_sucursal);
+    if (control.errores.length > 0) return mostrarArmado(req, res, cliente, { borrador, errores: control.errores, estado: 400 });
+
+    const resultado = await conTransaccion(async (ejecutar) => {
+      const { rows: [venta] } = await ejecutar(
+        `INSERT INTO ventas (id_usuario, id_cliente, canal_venta, tipo_venta, id_sucursal)
+         VALUES ($1, $2, 'MAYORISTA', 'MAYORISTA', $3) RETURNING id_venta`,
+        [req.session.usuario.id_usuario, cliente.id_cliente, req.sucursal.id_sucursal]
+      );
+      const usados = [];
+      for (const r of control.renglones) {
+        // Los que vencen primero, tomados hasta el final de la transaccion.
+        const { rows: tachos } = await ejecutar(
+          `SELECT t.id_tacho FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote
+            WHERE t.id_sucursal = $1 AND t.estado = 'LLENO' AND l.id_sabor = $2 AND NOT (t.id_tacho = ANY($3::int[]))
+            ORDER BY l.fecha_vencimiento, t.id_tacho
+            LIMIT $4
+            FOR UPDATE OF t`,
+          [req.sucursal.id_sucursal, r.id_sabor, usados, r.cantidad]
+        );
+        if (tachos.length < r.cantidad) return { error: 'Mientras revisabas se abrió, se envió o se vendió algún tacho de ' + r.sabor + ' y ya no alcanzan. Revisá las cantidades.' };
+        for (const t of tachos) {
+          usados.push(t.id_tacho);
+          await ejecutar('INSERT INTO venta_tachos (id_venta, id_tacho, envase, precio_aplicado) VALUES ($1, $2, $3, $4)',
+            [venta.id_venta, t.id_tacho, r.envase, r.precio]);
+        }
+      }
+      if (borrador.pago === 'AHORA' && control.total > 0) {
+        await ejecutar('INSERT INTO pagos_venta (id_venta, id_medio_pago, id_usuario, monto) VALUES ($1, $2, $3, $4)',
+          [venta.id_venta, Number(borrador.id_medio_pago), req.session.usuario.id_usuario, control.total]);
+      }
+      return { id: venta.id_venta };
+    });
+    if (resultado.error) {
+      req.session.aviso = resultado.error;
+      return res.redirect('/clientes/' + cliente.id_cliente + '/vender');
+    }
+    delete req.session.ventaMayorista;
+    req.session.aviso = 'Se registró la venta N° ' + resultado.id + ' a ' + cliente.nombre_razon_social + '. Imprimí el remito para que viaje con los tachos.';
+    res.redirect('/clientes/ventas/' + resultado.id);
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Una venta: remito, cobros y anulacion
+
+async function traerVenta(id) {
+  if (!Number.isInteger(id)) return null;
+  const { rows: [venta] } = await consultar(
+    `SELECT v.id_venta, v.fecha_hora, v.id_sucursal, v.fecha_anulacion, v.motivo_anulacion,
+            s.nombre AS sucursal, vt.total, ${NOMBRE_USUARIO('v.id_usuario')} AS vendio,
+            ${NOMBRE_USUARIO('v.id_usuario_anulacion')} AS anulo,
+            c.id_cliente, c.nombre_razon_social, c.cuit, c.direccion, c.telefono, c.plazo_pago_dias
+       FROM ventas v
+       JOIN ventas_totales vt ON vt.id_venta = v.id_venta
+       JOIN sucursales s ON s.id_sucursal = v.id_sucursal
+       JOIN clientes c ON c.id_cliente = v.id_cliente
+      WHERE v.id_venta = $1 AND v.tipo_venta = 'MAYORISTA'`,
+    [id]
+  );
+  if (!venta) return null;
+  venta.total = Number(venta.total);
+  const { rows: tachos } = await consultar(
+    `SELECT vt.envase, vt.precio_aplicado, t.codigo_barras, s.nombre || ' (' || lower(s.linea) || ')' AS sabor
+       FROM venta_tachos vt
+       JOIN tachos t ON t.id_tacho = vt.id_tacho
+       JOIN lotes l ON l.id_lote = t.id_lote
+       JOIN sabores s ON s.id_sabor = l.id_sabor
+      WHERE vt.id_venta = $1
+      ORDER BY s.nombre, s.linea, vt.envase, vt.precio_aplicado, t.codigo_barras`,
+    [id]
+  );
+  // Agrupados por sabor, envase y precio para el remito.
+  const renglones = [];
+  for (const t of tachos) {
+    let r = renglones.find((x) => x.sabor === t.sabor && x.envase === t.envase && aCentavos(x.precio) === aCentavos(t.precio_aplicado));
+    if (!r) { r = { sabor: t.sabor, envase: t.envase, precio: Number(t.precio_aplicado), cantidad: 0, codigos: [] }; renglones.push(r); }
+    r.cantidad += 1;
+    r.codigos.push(t.codigo_barras);
+  }
+  const { rows: cobros } = await consultar(
+    `SELECT p.monto, p.fecha_hora, m.nombre AS medio, ${NOMBRE_USUARIO('p.id_usuario')} AS quien
+       FROM pagos_venta p JOIN medios_pago m ON m.id_medio_pago = p.id_medio_pago
+      WHERE p.id_venta = $1 ORDER BY p.fecha_hora`,
+    [id]
+  );
+  const cobrado = cobros.reduce((s, c) => s + aCentavos(c.monto), 0) / 100;
+  return { venta, renglones, cobros, cobrado, saldo: (aCentavos(venta.total) - aCentavos(cobrado)) / 100 };
+}
+
+async function mostrarVenta(res, datos, { errores = [], estado = 200, valores = {} } = {}) {
+  res.status(estado).render('mayoristas/venta', { ...datos, ENVASES, medios: await mediosDePago(), errores, valores });
+}
+
+router.get('/ventas/:id', async (req, res, siguiente) => {
+  try {
+    const datos = await traerVenta(Number(req.params.id));
+    if (!datos) return siguiente();
+    await mostrarVenta(res, datos);
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+// Cobrar lo que quedo debiendo, en una o varias veces.
+router.post('/ventas/:id/cobros', async (req, res, siguiente) => {
+  try {
+    const datos = await traerVenta(Number(req.params.id));
+    if (!datos) return siguiente();
+    const valores = { monto: (req.body.monto || '').trim(), id_medio_pago: req.body.id_medio_pago || '' };
+    const errores = [];
+    if (datos.venta.fecha_anulacion) errores.push('La venta está anulada: no se le cobra.');
+    else if (datos.saldo <= 0) errores.push('La venta ya está paga.');
+    const monto = parsearMonto(valores.monto);
+    if (errores.length === 0) {
+      if (monto === null) errores.push('Poné cuánto pagó: ' + MONTO_INVALIDO + '.');
+      else if (aCentavos(monto) > aCentavos(datos.saldo)) errores.push('Debe ' + pesos(datos.saldo) + ' de esta venta: no se le puede cobrar más.');
+      if (!(await mediosDePago()).some((m) => m.id_medio_pago === Number(valores.id_medio_pago))) errores.push('Elegí con qué pagó.');
+    }
+    if (errores.length > 0) return mostrarVenta(res, datos, { errores, valores, estado: 400 });
+    await consultar('INSERT INTO pagos_venta (id_venta, id_medio_pago, id_usuario, monto) VALUES ($1, $2, $3, $4)',
+      [datos.venta.id_venta, Number(valores.id_medio_pago), req.session.usuario.id_usuario, monto]);
+    const queda = (aCentavos(datos.saldo) - aCentavos(monto)) / 100;
+    req.session.aviso = 'Se registró el cobro. ' + (queda > 0 ? 'Todavía debe ' + pesos(queda) + ' de esta venta.' : 'La venta quedó paga.');
+    res.redirect('/clientes/ventas/' + datos.venta.id_venta);
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+// Anular: los tachos vuelven al stock (lo hace la base). Los cobros quedan
+// registrados: si se habia cobrado, la plata se devuelve por fuera.
+router.post('/ventas/:id/anular', async (req, res, siguiente) => {
+  try {
+    const datos = await traerVenta(Number(req.params.id));
+    if (!datos) return siguiente();
+    const motivo = (req.body.motivo || '').trim().slice(0, 300);
+    if (datos.venta.fecha_anulacion) {
+      req.session.aviso = 'La venta ya estaba anulada.';
+    } else if (!motivo) {
+      req.session.aviso = 'Para anular la venta escribí el motivo.';
+    } else {
+      await consultar(
+        'UPDATE ventas SET fecha_anulacion = now(), id_usuario_anulacion = $1, motivo_anulacion = $2 WHERE id_venta = $3',
+        [req.session.usuario.id_usuario, motivo, datos.venta.id_venta]
+      );
+      req.session.aviso = 'Se anuló la venta N° ' + datos.venta.id_venta + '. Sus tachos volvieron al stock de ' + datos.venta.sucursal + '.'
+        + (datos.cobrado > 0 ? ' Se habían cobrado ' + pesos(datos.cobrado) + ': esa plata se devuelve por fuera del sistema.' : '');
+    }
+    res.redirect('/clientes/ventas/' + datos.venta.id_venta);
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Devolucion de envases retornables
+
+router.post('/:id/devoluciones', async (req, res, siguiente) => {
+  try {
+    const cliente = await traerCliente(Number(req.params.id));
+    if (!cliente) return siguiente();
+    const { envases } = await cuentaDe(cliente);
+    const texto = (req.body.cantidad || '').trim();
+    const observaciones = (req.body.observaciones || '').trim().slice(0, 300);
+    if (!/^\d{1,3}$/.test(texto) || Number(texto) < 1) {
+      req.session.aviso = 'Poné cuántos envases devolvió (un número entero).';
+    } else if (Number(texto) > envases) {
+      req.session.aviso = cliente.nombre_razon_social + (envases === 0 ? ' no tiene envases para devolver.' : ' tiene ' + envases + (envases === 1 ? ' envase' : ' envases') + ' sin devolver: no puede devolver ' + texto + '.');
+    } else {
+      await consultar('INSERT INTO devoluciones_envases (id_cliente, cantidad, id_usuario, observaciones) VALUES ($1, $2, $3, $4)',
+        [cliente.id_cliente, Number(texto), req.session.usuario.id_usuario, observaciones || null]);
+      const quedan = envases - Number(texto);
+      req.session.aviso = 'Se registró la devolución. ' + (quedan === 0 ? 'Ya no debe envases.' : quedan === 1 ? 'Le queda 1 envase por devolver.' : 'Le quedan ' + quedan + ' envases por devolver.');
+    }
+    res.redirect('/clientes/' + cliente.id_cliente + '#envases');
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+router.post('/devoluciones/:id/anular', async (req, res, siguiente) => {
+  try {
+    const { rows: [d] } = await consultar('SELECT id_cliente, fecha_anulacion FROM devoluciones_envases WHERE id_devolucion = $1', [Number(req.params.id)]);
+    if (!d) return siguiente();
+    const motivo = (req.body.motivo || '').trim().slice(0, 300);
+    if (d.fecha_anulacion) req.session.aviso = 'Esa devolución ya estaba anulada.';
+    else if (!motivo) req.session.aviso = 'Para anular la devolución escribí el motivo.';
+    else {
+      await consultar(
+        'UPDATE devoluciones_envases SET fecha_anulacion = now(), id_usuario_anulacion = $1, motivo_anulacion = $2 WHERE id_devolucion = $3',
+        [req.session.usuario.id_usuario, motivo, Number(req.params.id)]
+      );
+      req.session.aviso = 'Se anuló la devolución: esos envases vuelven a figurar como no devueltos.';
+    }
+    res.redirect('/clientes/' + d.id_cliente + '#envases');
   } catch (error) {
     siguiente(error);
   }

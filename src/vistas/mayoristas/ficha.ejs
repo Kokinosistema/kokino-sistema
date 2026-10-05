@@ -1,0 +1,114 @@
+<%- include('../parciales/encabezado', { titulo: cliente.nombre_razon_social + ' - Kokino' }) %>
+
+<% const fechaHora = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); %>
+
+<a class="volver" href="/clientes">← Clientes mayoristas</a>
+<div class="titulo-con-accion">
+  <h1><%= cliente.nombre_razon_social %><% if (!cliente.activo) { %> <span class="etiqueta">dado de baja</span><% } %></h1>
+  <div class="botones-titulo">
+    <a class="boton-secundario" href="/clientes/<%= cliente.id_cliente %>/editar">Editar cliente</a>
+    <% if (cliente.activo) { %><a class="boton" href="/clientes/<%= cliente.id_cliente %>/vender">Nueva venta</a><% } %>
+  </div>
+</div>
+<p class="ayuda">
+  <%= [cliente.cuit ? 'CUIT ' + cliente.cuit : null, cliente.telefono ? 'Tel. ' + cliente.telefono : null, cliente.direccion].filter(Boolean).join(' · ') || 'Sin CUIT, teléfono ni dirección cargados.' %>
+</p>
+
+<%# Estadisticas del cliente (parte 3): van aca, arriba de la cuenta. %>
+<% if (typeof estadisticas !== 'undefined' && estadisticas) { %>
+  <%- include('_estadisticas-cliente') %>
+<% } %>
+
+<div class="grilla-metricas">
+  <section class="panel">
+    <h2>Cuenta</h2>
+    <p class="metrica-valor-chico <%= cuenta.deuda > 0 ? 'deuda' : 'neutra' %>"><%= cuenta.deuda > 0 ? 'Debe ' + pesos(cuenta.deuda) : 'No debe nada' %></p>
+    <% if (cuenta.vencido > 0) { %>
+      <p class="alerta"><%= pesos(cuenta.vencido) %> vencidos (más de <%= cliente.plazo_pago_dias %> días)</p>
+    <% } %>
+    <p class="pista">
+      <% if (cliente.limite_cuenta_corriente === null) { %>
+        Sin cuenta corriente habilitada: solo puede comprar pagando en el momento.
+      <% } else { %>
+        Límite de cuenta corriente: <%= pesos(cliente.limite_cuenta_corriente) %><%= cliente.plazo_pago_dias !== null ? ', a ' + cliente.plazo_pago_dias + ' días' : '' %>.
+      <% } %>
+    </p>
+  </section>
+
+  <section class="panel" id="envases">
+    <h2>Envases retornables</h2>
+    <p class="metrica-valor-chico <%= cuenta.envases > 0 ? 'deuda' : 'neutra' %>">
+      <% if (cuenta.envases === 0) { %>No debe envases
+      <% } else if (cuenta.envases < 0) { %>Devolvió <%= -cuenta.envases %> de más
+      <% } else { %>Debe <%= cuenta.envases %> <%= cuenta.envases === 1 ? 'envase' : 'envases' %><% } %>
+    </p>
+    <% if (cuenta.envases > 0) { %>
+      <form method="post" action="/clientes/<%= cliente.id_cliente %>/devoluciones" class="formulario fila-agregar-envases">
+        <div class="fila fila-agregar">
+          <div class="campo-corto">
+            <label for="cantidad-envases">Devolvió</label>
+            <input id="cantidad-envases" name="cantidad" class="solo-numeros" inputmode="numeric" maxlength="3" required
+                   placeholder="Ej.: 2" data-mensaje="la cantidad de envases es un número entero.">
+          </div>
+          <div class="campo-ancho">
+            <label for="obs-envases">Observaciones <span class="pista-inline">(opcional)</span></label>
+            <input id="obs-envases" name="observaciones" maxlength="300" placeholder="Por ejemplo: uno vino roto">
+          </div>
+          <div class="campo-boton"><button type="submit" class="boton-secundario">Registrar devolución</button></div>
+        </div>
+      </form>
+    <% } %>
+    <% if (devoluciones.length > 0) { %>
+      <details>
+        <summary class="pista">Devoluciones anteriores</summary>
+        <ul class="lista-control">
+          <% devoluciones.forEach(function (d) { %>
+            <li class="<%= d.fecha_anulacion ? 'anulada' : '' %>">
+              <%= d.cantidad %> <%= d.cantidad === 1 ? 'envase' : 'envases' %> · <%= fechaHora(d.fecha_hora) %> · <%= d.quien %>
+              <%= d.observaciones ? '· ' + d.observaciones : '' %>
+              <% if (d.fecha_anulacion) { %>
+                <br><span class="pista">Anulada: <%= d.motivo_anulacion %></span>
+              <% } else { %>
+                <form method="post" action="/clientes/devoluciones/<%= d.id_devolucion %>/anular" class="anular-en-linea">
+                  <input name="motivo" required maxlength="300" placeholder="Motivo para anular" aria-label="Motivo para anular la devolución">
+                  <button type="submit" class="enlace">Anular</button>
+                </form>
+              <% } %>
+            </li>
+          <% }) %>
+        </ul>
+      </details>
+    <% } %>
+  </section>
+</div>
+
+<section class="panel">
+  <h2>Compras</h2>
+  <% if (ventas.length === 0) { %>
+    <p class="ayuda">Todavía no tiene compras registradas.</p>
+  <% } else { %>
+    <table class="tabla">
+      <thead><tr><th>N°</th><th>Fecha</th><th>Desde</th><th class="numero">Tachos</th><th class="numero">Total</th><th>Pago</th><th></th></tr></thead>
+      <tbody>
+        <% ventas.forEach(function (v) { const saldo = Number(v.saldo); %>
+          <tr class="<%= v.anulada ? 'inactiva' : '' %>">
+            <td><%= v.id_venta %></td>
+            <td><%= fechaHora(v.fecha_hora) %></td>
+            <td><%= v.sucursal %></td>
+            <td class="numero"><%= v.tachos %></td>
+            <td class="numero"><%= pesos(v.total) %></td>
+            <td>
+              <% if (v.anulada) { %>Anulada
+              <% } else if (saldo <= 0) { %>Paga
+              <% } else { %><span class="alerta">Debe <%= pesos(saldo) %></span><% } %>
+            </td>
+            <td class="acciones"><a class="enlace" href="/clientes/ventas/<%= v.id_venta %>">Ver remito</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
+
+<script src="/solo-numeros.js"></script>
+<%- include('../parciales/pie') %>

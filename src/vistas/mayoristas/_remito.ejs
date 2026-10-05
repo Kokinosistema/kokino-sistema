@@ -1,0 +1,47 @@
+<%# El remito que viaja con los tachos. Lo usan la revision antes de
+    confirmar y la pagina de cada venta; al imprimir sale solo esto. %>
+<% const fechaHoraR = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+   const textoEnvase = (v) => (ENVASES.find((e) => e.valor === v) || {}).texto || v; %>
+<article class="ticket remito">
+  <header class="ticket-cabecera">
+    <img src="/imagenes/logo-192.png" alt="" width="56" height="56">
+    <div>
+      <strong>Remito <%= remito.numero ? 'N° ' + remito.numero : '(sin confirmar todavía)' %></strong><br>
+      Kokino · <%= remito.sucursal %><br>
+      <%= fechaHoraR(remito.fecha) %> · Vendió: <%= remito.vendio %>
+    </div>
+  </header>
+  <p class="remito-cliente">
+    <strong><%= remito.cliente.nombre_razon_social %></strong><br>
+    <%= [remito.cliente.cuit ? 'CUIT ' + remito.cliente.cuit : null, remito.cliente.direccion, remito.cliente.telefono ? 'Tel. ' + remito.cliente.telefono : null].filter(Boolean).join(' · ') %>
+  </p>
+
+  <table class="tabla-ticket">
+    <thead><tr><th>Sabor</th><th>Envase</th><th class="numero">Tachos</th><th class="numero">Precio</th><th class="numero">Subtotal</th></tr></thead>
+    <tbody>
+      <% remito.renglones.forEach(function (r) { %>
+        <tr>
+          <td><%= r.sabor %><% if (r.codigos && r.codigos.length) { %><br><span class="codigos"><% r.codigos.forEach(function (c) { %><span><%= c %></span><% }) %></span><% } %></td>
+          <td><%= textoEnvase(r.envase) %></td>
+          <td class="numero"><%= r.cantidad %></td>
+          <td class="numero"><%= pesos(r.precio) %></td>
+          <td class="numero"><%= pesos(r.precio * r.cantidad) %></td>
+        </tr>
+      <% }) %>
+      <tr class="total"><td colspan="2">Total</td><td class="numero"><%= remito.renglones.reduce((n, r) => n + r.cantidad, 0) %></td><td></td><td class="numero"><%= pesos(remito.total) %></td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Pago:</strong> <%= remito.pago %></p>
+  <% const retornables = remito.renglones.filter((r) => r.envase === 'RETORNABLE').reduce((n, r) => n + r.cantidad, 0); %>
+  <% if (retornables > 0) { %>
+    <p><strong>Envases retornables:</strong> <%= retornables %> <%= retornables === 1 ? 'tacho, a devolver' : 'tachos, a devolver' %> cuando se terminen.</p>
+  <% } %>
+  <% if (remito.observaciones) { %><p><strong>Observaciones:</strong> <%= remito.observaciones %></p><% } %>
+  <p class="pista">Documento no válido como factura.</p>
+
+  <div class="firmas">
+    <div>Entregó</div>
+    <div>Recibió (firma y aclaración)</div>
+  </div>
+</article>
