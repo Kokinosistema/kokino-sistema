@@ -1,0 +1,93 @@
+<%- include('../parciales/encabezado', { titulo: 'Estadísticas de mayoristas - Kokino' }) %>
+
+<% const maxMes = Math.max(0, ...meses.map((m) => m.tachos));
+   const actual = meses[meses.length - 1];
+   const pasado = meses[meses.length - 2]; %>
+
+<a class="volver" href="/clientes">← Clientes mayoristas</a>
+<h1>Estadísticas de mayoristas</h1>
+<p class="ayuda">Todos los mayoristas juntos, sin contar las ventas anuladas. Sirve para prever qué fabricar.</p>
+
+<div class="tarjetas-metricas">
+  <article class="tarjeta metrica">
+    <h3>Tachos este mes</h3>
+    <p class="metrica-valor"><%= actual.tachos %></p>
+    <p class="pista"><%= pesos(actual.total) %> · el mes pasado: <%= pasado.tachos %> (<%= pesos(pasado.total) %>)</p>
+  </article>
+  <article class="tarjeta metrica">
+    <h3>Clientes que compraron este mes</h3>
+    <p class="metrica-valor"><%= clientes.filter((c) => c.este_mes > 0).length %></p>
+    <p class="pista">de <%= clientes.length %> mayoristas activos</p>
+  </article>
+</div>
+
+<section class="panel">
+  <h2>Tachos por mes <span class="pista-inline">(últimos 12 meses)</span></h2>
+  <div class="barras" role="list">
+    <% meses.forEach(function (m) { %>
+      <div class="barra <%= m.esActual ? 'hoy' : '' %>" role="listitem" title="<%= m.mes %>: <%= m.tachos %> <%= m.tachos === 1 ? 'tacho' : 'tachos' %>, <%= pesos(m.total) %>">
+        <span class="barra-valor"><%= m.tachos || '' %></span>
+        <span class="barra-columna"><span style="height: <%= maxMes > 0 ? Math.round((m.tachos / maxMes) * 100) : 0 %>%"></span></span>
+        <span class="barra-etiqueta"><%= m.mes %></span>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Qué sabores piden <span class="pista-inline">(este mes y los 3 anteriores)</span></h2>
+  <% if (sabores.length === 0) { %>
+    <p class="ayuda">Todavía no hay ventas mayoristas registradas en estos meses.</p>
+  <% } else { %>
+    <p class="ayuda">
+      Al lado de cada sabor, cuántos tachos llenos hay hoy<%= fabrica ? ' en ' + fabrica : '' %> y para cuánto alcanzan
+      al ritmo de los mayoristas (sin contar lo que se vende en el mostrador).
+    </p>
+    <table class="tabla">
+      <thead>
+        <tr><th>Sabor</th><th class="numero">Tachos</th><th class="numero">Por mes</th><th class="numero">Este mes</th><th class="numero">Clientes</th><th class="numero">Llenos hoy</th><th>Alcanza para</th></tr>
+      </thead>
+      <tbody>
+        <% sabores.forEach(function (s) {
+             const porMes = s.tachos / 4;
+             const meses = porMes > 0 ? s.llenos / porMes : null; %>
+          <tr>
+            <td><%= s.sabor %></td>
+            <td class="numero"><%= s.tachos %></td>
+            <td class="numero"><%= porMes.toLocaleString('es-AR', { maximumFractionDigits: 1 }) %></td>
+            <td class="numero"><%= s.este_mes %></td>
+            <td class="numero"><%= s.clientes %></td>
+            <td class="numero <%= s.llenos === 0 ? 'alerta' : '' %>"><%= s.llenos %></td>
+            <td class="<%= meses !== null && meses < 0.5 ? 'alerta' : '' %>">
+              <%= s.llenos === 0 ? 'No hay stock' : meses < 0.5 ? 'Menos de 2 semanas' : meses < 1 ? 'Menos de un mes' : 'Unos ' + Math.floor(meses) + (Math.floor(meses) === 1 ? ' mes' : ' meses') %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
+
+<section class="panel">
+  <h2>Cómo viene cada cliente</h2>
+  <% if (clientes.length === 0) { %>
+    <p class="ayuda">No hay mayoristas activos.</p>
+  <% } else { %>
+    <table class="tabla">
+      <thead><tr><th>Cliente</th><th class="numero">Este mes</th><th class="numero">Mes pasado</th><th class="numero">Vendido este mes</th><th>Última compra</th></tr></thead>
+      <tbody>
+        <% clientes.forEach(function (c) { %>
+          <tr>
+            <td><a href="/clientes/<%= c.id_cliente %>"><%= c.nombre_razon_social %></a></td>
+            <td class="numero"><%= c.este_mes %></td>
+            <td class="numero"><%= c.mes_pasado %></td>
+            <td class="numero"><%= pesos(c.total_mes) %></td>
+            <td><%= c.ultima ? c.ultima.toLocaleDateString('es-AR') : 'Nunca' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
+
+<%- include('../parciales/pie') %>

@@ -1,0 +1,67 @@
+<%# Estadisticas de un mayorista, pedidas por el dueno: cuantos tachos por
+    mes, que sabores compra (cual mas, cual menos) y cada cuanto compra. %>
+<% const e = estadisticas;
+   const maxMes = Math.max(0, ...e.meses.map((m) => m.tachos));
+   const f = e.frecuencia; %>
+<section class="panel">
+  <h2>Qué compra</h2>
+  <% if (f.compras === 0) { %>
+    <p class="ayuda">Todavía no tiene compras registradas: las estadísticas se van llenando con cada venta.</p>
+  <% } else { %>
+    <div class="tarjetas-metricas">
+      <div>
+        <h3 class="subtitulo-panel">Este mes</h3>
+        <p class="metrica-valor-chico"><%= e.esteMes.tachos %> <%= e.esteMes.tachos === 1 ? 'tacho' : 'tachos' %></p>
+        <p class="pista"><%= pesos(e.esteMes.total) %> · el mes pasado: <%= e.mesPasado.tachos %> <%= e.mesPasado.tachos === 1 ? 'tacho' : 'tachos' %> (<%= pesos(e.mesPasado.total) %>)</p>
+      </div>
+      <div>
+        <h3 class="subtitulo-panel">Última compra</h3>
+        <p class="metrica-valor-chico"><%= f.dias_desde === 0 ? 'Hoy' : f.dias_desde === 1 ? 'Ayer' : 'Hace ' + f.dias_desde + ' días' %></p>
+        <p class="pista"><%= f.ultima.toLocaleDateString('es-AR') %> · <%= f.compras %> <%= f.compras === 1 ? 'compra' : 'compras' %> en total</p>
+      </div>
+      <div>
+        <h3 class="subtitulo-panel">Cada cuánto compra</h3>
+        <% if (f.cada_dias === null) { %>
+          <p class="metrica-valor-chico neutra">—</p>
+          <p class="pista">Se calcula a partir de la segunda compra.</p>
+        <% } else { %>
+          <p class="metrica-valor-chico"><%= f.cada_dias === 0 ? 'En el día' : 'Cada ' + f.cada_dias + (f.cada_dias === 1 ? ' día' : ' días') %></p>
+          <p class="pista <%= f.cada_dias > 0 && f.dias_desde > f.cada_dias * 2 ? 'alerta' : '' %>">
+            <%= f.cada_dias > 0 && f.dias_desde > f.cada_dias * 2 ? 'Hace más del doble de lo habitual que no compra.' : 'En promedio, entre una compra y la siguiente.' %>
+          </p>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="grilla-metricas">
+      <div>
+        <h3 class="subtitulo-panel">Tachos por mes</h3>
+        <div class="barras barras-chicas" role="list">
+          <% e.meses.forEach(function (m) { %>
+            <div class="barra <%= m.esActual ? 'hoy' : '' %>" role="listitem" title="<%= m.mes %>: <%= m.tachos %> <%= m.tachos === 1 ? 'tacho' : 'tachos' %>, <%= pesos(m.total) %>">
+              <span class="barra-valor"><%= m.tachos || '' %></span>
+              <span class="barra-columna"><span style="height: <%= maxMes > 0 ? Math.round((m.tachos / maxMes) * 100) : 0 %>%"></span></span>
+              <span class="barra-etiqueta"><%= m.mes %></span>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+      <div>
+        <h3 class="subtitulo-panel">Sus sabores <span class="pista-inline">(últimos 12 meses)</span></h3>
+        <% if (e.sabores.length > 0) { %>
+          <p class="pista">
+            El que más compra: <strong><%= e.sabores[0].sabor %></strong>
+            <% if (e.sabores.length > 1) { %> · el que menos: <strong><%= e.sabores[e.sabores.length - 1].sabor %></strong><% } %>
+          </p>
+          <% e.sabores.forEach(function (s) { %>
+            <div class="barra-h barra-h-ancha">
+              <span class="barra-h-nombre" title="<%= s.sabor %>"><%= s.sabor %></span>
+              <span class="barra-h-pista"><span style="width: <%= s.porcentaje %>%"></span></span>
+              <span class="barra-h-valor"><%= s.tachos %> <%= s.tachos === 1 ? 'tacho' : 'tachos' %> · <%= s.porcentaje %> %</span>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+</section>

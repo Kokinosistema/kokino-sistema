@@ -168,6 +168,120 @@ async function mediosDePago() {
 }
 
 // ---------------------------------------------------------------------------
+// Estadisticas (pedidas por el dueno el 2026-10-05): que sabores compra cada
+// mayorista, cual mas y cual menos, cuantos tachos por mes, y el total de
+// los mayoristas para prever que fabricar. Salen de los tachos de cada venta
+// no anulada (venta_tachos -> tacho -> lote -> sabor).
+
+const TACHOS_VENDIDOS = `
+  SELECT v.id_venta, v.id_cliente, v.fecha_hora, l.id_sabor, vt.precio_aplicado
+    FROM venta_tachos vt
+    JOIN ventas v ON v.id_venta = vt.id_venta
+    JOIN tachos t ON t.id_tacho = vt.id_tacho
+    JOIN lotes l ON l.id_lote = t.id_lote
+   WHERE v.fecha_anulacion IS NULL AND v.tipo_venta = 'MAYORISTA'`;
+
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+// Tachos de cada uno de los ultimos 12 meses (los meses sin compras en cero).
+// $1 = cliente, o null para todos.
+async function tachosPorMes(idCliente) {
+  const { rows } = await consultar(
+    `WITH t AS (${TACHOS_VENDIDOS} AND ($1::int IS NULL OR v.id_cliente = $1))
+     SELECT m::date AS mes, count(t.id_venta)::int AS tachos, coalesce(sum(t.precio_aplicado), 0) AS total,
+            m = date_trunc('month', now()) AS es_actual
+       FROM generate_series(date_trunc('month', now()) - interval '11 months', date_trunc('month', now()), interval '1 month') m
+       LEFT JOIN t ON date_trunc('month', t.fecha_hora) = m
+      GROUP BY m ORDER BY m`,
+    [idCliente]
+  );
+  return rows.map((r) => ({
+    mes: MESES[r.mes.getMonth()] + (r.mes.getMonth() === 0 ? ' ' + String(r.mes.getFullYear()).slice(2) : ''),
+    tachos: r.tachos, total: Number(r.total), esActual: r.es_actual,
+  }));
+}
+
+async function estadisticasDelCliente(idCliente) {
+  const meses = await tachosPorMes(idCliente);
+  // Sus sabores de los ultimos 12 meses, de mas a menos.
+  const { rows: sabores } = await consultar(
+    `WITH t AS (${TACHOS_VENDIDOS} AND v.id_cliente = $1 AND v.fecha_hora >= date_trunc('month', now()) - interval '11 months')
+     SELECT s.nombre || ' (' || lower(s.linea) || ')' AS sabor, count(*)::int AS tachos,
+            max(t.fecha_hora) AS ultima
+       FROM t JOIN sabores s ON s.id_sabor = t.id_sabor
+      GROUP BY s.id_sabor, s.nombre, s.linea
+      ORDER BY tachos DESC, ultima DESC`,
+    [idCliente]
+  );
+  // Cada cuanto compra: dias entre una compra y la siguiente, en promedio.
+  const { rows: [frecuencia] } = await consultar(
+    `WITH c AS (
+       SELECT fecha_hora, lag(fecha_hora) OVER (ORDER BY fecha_hora) AS anterior
+         FROM ventas
+        WHERE id_cliente = $1 AND tipo_venta = 'MAYORISTA' AND fecha_anulacion IS NULL
+     )
+     SELECT count(*)::int AS compras, max(fecha_hora) AS ultima,
+            (current_date - max(fecha_hora)::date) AS dias_desde,
+            round(avg(extract(epoch FROM fecha_hora - anterior) / 86400))::int AS cada_dias
+       FROM c`,
+    [idCliente]
+  );
+  const totalSabores = sabores.reduce((s, x) => s + x.tachos, 0);
+  return {
+    meses,
+    esteMes: meses[meses.length - 1],
+    mesPasado: meses[meses.length - 2],
+    sabores: sabores.map((x) => ({ ...x, porcentaje: totalSabores > 0 ? Math.round((x.tachos / totalSabores) * 100) : 0 })),
+    frecuencia,
+  };
+}
+
+// Todos los mayoristas juntos: los sabores que mas piden (para fabricar) y
+// como viene cada cliente.
+router.get('/estadisticas', async (req, res, siguiente) => {
+  try {
+    const meses = await tachosPorMes(null);
+    // Ultimos 3 meses completos mas el actual, con el stock lleno de hoy en
+    // la sucursal con fabrica, que es de donde salen.
+    const { rows: sabores } = await consultar(
+      `WITH t AS (${TACHOS_VENDIDOS} AND v.fecha_hora >= date_trunc('month', now()) - interval '3 months'),
+            fabrica AS (SELECT id_sucursal FROM sucursales WHERE tiene_fabrica AND activa ORDER BY id_sucursal LIMIT 1)
+       SELECT s.nombre || ' (' || lower(s.linea) || ')' AS sabor,
+              count(*)::int AS tachos,
+              count(*) FILTER (WHERE t.fecha_hora >= date_trunc('month', now()))::int AS este_mes,
+              count(DISTINCT t.id_cliente)::int AS clientes,
+              (SELECT count(*) FROM tachos tt JOIN lotes ll ON ll.id_lote = tt.id_lote
+                WHERE ll.id_sabor = s.id_sabor AND tt.estado = 'LLENO'
+                  AND tt.id_sucursal = (SELECT id_sucursal FROM fabrica))::int AS llenos
+         FROM t JOIN sabores s ON s.id_sabor = t.id_sabor
+        GROUP BY s.id_sabor, s.nombre, s.linea
+        ORDER BY tachos DESC, s.nombre`
+    );
+    const { rows: [fabrica] } = await consultar('SELECT nombre FROM sucursales WHERE tiene_fabrica AND activa ORDER BY id_sucursal LIMIT 1');
+    const { rows: clientes } = await consultar(
+      `WITH t AS (${TACHOS_VENDIDOS})
+       SELECT c.id_cliente, c.nombre_razon_social,
+              count(t.id_venta) FILTER (WHERE t.fecha_hora >= date_trunc('month', now()))::int AS este_mes,
+              count(t.id_venta) FILTER (WHERE t.fecha_hora >= date_trunc('month', now()) - interval '1 month'
+                                          AND t.fecha_hora < date_trunc('month', now()))::int AS mes_pasado,
+              coalesce(sum(t.precio_aplicado) FILTER (WHERE t.fecha_hora >= date_trunc('month', now())), 0) AS total_mes,
+              max(t.fecha_hora) AS ultima
+         FROM clientes c
+         LEFT JOIN t ON t.id_cliente = c.id_cliente
+        WHERE c.tipo_cliente = 'MAYORISTA' AND c.activo
+        GROUP BY c.id_cliente, c.nombre_razon_social
+        ORDER BY este_mes DESC, mes_pasado DESC, c.nombre_razon_social`
+    );
+    res.render('mayoristas/estadisticas', {
+      meses, sabores, clientes: clientes.map((c) => ({ ...c, total_mes: Number(c.total_mes) })),
+      fabrica: fabrica ? fabrica.nombre : null,
+    });
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Ficha del cliente
 
 router.get('/:id', async (req, res, siguiente) => {
@@ -196,7 +310,8 @@ router.get('/:id', async (req, res, siguiente) => {
         LIMIT 20`,
       [cliente.id_cliente]
     );
-    res.render('mayoristas/ficha', { cliente, cuenta, ventas, devoluciones, errores: [] });
+    const estadisticas = await estadisticasDelCliente(cliente.id_cliente);
+    res.render('mayoristas/ficha', { cliente, cuenta, ventas, devoluciones, estadisticas, errores: [] });
   } catch (error) {
     siguiente(error);
   }

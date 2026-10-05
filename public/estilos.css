@@ -784,3 +784,5 @@ details.panel summary { cursor: pointer; font-weight: 700; }
 td.acciones form { display: inline; }
 td.acciones > * + * { margin-left: 12px; }
 .metrica-valor-chico.deuda { color: var(--text-primary); }
+.barra-h-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barra-h-ancha { grid-template-columns: minmax(140px, 240px) 1fr auto; }
