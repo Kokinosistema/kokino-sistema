@@ -801,3 +801,14 @@ label.opcion-turno span { display: flex; flex-direction: column; align-items: ce
 label.opcion-turno small { font-weight: 400; font-size: 12px; opacity: 0.85; }
 label.opcion-turno span { border-radius: var(--radius-md); }
 .botonera-arriba { margin: 0 0 16px; }
+
+/* Aviso flotante: cuando la página vuelve a donde estaba y el aviso de arriba
+   no se ve, aparece fijo arriba unos segundos (public/posicion.js). */
+.aviso.aviso-flotante {
+  position: fixed; top: 76px; right: 24px; z-index: 50;
+  max-width: 460px; box-shadow: var(--shadow-soft);
+  animation: aviso-entra 0.2s ease-out;
+}
+.aviso.aviso-saliendo { opacity: 0; transition: opacity 0.6s; }
+@keyframes aviso-entra { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media print { .aviso.aviso-flotante { display: none; } }
