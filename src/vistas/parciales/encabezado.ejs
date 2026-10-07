@@ -38,31 +38,36 @@
 %>
 <% if (usuario) { %>
 <div class="app">
+  <%# Menu abierto o cerrado: lo recuerda cada navegador (localStorage). Se
+      aplica aca, antes de pintar, para que no se vea abrirse y cerrarse. %>
+  <script>
+    try { if (localStorage.getItem('kokino-menu') === 'cerrado') document.currentScript.parentElement.classList.add('menu-cerrado'); } catch (e) {}
+  </script>
   <aside class="lateral">
     <a class="logo" href="/">
       <img src="/imagenes/logo-192.png" alt="Kokino, helados de tradición" width="112" height="112">
     </a>
 
     <nav class="menu">
-      <a class="<%= activo('/') %>" href="/"><%- svg('inicio') %> Inicio</a>
-      <a class="<%= activo('/ventas') %>" href="/ventas"><%- svg('vender') %> Vender</a>
-      <a class="<%= activo('/caja') %>" href="/caja"><%- svg('caja') %> Caja</a>
-      <a class="<%= activo('/fabricacion') %>" href="/fabricacion"><%- svg('fabricacion') %> Fabricación</a>
-      <a class="<%= activo('/mercaderia') %>" href="/mercaderia"><%- svg('mercaderia') %> Llegó mercadería</a>
-      <a class="<%= activo('/envios') %>" href="/envios"><%- svg('envios') %> Envíos
+      <a class="<%= activo('/') %>" href="/" title="Inicio"><%- svg('inicio') %> <span class="texto-menu">Inicio</span></a>
+      <a class="<%= activo('/ventas') %>" href="/ventas" title="Vender"><%- svg('vender') %> <span class="texto-menu">Vender</span></a>
+      <a class="<%= activo('/caja') %>" href="/caja" title="Caja"><%- svg('caja') %> <span class="texto-menu">Caja</span></a>
+      <a class="<%= activo('/fabricacion') %>" href="/fabricacion" title="Fabricación"><%- svg('fabricacion') %> <span class="texto-menu">Fabricación</span></a>
+      <a class="<%= activo('/mercaderia') %>" href="/mercaderia" title="Llegó mercadería"><%- svg('mercaderia') %> <span class="texto-menu">Llegó mercadería</span></a>
+      <a class="<%= activo('/envios') %>" href="/envios" title="Envíos"><%- svg('envios') %> <span class="texto-menu">Envíos</span>
         <% if (typeof porRecibir !== 'undefined' && porRecibir.length > 0) { %>
           <span class="contador" title="Envíos para recibir"><%= porRecibir.length %><span class="solo-lector"> para recibir</span></span>
         <% } %>
       </a>
-      <a class="<%= activo('/recetas') %>" href="/recetas"><%- svg('recetas') %> Recetas</a>
+      <a class="<%= activo('/recetas') %>" href="/recetas" title="Recetas"><%- svg('recetas') %> <span class="texto-menu">Recetas</span></a>
       <% if (usuario.rol === 'administrador') { %>
-        <a class="<%= activo('/clientes') %>" href="/clientes"><%- svg('clientes') %> Clientes mayoristas</a>
-        <a class="<%= activo('/productos') %>" href="/productos"><%- svg('productos') %> Productos</a>
-        <a class="<%= activo('/insumos') %>" href="/insumos"><%- svg('insumos') %> Insumos</a>
-        <a class="<%= activo('/costos') %>" href="/costos"><%- svg('costos') %> Costos</a>
-        <a class="<%= activo('/proveedores') %>" href="/proveedores"><%- svg('proveedores') %> Proveedores</a>
-        <a class="<%= activo('/usuarios') %>" href="/usuarios"><%- svg('usuarios') %> Usuarios</a>
-        <a class="<%= activo('/sucursales') %>" href="/sucursales"><%- svg('sucursales') %> Sucursales</a>
+        <a class="<%= activo('/clientes') %>" href="/clientes" title="Clientes mayoristas"><%- svg('clientes') %> <span class="texto-menu">Clientes mayoristas</span></a>
+        <a class="<%= activo('/productos') %>" href="/productos" title="Productos"><%- svg('productos') %> <span class="texto-menu">Productos</span></a>
+        <a class="<%= activo('/insumos') %>" href="/insumos" title="Insumos"><%- svg('insumos') %> <span class="texto-menu">Insumos</span></a>
+        <a class="<%= activo('/costos') %>" href="/costos" title="Costos"><%- svg('costos') %> <span class="texto-menu">Costos</span></a>
+        <a class="<%= activo('/proveedores') %>" href="/proveedores" title="Proveedores"><%- svg('proveedores') %> <span class="texto-menu">Proveedores</span></a>
+        <a class="<%= activo('/usuarios') %>" href="/usuarios" title="Usuarios"><%- svg('usuarios') %> <span class="texto-menu">Usuarios</span></a>
+        <a class="<%= activo('/sucursales') %>" href="/sucursales" title="Sucursales"><%- svg('sucursales') %> <span class="texto-menu">Sucursales</span></a>
       <% } %>
     </nav>
 
@@ -71,6 +76,29 @@
 
   <div class="contenido">
     <header class="cabecera">
+      <button type="button" class="alternar-menu" id="alternar-menu" aria-label="Cerrar el menú" title="Cerrar el menú" aria-expanded="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <script>
+        // Abre y cierra la franja del menu y lo recuerda en este navegador.
+        (function () {
+          var app = document.querySelector('.app');
+          var boton = document.getElementById('alternar-menu');
+          function mostrar() {
+            var cerrado = app.classList.contains('menu-cerrado');
+            var texto = cerrado ? 'Abrir el menú' : 'Cerrar el menú';
+            boton.setAttribute('aria-label', texto);
+            boton.title = texto;
+            boton.setAttribute('aria-expanded', cerrado ? 'false' : 'true');
+          }
+          boton.addEventListener('click', function () {
+            app.classList.toggle('menu-cerrado');
+            try { localStorage.setItem('kokino-menu', app.classList.contains('menu-cerrado') ? 'cerrado' : 'abierto'); } catch (e) {}
+            mostrar();
+          });
+          mostrar();
+        })();
+      </script>
       <% if (sucursalesElegibles.length > 1) { %>
         <%# El dueno elige sobre que sucursal trabaja; vale para todas las pantallas. %>
         <form class="elegir-sucursal" method="post" action="/sucursal">

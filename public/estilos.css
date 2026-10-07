@@ -792,3 +792,33 @@ label.opcion-turno span { border-radius: var(--radius-md); }
 #inicio-vender[hidden], #resultados-busqueda[hidden] { display: none; }
 .tarjeta-producto .categoria-producto { font-size: 11px; color: var(--text-secondary); font-weight: 400; }
 .mas-vendidos { margin-bottom: 24px; }
+
+/* ---------- Menú plegable ---------- */
+
+/* El boton de la cabecera abre y cierra la franja verde. Cerrada queda
+   angosta, con los iconos solos (el nombre se ve al pasar el mouse). */
+.alternar-menu {
+  margin-right: auto;
+  display: grid; place-items: center;
+  width: 38px; height: 38px; padding: 0;
+  background: none; border: 0; border-radius: var(--radius-sm);
+  color: var(--brand-pressed); cursor: pointer;
+}
+.alternar-menu:hover { background: var(--bg-active); }
+.lateral { transition: width 0.15s ease, padding 0.15s ease; }
+.app.menu-cerrado { background: linear-gradient(to right, var(--brand-primary) 72px, var(--bg-base) 72px); }
+.app.menu-cerrado .lateral { width: 72px; padding: 20px 10px; }
+.app.menu-cerrado .logo { margin: 0 0 20px; }
+.app.menu-cerrado .logo img { width: 48px; height: 48px; }
+.app.menu-cerrado .texto-menu,
+.app.menu-cerrado .pie-lateral { display: none; }
+.app.menu-cerrado .menu a { justify-content: center; padding: 10px 0; position: relative; }
+.app.menu-cerrado .menu svg { width: 22px; height: 22px; }
+.app.menu-cerrado .menu .contador { position: absolute; top: 2px; right: 2px; margin: 0; min-width: 18px; padding: 0 5px; font-size: 11px; }
+@media (max-width: 860px) {
+  .app.menu-cerrado { background: var(--bg-base); }
+  .app.menu-cerrado .lateral { width: 100%; padding: 8px 12px; }
+  .app.menu-cerrado .logo { display: none; }
+  .app.menu-cerrado .menu a { padding: 8px 10px; }
+}
+.app.menu-cerrado main { max-width: 1370px; }
