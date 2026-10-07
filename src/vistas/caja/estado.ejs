@@ -12,7 +12,7 @@
   <section class="panel">
     <h2>Turno abierto</h2>
     <p class="ayuda">
-      Turno de la <%= (TURNOS.find(function (t) { return t.valor === abierta.turno; }) || {}).texto.toLowerCase() %> en <%= abierta.sucursal %>,
+      Turno <%= (TURNOS.find(function (t) { return t.valor === abierta.turno; }) || {}).texto %> en <%= abierta.sucursal %>,
       abierto el <%= abierta.fecha_apertura.toLocaleString('es-AR') %>.
     </p>
 
@@ -164,14 +164,19 @@
     <form method="post" action="/caja/abrir">
       <input type="hidden" name="id_sucursal" value="<%= elegida %>">
 
-      <label>
-        Turno
-        <select name="turno" required>
+      <%# Dos botones en vez de una lista; viene marcado el que corresponde a
+          la hora en que se abre. Por debajo son opciones (radio). %>
+      <fieldset class="opciones-boton">
+        <legend>Turno</legend>
+        <div class="grupo-botones">
           <% TURNOS.forEach(function (t) { %>
-            <option value="<%= t.valor %>"><%= t.texto %></option>
+            <label class="opcion-boton opcion-turno">
+              <input type="radio" name="turno" value="<%= t.valor %>" <%= t.valor === turnoElegido ? 'checked' : '' %> required>
+              <span><strong><%= t.texto %></strong><small><%= t.horario %></small></span>
+            </label>
           <% }) %>
-        </select>
-      </label>
+        </div>
+      </fieldset>
 
       <label>
         Efectivo con el que arranca

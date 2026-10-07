@@ -7,7 +7,7 @@
   const fechaHora = (f) => f.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' }) + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
   const pct = (parte, total) => (total > 0 ? Math.round((parte / total) * 100) : 0);
   const maximo = (lista, campo) => Math.max(0, ...lista.map((x) => x[campo]));
-  const TURNOS = { MANANA: 'mañana', TARDE: 'tarde', NOCHE: 'noche' };
+  const TURNOS = { MANANA_TARDE: 'mañana/tarde', TARDE_NOCHE: 'tarde/noche' };
   // Para el numero arriba de cada barra: "$23,5 mil" en vez de "$23.500".
   const compacto = (n) => (n >= 1000 ? '$' + (n / 1000).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' mil' : pesos(Math.round(n)));
   const cantidad = (n, u) => (Number.isInteger(n) ? n : n.toLocaleString('es-AR', { maximumFractionDigits: 3 })) + ' ' + u;

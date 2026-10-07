@@ -7,11 +7,25 @@ const { parsearMonto, MONTO_INVALIDO, pesos, aCentavos } = require('../dinero');
 
 const router = express.Router();
 
-const TURNOS = [
-  { valor: 'MANANA', texto: 'Mañana' },
-  { valor: 'TARDE', texto: 'Tarde' },
-  { valor: 'NOCHE', texto: 'Noche' },
-];
+// Los turnos salen de la tabla turnos, con su horario (2026-10-07: Manana/Tarde
+// de 10 a 18 y Tarde/Noche de 18 a 1). El sugerido al abrir la caja es el que
+// corresponde a la hora de ahora; si no cae en ninguno (antes de las 10), el
+// primero del dia.
+async function leerTurnos() {
+  const { rows } = await consultar(
+    `SELECT codigo AS valor, nombre AS texto,
+            to_char(hora_inicio, 'FMHH24') || ' a ' || to_char(hora_fin, 'FMHH24') || ' h' AS horario,
+            CASE WHEN hora_inicio < hora_fin THEN localtime >= hora_inicio AND localtime < hora_fin
+                 ELSE localtime >= hora_inicio OR localtime < hora_fin END AS ahora
+       FROM turnos ORDER BY orden`
+  );
+  return rows;
+}
+
+function turnoSugerido(turnos) {
+  const t = turnos.find((x) => x.ahora) || turnos[0];
+  return t ? t.valor : '';
+}
 
 // No lleva exigirRol: abrir y cerrar la caja es tarea de mostrador, la hace
 // quien atiende. Opera sobre la sucursal de trabajo (ver src/sucursales.js).
@@ -88,7 +102,7 @@ function esDueno(usuario) {
 
 // Arma todo lo que necesita la pantalla principal. La usan la carga normal y
 // los errores de los formularios, para que no se pierda lo que se escribio.
-async function mostrarCaja(res, { usuario, sucursales, elegida, errores = [], estado = 200, egreso = {} }) {
+async function mostrarCaja(res, { usuario, sucursales, elegida, errores = [], estado = 200, egreso = {}, turnoElegido = '' }) {
   const verTodo = esDueno(usuario);
   const abierta = await cajaAbiertaDe(elegida);
 
@@ -136,7 +150,9 @@ async function mostrarCaja(res, { usuario, sucursales, elegida, errores = [], es
     [elegida]
   );
 
+  const TURNOS = await leerTurnos();
   res.status(estado).render('caja/estado', {
+    turnoElegido: turnoElegido || turnoSugerido(TURNOS),
     sucursales,
     elegida,
     abierta,
@@ -179,7 +195,7 @@ router.post('/abrir', async (req, res, siguiente) => {
     if (!sucursales.some((s) => s.id_sucursal === idSucursal)) {
       errores.push(CAMBIO_DE_SUCURSAL);
     }
-    if (!TURNOS.some((t) => t.valor === turno)) {
+    if (!(await leerTurnos()).some((t) => t.valor === turno)) {
       errores.push('Elegí un turno.');
     }
     if (monto === null) {
@@ -188,7 +204,7 @@ router.post('/abrir', async (req, res, siguiente) => {
 
     if (errores.length > 0) {
       return mostrarCaja(res, {
-        usuario, sucursales, elegida: req.sucursal.id_sucursal, errores, estado: 400,
+        usuario, sucursales, elegida: req.sucursal.id_sucursal, errores, estado: 400, turnoElegido: turno,
       });
     }
 
@@ -230,7 +246,7 @@ router.get('/cerrar', async (req, res, siguiente) => {
       esperado: esperadoEnCajon(abierta),
       errores: [],
       declarado: '',
-      TURNOS,
+      TURNOS: await leerTurnos(),
       verTodo: esDueno(usuario),
     });
   } catch (error) {
@@ -294,7 +310,7 @@ router.post('/cerrar', async (req, res, siguiente) => {
         esperado: esperadoEnCajon(resultado.caja),
         errores: [resultado.error],
         declarado,
-        TURNOS,
+        TURNOS: await leerTurnos(),
         verTodo: esDueno(usuario),
       });
     }

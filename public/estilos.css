@@ -795,3 +795,8 @@ td.acciones > * + * { margin-left: 12px; }
 .titulo-con-accion h2 { margin: 0; }
 input.campo-corto-solo { max-width: 160px; }
 .tabla-edicion input.contado { width: 110px; text-align: right; margin: 0; }
+
+/* Botones de turno al abrir la caja: el nombre y debajo el horario. */
+label.opcion-turno span { display: flex; flex-direction: column; align-items: center; line-height: 1.2; padding: 10px 22px; }
+label.opcion-turno small { font-weight: 400; font-size: 12px; opacity: 0.85; }
+label.opcion-turno span { border-radius: var(--radius-md); }

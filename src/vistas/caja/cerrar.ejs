@@ -3,7 +3,7 @@
 <h1>Cerrar la caja</h1>
 
 <p class="ayuda">
-  Turno de la <%= (TURNOS.find(function (t) { return t.valor === caja.turno; }) || {}).texto.toLowerCase() %> en <%= caja.sucursal %>,
+  Turno <%= (TURNOS.find(function (t) { return t.valor === caja.turno; }) || {}).texto %> en <%= caja.sucursal %>,
   abierto el <%= caja.fecha_apertura.toLocaleString('es-AR') %>.
 </p>
 
