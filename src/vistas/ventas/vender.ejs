@@ -77,6 +77,30 @@
   <div class="venta">
     <section class="catalogo-venta">
       <% if (!abierta) { %>
+        <%# Busqueda general: al escribir se esconden las categorias y aparecen
+            los productos que coinciden, de todas las categorias. %>
+        <input type="search" id="buscar-todo" class="buscar buscar-todo" value="<%= busqueda %>"
+               placeholder="Buscá cualquier producto (por ejemplo: alfajor o palito)"
+               aria-label="Buscar cualquier producto" autocomplete="off">
+        <div id="resultados-busqueda" hidden>
+          <h2>Resultados</h2>
+          <p id="sin-resultados-todo" class="ayuda" hidden>Ningún producto coincide con la búsqueda.</p>
+          <div class="productos">
+            <% catalogo.forEach(function (g) { g.productos.forEach(function (p) { %>
+              <%- include('_tarjeta', { p, categoria: '', mostrarCategoria: true }) %>
+            <% }) }) %>
+          </div>
+        </div>
+
+        <div id="inicio-vender">
+        <% if (masVendidos.length > 0) { %>
+          <h2>Lo más vendido</h2>
+          <div class="productos mas-vendidos">
+            <% masVendidos.forEach(function (p) { %>
+              <%- include('_tarjeta', { p, categoria: '', mostrarCategoria: true }) %>
+            <% }) %>
+          </div>
+        <% } %>
         <h2>¿Qué va a llevar?</h2>
         <div class="categorias">
           <% catalogo.forEach(function (grupo) { %>
@@ -96,6 +120,7 @@
               <span class="cuantos">Y después sus productos</span>
             </a>
           <% } %>
+        </div>
         </div>
       <% } else { %>
         <div class="titulo-categoria">
@@ -125,21 +150,7 @@
         <% } %>
         <div class="productos">
           <% abierta.productos.forEach(function (p) { %>
-            <form class="producto" method="post" action="/ventas/pedido" data-nombre="<%= p.nombre %>">
-              <input type="hidden" name="id_sucursal" value="<%= elegida %>">
-              <input type="hidden" name="categoria" value="<%= abierta.id_categoria %>">
-              <input type="hidden" name="busqueda" value="<%= busqueda %>">
-              <input type="hidden" name="id_producto" value="<%= p.id_producto %>">
-              <%# La tarjeta entera es el boton: cada toque suma uno al pedido. %>
-              <button class="tarjeta-producto" type="submit" name="accion" value="agregar"
-                      aria-label="Sumar <%= p.nombre %> al pedido">
-                <span class="nombre-producto"><%= p.nombre %></span>
-                <span class="precio-producto"><%= pesos(Number(p.precio)) %></span>
-                <% if (enPedido[p.id_producto]) { %>
-                  <span class="en-pedido"><%= enPedido[p.id_producto] %> en el pedido</span>
-                <% } %>
-              </button>
-            </form>
+            <%- include('_tarjeta', { p, categoria: abierta.id_categoria }) %>
           <% }) %>
         </div>
       <% } %>
@@ -324,6 +335,38 @@
       });
     }
 
+    campo.addEventListener('input', filtrar);
+    filtrar();
+  })();
+
+  // Busqueda general del inicio de Vender: mientras haya algo escrito se
+  // esconden "Lo mas vendido" y las categorias, y se ven los productos que
+  // coinciden (por nombre o categoria, sin importar acentos ni el orden de
+  // las palabras). La busqueda viaja con cada boton para que, al volver
+  // despues de sumar un producto, siga filtrado.
+  (function () {
+    var campo = document.getElementById('buscar-todo');
+    if (!campo) return;
+    var inicio = document.getElementById('inicio-vender');
+    var resultados = document.getElementById('resultados-busqueda');
+    var tarjetas = resultados.querySelectorAll('form.producto');
+    var sinResultados = document.getElementById('sin-resultados-todo');
+    function normalizar(texto) { return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+    function filtrar() {
+      var palabras = normalizar(campo.value).split(/\s+/).filter(Boolean);
+      var buscando = palabras.length > 0;
+      inicio.hidden = buscando;
+      resultados.hidden = !buscando;
+      var visibles = 0;
+      tarjetas.forEach(function (t) {
+        var nombre = normalizar(t.dataset.nombre);
+        var coincide = buscando && palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
+        t.hidden = !coincide;
+        if (coincide) visibles += 1;
+      });
+      sinResultados.hidden = !buscando || visibles > 0;
+      document.querySelectorAll('input[name="busqueda"]').forEach(function (oculto) { oculto.value = campo.value; });
+    }
     campo.addEventListener('input', filtrar);
     filtrar();
   })();

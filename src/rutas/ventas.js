@@ -64,11 +64,14 @@ function sucursalPedida(valor, sucursales) {
 }
 
 // A donde volver despues de tocar el pedido: a la misma categoria y con la
-// misma busqueda, para seguir cargando sin volver a entrar ni a tipear.
+// misma busqueda, para seguir cargando sin volver a entrar ni a tipear. Sin
+// categoria es el inicio de Vender, con la busqueda general si habia.
 function direccionVender(idSucursal, categoria, busqueda) {
   const idCategoria = Number(categoria);
-  if (!Number.isInteger(idCategoria) || idCategoria <= 0) return '/ventas';
   const texto = limpiarBusqueda(busqueda);
+  if (!Number.isInteger(idCategoria) || idCategoria <= 0) {
+    return '/ventas' + (texto ? '?busqueda=' + encodeURIComponent(texto) : '');
+  }
   return '/ventas?categoria=' + idCategoria
     + (texto ? '&busqueda=' + encodeURIComponent(texto) : '');
 }
@@ -199,7 +202,24 @@ async function mostrar(req, res, {
     [elegida]
   );
 
+  // Lo mas vendido (pedido de la usuaria el 2026-10-07): los 4 productos que
+  // mas unidades vendieron en esta sucursal en los ultimos 30 dias, para
+  // sumarlos de un toque cuando hay mucha gente. Solo los que siguen a la venta.
+  const { rows: topVendidos } = await consultar(
+    `SELECT d.id_producto
+       FROM venta_detalle d
+       JOIN ventas v ON v.id_venta = d.id_venta
+      WHERE v.id_sucursal = $1 AND v.tipo_venta = 'MINORISTA' AND v.fecha_anulacion IS NULL
+        AND v.fecha_hora >= current_date - 30
+      GROUP BY d.id_producto
+      ORDER BY sum(d.cantidad) DESC, max(v.fecha_hora) DESC
+      LIMIT 8`,
+    [elegida]
+  );
+  const masVendidos = topVendidos.map((r) => porId.get(r.id_producto)).filter(Boolean).slice(0, 4);
+
   res.status(estado).render('ventas/vender', {
+    masVendidos,
     sucursales, elegida, caja, catalogo, abierta, lineas, total, medios, ultimas, tachos,
     CANALES, errores, CANTIDAD_MAXIMA, esDueno,
     // Cuantos de cada producto hay ya en el pedido, para mostrarlo en su tarjeta.

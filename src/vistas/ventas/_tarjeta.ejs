@@ -1,0 +1,19 @@
+<%# Un producto para sumar al pedido: la tarjeta entera es el boton y cada
+    toque suma uno. La usan las categorias, "Lo mas vendido" y la busqueda
+    general. "categoria" es a donde volver despues de tocar (vacio: al
+    inicio de Vender). %>
+<form class="producto" method="post" action="/ventas/pedido" data-nombre="<%= p.nombre %> <%= p.categoria %>">
+  <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+  <input type="hidden" name="categoria" value="<%= categoria %>">
+  <input type="hidden" name="busqueda" value="<%= busqueda %>">
+  <input type="hidden" name="id_producto" value="<%= p.id_producto %>">
+  <button class="tarjeta-producto" type="submit" name="accion" value="agregar"
+          aria-label="Sumar <%= p.nombre %> al pedido">
+    <span class="nombre-producto"><%= p.nombre %></span>
+    <% if (typeof mostrarCategoria !== 'undefined' && mostrarCategoria) { %><span class="categoria-producto"><%= p.categoria %></span><% } %>
+    <span class="precio-producto"><%= pesos(Number(p.precio)) %></span>
+    <% if (enPedido[p.id_producto]) { %>
+      <span class="en-pedido"><%= enPedido[p.id_producto] %> en el pedido</span>
+    <% } %>
+  </button>
+</form>
