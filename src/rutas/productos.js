@@ -5,6 +5,8 @@ const { consultar, conTransaccion } = require('../db');
 const { parsearMonto, MONTO_INVALIDO, pesos, aCentavos } = require('../dinero');
 const { exigirRol } = require('../middleware/sesion');
 
+const { filasParaContar } = require('./stock');
+
 const router = express.Router();
 
 // Definir que lleva cada producto es configuracion del negocio: de eso
@@ -39,8 +41,17 @@ router.get('/', async (req, res, siguiente) => {
       grupo.productos.push(producto);
     }
     // La lista muestra solo el producto y su stock; que insumos lleva se ve
-    // y se carga entrando a cada producto.
-    res.render('productos/lista', { grupos });
+    // y se carga entrando a cada producto. Con ?cargar=1 muestra ademas un
+    // campo para escribir cuanto hay contado (lo guarda /stock/contado).
+    const cargar = req.query.cargar === '1';
+    const contado = req.session.contado && req.session.contado.tipo === 'producto' ? req.session.contado : null;
+    delete req.session.contado;
+    res.render('productos/lista', {
+      grupos, cargar,
+      paraContar: cargar ? await filasParaContar('producto', req.sucursal.id_sucursal) : {},
+      valores: contado ? contado.valores : {},
+      erroresContado: contado ? contado.errores : [],
+    });
   } catch (error) {
     siguiente(error);
   }

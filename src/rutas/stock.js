@@ -8,7 +8,10 @@ const { CAMBIO_DE_SUCURSAL } = require('../sucursales');
 const router = express.Router();
 
 // Cargar stock (2026-10-05): lo que ya hay en la sucursal de trabajo cuando
-// se empieza a usar el sistema. Lo hacen los duenos.
+// se empieza a usar el sistema. Lo hacen los duenos. Desde el 2026-10-07 no
+// tiene pantalla propia en el menu: el helado se carga desde Fabricacion
+// (/stock/helado) y lo contado de productos e insumos, desde sus listas
+// (Productos e Insumos, boton "Cargar stock"), que mandan aca.
 //
 //   - Helado: los tachos llenos que estan en los freezers, con su sabor y el
 //     vencimiento que figura en el tacho. Van en un lote de STOCK_INICIAL.
@@ -84,15 +87,17 @@ async function datos(idSucursal) {
   return { sabores, cargas, productos: productos.map(conNumero), insumos: insumos.map(conNumero) };
 }
 
-async function mostrar(req, res, { helado = null, valores = {}, errores = [], erroresHelado = [], estado = 200 } = {}) {
-  res.status(estado).render('stock/index', {
-    ...(await datos(req.sucursal.id_sucursal)),
-    helado: helado || { renglones: [] },
-    valores, errores, erroresHelado, hoy: hoyTexto(), LITROS_POR_TACHO,
+async function mostrar(req, res, { helado = null, erroresHelado = [], estado = 200 } = {}) {
+  const { sabores, cargas } = await datos(req.sucursal.id_sucursal);
+  res.status(estado).render('stock/helado', {
+    sabores, cargas, helado: helado || { renglones: [] }, erroresHelado, hoy: hoyTexto(), LITROS_POR_TACHO,
   });
 }
 
-router.get('/', async (req, res, siguiente) => {
+// La pantalla vieja de Cargar stock lleva a la carga de helado.
+router.get('/', (req, res) => res.redirect('/stock/helado'));
+
+router.get('/helado', async (req, res, siguiente) => {
   try {
     await mostrar(req, res);
   } catch (error) {
@@ -107,7 +112,7 @@ router.post('/helado', async (req, res, siguiente) => {
   try {
     if (Number(req.body.id_sucursal) !== req.sucursal.id_sucursal) {
       req.session.aviso = CAMBIO_DE_SUCURSAL;
-      return res.redirect('/stock');
+      return res.redirect('/stock/helado');
     }
     const { sabores } = await datos(req.sucursal.id_sucursal);
     const helado = {
@@ -152,7 +157,7 @@ router.post('/helado', async (req, res, siguiente) => {
       return n;
     });
     req.session.aviso = 'Se cargaron ' + total + (total === 1 ? ' tacho' : ' tachos') + ' al stock de ' + req.sucursal.nombre + '.';
-    res.redirect('/stock');
+    res.redirect('/stock/helado');
   } catch (error) {
     siguiente(error);
   }
@@ -168,14 +173,14 @@ router.post('/helado/:id/borrar', async (req, res, siguiente) => {
     if (!carga) return siguiente();
     if (!carga.se_puede_borrar) {
       req.session.aviso = 'Esa carga ya no se puede borrar: algún tacho se abrió, se envió o se vendió.';
-      return res.redirect('/stock');
+      return res.redirect('/stock/helado');
     }
     await conTransaccion(async (ejecutar) => {
       await ejecutar('DELETE FROM tachos WHERE id_lote = $1', [id]);
       await ejecutar("DELETE FROM lotes WHERE id_lote = $1 AND origen = 'STOCK_INICIAL'", [id]);
     });
     req.session.aviso = 'Se borró la carga de ' + carga.tachos + (carga.tachos === 1 ? ' tacho' : ' tachos') + ' de ' + carga.sabor + '.';
-    res.redirect('/stock');
+    res.redirect('/stock/helado');
   } catch (error) {
     siguiente(error);
   }
@@ -184,44 +189,51 @@ router.post('/helado/:id/borrar', async (req, res, siguiente) => {
 // ---------------------------------------------------------------------------
 // Productos e insumos: cuanto hay contado
 
-router.post('/contado', async (req, res, siguiente) => {
+// Lo contado de productos o de insumos, desde su lista. Si hay errores,
+// vuelve a la lista en modo carga con lo escrito y los errores.
+const LISTAS = { producto: '/productos', insumo: '/insumos' };
+
+router.post('/contado/:tipo', async (req, res, siguiente) => {
   try {
+    const tipo = req.params.tipo;
+    const volver = LISTAS[tipo];
+    if (!volver) return siguiente();
     if (Number(req.body.id_sucursal) !== req.sucursal.id_sucursal) {
       req.session.aviso = CAMBIO_DE_SUCURSAL;
-      return res.redirect('/stock');
+      return res.redirect(volver);
     }
-    const { productos, insumos } = await datos(req.sucursal.id_sucursal);
+    const todo = await datos(req.sucursal.id_sucursal);
+    const filas = tipo === 'producto' ? todo.productos : todo.insumos;
     const valores = {};
     const errores = [];
     const cambios = [];
-    const revisar = (tipo, filas) => {
-      for (const f of filas) {
-        const clave = tipo + '_' + f.id;
-        const texto = typeof req.body[clave] === 'string' ? req.body[clave].trim() : '';
-        if (texto === '') continue;
-        valores[clave] = texto;
-        const patron = f.entero ? /^\d{1,6}$/ : /^\d{1,6}(,\d{1,3})?$/;
-        if (!patron.test(texto)) {
-          errores.push('Lo contado de "' + f.nombre + '" ' + (f.entero ? 'es un número entero (' + f.unidad + ').' : 'va en ' + f.unidad + ', con coma para los decimales (por ejemplo: 2,5).'));
-          continue;
-        }
-        const contado = Number(texto.replace(',', '.'));
-        const diferencia = Math.round((contado - f.stock) * 1000) / 1000;
-        if (diferencia === 0) continue;
-        cambios.push({ tipo, id: f.id, diferencia, inicial: !f.ya_cargado && diferencia > 0 });
+    for (const f of filas) {
+      const clave = tipo + '_' + f.id;
+      const texto = typeof req.body[clave] === 'string' ? req.body[clave].trim() : '';
+      if (texto === '') continue;
+      valores[clave] = texto;
+      const patron = f.entero ? /^\d{1,6}$/ : /^\d{1,6}(,\d{1,3})?$/;
+      if (!patron.test(texto)) {
+        errores.push('Lo contado de "' + f.nombre + '" ' + (f.entero ? 'es un número entero (' + f.unidad + ').' : 'va en ' + f.unidad + ', con coma para los decimales (por ejemplo: 2,5).'));
+        continue;
       }
-    };
-    revisar('producto', productos);
-    revisar('insumo', insumos);
-    if (errores.length > 0) return mostrar(req, res, { valores, errores, estado: 400 });
+      const contado = Number(texto.replace(',', '.'));
+      const diferencia = Math.round((contado - f.stock) * 1000) / 1000;
+      if (diferencia === 0) continue;
+      cambios.push({ id: f.id, diferencia, inicial: !f.ya_cargado && diferencia > 0 });
+    }
+    if (errores.length > 0) {
+      req.session.contado = { tipo, valores, errores };
+      return res.redirect(volver + '?cargar=1');
+    }
     if (cambios.length === 0) {
       req.session.aviso = Object.keys(valores).length === 0 ? 'No escribiste nada contado.' : 'Lo contado coincide con lo que ya había: no hubo nada para cambiar.';
-      return res.redirect('/stock#productos');
+      return res.redirect(volver);
     }
+    const tabla = tipo === 'producto' ? 'movimientos_producto' : 'movimientos_insumo';
+    const columna = tipo === 'producto' ? 'id_producto' : 'id_insumo';
     await conTransaccion(async (ejecutar) => {
       for (const c of cambios) {
-        const tabla = c.tipo === 'producto' ? 'movimientos_producto' : 'movimientos_insumo';
-        const columna = c.tipo === 'producto' ? 'id_producto' : 'id_insumo';
         await ejecutar(
           `INSERT INTO ${tabla} (${columna}, id_sucursal, tipo_movimiento, cantidad, id_usuario, observaciones)
            VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -230,11 +242,20 @@ router.post('/contado', async (req, res, siguiente) => {
         );
       }
     });
-    req.session.aviso = 'Se actualizó el stock de ' + cambios.length + (cambios.length === 1 ? ' cosa' : ' cosas') + ' en ' + req.sucursal.nombre + '.';
-    res.redirect('/stock#productos');
+    req.session.aviso = 'Se actualizó el stock de ' + cambios.length + (cambios.length === 1 ? (tipo === 'producto' ? ' producto' : ' insumo') : (tipo === 'producto' ? ' productos' : ' insumos')) + ' en ' + req.sucursal.nombre + '.';
+    res.redirect(volver);
   } catch (error) {
     siguiente(error);
   }
 });
 
+// Para las listas de Productos e Insumos en modo carga: unidad, si va en
+// enteros y si ya tiene stock inicial, de cada uno.
+async function filasParaContar(tipo, idSucursal) {
+  const todo = await datos(idSucursal);
+  const filas = tipo === 'producto' ? todo.productos : todo.insumos;
+  return Object.fromEntries(filas.map((f) => [f.id, f]));
+}
+
 module.exports = router;
+module.exports.filasParaContar = filasParaContar;

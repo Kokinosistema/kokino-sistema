@@ -4,6 +4,8 @@ const express = require('express');
 const { consultar } = require('../db');
 const { exigirRol } = require('../middleware/sesion');
 
+const { filasParaContar } = require('./stock');
+
 const router = express.Router();
 
 // Dar de alta insumos es configuracion del negocio, igual que los
@@ -91,7 +93,17 @@ router.get('/', async (req, res, siguiente) => {
       }
       grupo.insumos.push(insumo);
     }
-    res.render('insumos/lista', { grupos, mostrarInactivos });
+    // Con ?cargar=1 muestra un campo para escribir cuanto hay contado (lo
+    // guarda /stock/contado).
+    const cargar = req.query.cargar === '1';
+    const contado = req.session.contado && req.session.contado.tipo === 'insumo' ? req.session.contado : null;
+    delete req.session.contado;
+    res.render('insumos/lista', {
+      grupos, mostrarInactivos, cargar,
+      paraContar: cargar ? await filasParaContar('insumo', req.sucursal.id_sucursal) : {},
+      valores: contado ? contado.valores : {},
+      erroresContado: contado ? contado.errores : [],
+    });
   } catch (error) {
     siguiente(error);
   }

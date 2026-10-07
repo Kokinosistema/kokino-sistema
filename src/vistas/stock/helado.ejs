@@ -1,15 +1,15 @@
-<%- include('../parciales/encabezado', { titulo: 'Cargar stock - Kokino' }) %>
+<%- include('../parciales/encabezado', { titulo: 'Cargar tachos - Kokino' }) %>
 
 <%
-  const numero = (n) => Number(n).toLocaleString('es-AR', { maximumFractionDigits: 3 });
   const fecha = (d) => new Date(d).toLocaleDateString('es-AR');
 %>
 
-<h1>Cargar stock de <%= sucursal.nombre %></h1>
+<a class="volver" href="/fabricacion">← Fabricación</a>
+<h1>Cargar los tachos que ya hay en <%= sucursal.nombre %></h1>
 <p class="ayuda">
-  Lo que ya hay en <strong><%= sucursal.nombre %></strong> cuando se empieza a usar el sistema. Para la otra
-  sucursal, cambiala arriba. Lo que llegue después se registra en <strong>Llegó mercadería</strong>, y el
-  helado nuevo en <strong>Fabricación</strong>.
+  Para cuando se empieza a usar el sistema: los tachos de helado que ya estaban en los freezers de
+  <strong><%= sucursal.nombre %></strong>. Para la otra sucursal, cambiala arriba. El helado que se
+  hace de ahora en más se registra en <strong>Fabricación</strong>.
 </p>
 
 <section class="panel" id="helado">
@@ -107,43 +107,6 @@
   <% } %>
 </section>
 
-<form method="post" action="/stock/contado" autocomplete="off" id="productos">
-  <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
-  <% if (errores.length > 0) { %>
-    <ul class="errores" role="alert"><% errores.forEach(function (e) { %><li><%= e %></li><% }) %></ul>
-  <% } %>
-
-  <% [['producto', 'Productos', productos, 'Alfajores, repostería, impulsivos y potes que hay guardados.'],
-      ['insumo', 'Insumos', insumos, 'Cucuruchos, térmicos, café, materia prima…']].forEach(function (b) {
-       const [tipo, titulo, filas, ayuda] = b; %>
-    <section class="panel">
-      <h2><%= titulo %></h2>
-      <p class="ayuda">
-        <%= ayuda %> Escribí cuánto hay contado solo en lo que quieras cargar o corregir; lo que dejes vacío no cambia.
-      </p>
-      <input type="search" class="buscador-tabla" data-tabla="tabla-<%= tipo %>" placeholder="Buscá en <%= titulo.toLowerCase() %>" aria-label="Buscar en <%= titulo.toLowerCase() %>">
-      <table class="tabla tabla-edicion" id="tabla-<%= tipo %>">
-        <thead><tr><th><%= titulo === 'Productos' ? 'Producto' : 'Insumo' %></th><th>Categoría</th><th class="numero">En el sistema</th><th class="numero">Hay contado</th></tr></thead>
-        <tbody>
-          <% filas.forEach(function (f) { const clave = tipo + '_' + f.id; %>
-            <tr data-nombre="<%= f.nombre %> <%= f.categoria %>">
-              <td><label for="<%= clave %>"><%= f.nombre %></label></td>
-              <td><%= f.categoria %></td>
-              <td class="numero"><%= numero(f.stock) %> <%= f.unidad %><% if (!f.ya_cargado) { %><span class="pista">sin cargar</span><% } %></td>
-              <td class="numero">
-                <input id="<%= clave %>" name="<%= clave %>" class="cantidad-corta contado" inputmode="decimal" value="<%= valores[clave] || '' %>"
-                       placeholder="<%= f.entero ? 'Ej.: 12' : 'Ej.: 2,5' %>"> <span class="pista-inline"><%= f.unidad %></span>
-              </td>
-            </tr>
-          <% }) %>
-          <tr class="sin-coincidencias" hidden><td colspan="4" class="ayuda">Nada coincide con la búsqueda.</td></tr>
-        </tbody>
-      </table>
-      <div class="botonera"><button type="submit">Guardar lo contado</button></div>
-    </section>
-  <% }) %>
-</form>
-
 <script src="/solo-numeros.js"></script>
 <script src="/combo-sabores.js"></script>
 <script>
@@ -190,23 +153,6 @@
     });
     actualizar();
 
-    // Buscadores de las tablas de productos e insumos.
-    function normalizar(t) { return t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
-    document.querySelectorAll('.buscador-tabla').forEach(function (buscador) {
-      var tabla = document.getElementById(buscador.dataset.tabla);
-      var filas = tabla.querySelectorAll('tbody tr[data-nombre]');
-      var nada = tabla.querySelector('.sin-coincidencias');
-      buscador.addEventListener('input', function () {
-        var palabras = normalizar(buscador.value).split(/\s+/).filter(Boolean);
-        var alguna = false;
-        filas.forEach(function (f) {
-          var nombre = normalizar(f.dataset.nombre);
-          f.hidden = !palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
-          if (!f.hidden) alguna = true;
-        });
-        nada.hidden = alguna;
-      });
-    });
   })();
 </script>
 

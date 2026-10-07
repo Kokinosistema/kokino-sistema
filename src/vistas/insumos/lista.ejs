@@ -2,7 +2,10 @@
 
 <div class="titulo-con-accion">
   <h1>Insumos</h1>
-  <a class="boton" href="/insumos/nuevo">Agregar insumo</a>
+  <div class="botones-titulo">
+    <% if (!cargar) { %><a class="boton-secundario" href="/insumos?cargar=1">Cargar stock</a><% } %>
+    <a class="boton" href="/insumos/nuevo">Agregar insumo</a>
+  </div>
 </div>
 
 <p class="ayuda">
@@ -12,10 +15,27 @@
 </p>
 <p class="ayuda">
   La lista de insumos es la misma para las dos sucursales; el stock que se ve
-  es el de <strong><%= sucursal.nombre %></strong>. Todavía no hay una pantalla
-  para cargar la mercadería que llega ni para hacer el recuento, así que por
-  ahora el stock solo baja con las ventas.
+  es el de <strong><%= sucursal.nombre %></strong>. Lo que llega de los proveedores se
+  registra en <a href="/mercaderia">Llegó mercadería</a>; para cargar lo que ya hay o
+  corregir un recuento, tocá <strong>Cargar stock</strong>.
 </p>
+
+<% if (cargar) { %>
+  <%# Modo carga: un campo por insumo para escribir cuanto hay contado. %>
+  <p class="aviso-atencion">
+    Escribí cuánto hay contado en <strong><%= sucursal.nombre %></strong> solo en lo que quieras cargar o
+    corregir; lo que dejes vacío no cambia. El sistema registra la diferencia con lo que tenía.
+  </p>
+  <% if (erroresContado.length > 0) { %>
+    <ul class="errores" role="alert"><% erroresContado.forEach(function (e) { %><li><%= e %></li><% }) %></ul>
+  <% } %>
+  <form method="post" action="/stock/contado/insumo" autocomplete="off" id="form-contado">
+    <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
+    <div class="botonera botonera-arriba">
+      <button type="submit">Guardar lo contado</button>
+      <a class="cancelar" href="/insumos">Cancelar</a>
+    </div>
+<% } %>
 
 <% if (grupos.length === 0) { %>
   <p class="ayuda">Todavía no hay insumos. Agregá el primero con el botón de arriba.</p>
@@ -32,9 +52,11 @@
           <th>Insumo</th>
           <th>Se compra en</th>
           <th class="numero">Stock en <%= sucursal.nombre %></th>
+          <% if (cargar) { %><th class="numero">Hay contado</th><% } else { %>
           <th class="numero">Stock mínimo</th>
           <th>Se usa en</th>
           <th></th>
+          <% } %>
         </tr>
       </thead>
       <tbody>
@@ -51,6 +73,15 @@
             <td class="numero <%= stock < 0 || (Number(i.stock_minimo) > 0 && stock < Number(i.stock_minimo)) ? 'alerta' : '' %>">
               <%= Number(stock.toFixed(3)) %> <%= i.unidad %>
             </td>
+<% if (cargar) { const f = paraContar[i.id_insumo]; %>
+              <td class="numero">
+                <% if (f) { const clave = 'insumo_' + f.id; %>
+                  <input name="<%= clave %>" class="cantidad-corta contado" inputmode="decimal" value="<%= valores[clave] || '' %>"
+                         placeholder="<%= f.entero ? 'Ej.: 12' : 'Ej.: 2,5' %>" aria-label="Hay contado de <%= i.nombre %>">
+                  <span class="pista-inline"><%= f.unidad %></span>
+                <% } else { %><span class="pista">dado de baja</span><% } %>
+              </td>
+            <% } else { %>
             <td class="numero"><%= Number(i.stock_minimo) %> <%= i.unidad %></td>
             <td>
               <% const usos = []; %>
@@ -64,12 +95,21 @@
                 <button class="enlace" type="submit"><%= i.activo ? 'Dar de baja' : 'Reactivar' %></button>
               </form>
             </td>
+            <% } %>
           </tr>
         <% }) %>
       </tbody>
     </table>
   </section>
 <% }) %>
+
+<% if (cargar) { %>
+    <div class="botonera">
+      <button type="submit">Guardar lo contado</button>
+      <a class="cancelar" href="/insumos">Cancelar</a>
+    </div>
+  </form>
+<% } %>
 
 <p class="ayuda">
   <% if (mostrarInactivos) { %>

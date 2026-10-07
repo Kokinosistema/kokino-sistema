@@ -66,7 +66,12 @@
 <% } %>
 
 <section class="panel">
-  <h2>Stock de helado en <%= sucursal.nombre %></h2>
+  <div class="titulo-con-accion">
+    <h2>Stock de helado en <%= sucursal.nombre %></h2>
+    <% if (usuario.rol === 'administrador') { %>
+      <a class="boton-secundario" href="/stock/helado">Cargar tachos que ya hay</a>
+    <% } %>
+  </div>
   <p class="ayuda">
     Cuando se termina el tacho de un sabor, tocá <strong>Cambiar tacho</strong>: el que estaba
     en el pozo queda vacío y se abre el lleno que vence primero.

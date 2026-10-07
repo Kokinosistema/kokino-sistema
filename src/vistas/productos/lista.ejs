@@ -3,6 +3,7 @@
 <div class="titulo-con-accion">
   <h1>Productos</h1>
   <div class="botones-titulo">
+    <% if (!cargar) { %><a class="boton-secundario" href="/productos?cargar=1">Cargar stock</a><% } %>
     <a class="boton-secundario" href="/productos/categorias/nueva">Agregar categoría</a>
     <a class="boton" href="/productos/nuevo">Agregar producto</a>
   </div>
@@ -14,6 +15,23 @@
   son los envases, los cucuruchos y el café, en <a href="/insumos">Insumos</a>.
 </p>
 
+<% if (cargar) { %>
+  <%# Modo carga: un campo por producto para escribir cuanto hay contado. %>
+  <p class="aviso-atencion">
+    Escribí cuánto hay contado en <strong><%= sucursal.nombre %></strong> solo en lo que quieras cargar o
+    corregir; lo que dejes vacío no cambia. El sistema registra la diferencia con lo que tenía.
+  </p>
+  <% if (erroresContado.length > 0) { %>
+    <ul class="errores" role="alert"><% erroresContado.forEach(function (e) { %><li><%= e %></li><% }) %></ul>
+  <% } %>
+  <form method="post" action="/stock/contado/producto" autocomplete="off" id="form-contado">
+    <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
+    <div class="botonera botonera-arriba">
+      <button type="submit">Guardar lo contado</button>
+      <a class="cancelar" href="/productos">Cancelar</a>
+    </div>
+<% } %>
+
 <% grupos.forEach(function (g) { %>
   <section class="panel">
     <h2><%= g.categoria %> <span class="cuantos">· <%= g.productos.length %></span></h2>
@@ -22,6 +40,7 @@
         <tr>
           <th>Producto</th>
           <th class="numero">Stock en <%= sucursal.nombre %></th>
+          <% if (cargar) { %><th class="numero">Hay contado</th><% } %>
         </tr>
       </thead>
       <tbody>
@@ -33,11 +52,28 @@
               <% if (!p.activo) { %><span class="etiqueta">dado de baja</span><% } %>
             </td>
             <td class="numero <%= Number(p.stock) < 0 ? 'alerta' : '' %>"><%= Number(Number(p.stock).toFixed(3)) %></td>
+            <% if (cargar) { const f = paraContar[p.id_producto]; %>
+              <td class="numero">
+                <% if (f) { const clave = 'producto_' + f.id; %>
+                  <input name="<%= clave %>" class="cantidad-corta contado" inputmode="decimal" value="<%= valores[clave] || '' %>"
+                         placeholder="<%= f.entero ? 'Ej.: 12' : 'Ej.: 2,5' %>" aria-label="Hay contado de <%= p.nombre %>">
+                  <span class="pista-inline"><%= f.unidad %></span>
+                <% } else { %><span class="pista">dado de baja</span><% } %>
+              </td>
+            <% } %>
           </tr>
         <% }) %>
       </tbody>
     </table>
   </section>
 <% }) %>
+
+<% if (cargar) { %>
+    <div class="botonera">
+      <button type="submit">Guardar lo contado</button>
+      <a class="cancelar" href="/productos">Cancelar</a>
+    </div>
+  </form>
+<% } %>
 
 <%- include('../parciales/pie') %>

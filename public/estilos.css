@@ -800,3 +800,4 @@ input.campo-corto-solo { max-width: 160px; }
 label.opcion-turno span { display: flex; flex-direction: column; align-items: center; line-height: 1.2; padding: 10px 22px; }
 label.opcion-turno small { font-weight: 400; font-size: 12px; opacity: 0.85; }
 label.opcion-turno span { border-radius: var(--radius-md); }
+.botonera-arriba { margin: 0 0 16px; }
