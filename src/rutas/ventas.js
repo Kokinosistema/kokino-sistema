@@ -187,21 +187,6 @@ async function mostrar(req, res, {
     ));
   }
 
-  // Los sabores que hay en la sucursal, para "Cambiar tacho": el cambio lo
-  // hace la ruta de Fabricacion, que despues vuelve aca.
-  const { rows: tachos } = await consultar(
-    `SELECT s.id_sabor, s.nombre || ' (' || lower(s.linea) || ')' AS sabor,
-            count(*) FILTER (WHERE t.estado = 'EN_POZO')::int AS en_pozo,
-            count(*) FILTER (WHERE t.estado = 'LLENO')::int AS llenos
-       FROM tachos t
-       JOIN lotes l ON l.id_lote = t.id_lote
-       JOIN sabores s ON s.id_sabor = l.id_sabor
-      WHERE t.id_sucursal = $1 AND t.estado IN ('LLENO', 'EN_POZO')
-      GROUP BY s.id_sabor, s.nombre, s.linea
-      ORDER BY s.nombre, s.linea`,
-    [elegida]
-  );
-
   // Lo mas vendido (pedido de la usuaria el 2026-10-07): los 4 productos que
   // mas unidades vendieron en esta sucursal en los ultimos 30 dias, para
   // sumarlos de un toque cuando hay mucha gente. Solo los que siguen a la venta.
@@ -220,7 +205,7 @@ async function mostrar(req, res, {
 
   res.status(estado).render('ventas/vender', {
     masVendidos,
-    sucursales, elegida, caja, catalogo, abierta, lineas, total, medios, ultimas, tachos,
+    sucursales, elegida, caja, catalogo, abierta, lineas, total, medios, ultimas,
     CANALES, errores, CANTIDAD_MAXIMA, esDueno,
     // Cuantos de cada producto hay ya en el pedido, para mostrarlo en su tarjeta.
     enPedido: Object.fromEntries(lineas.map((l) => [l.id_producto, l.cantidad])),
