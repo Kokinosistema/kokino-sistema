@@ -114,7 +114,7 @@
           <noscript><button type="submit">Cambiar</button></noscript>
         </form>
       <% } else if (sucursal) { %>
-        <span class="sucursal"><%= sucursal.nombre %></span>
+        <span class="sucursal"><span class="rotulo-sucursal">Sucursal</span> <%= sucursal.nombre %></span>
       <% } %>
       <span class="quien">
         <span class="avatar"><%= (usuario.nombre || '?').charAt(0).toUpperCase() %></span>

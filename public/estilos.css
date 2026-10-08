@@ -854,3 +854,18 @@ label.opcion-turno span { border-radius: var(--radius-md); }
 .acceso-principal .icono-acceso { background: rgba(255, 255, 255, 0.2); color: var(--text-on-brand); }
 .acceso-principal .detalle-acceso { color: rgba(255, 255, 255, 0.9); }
 .acceso-alerta { border-color: var(--status-warning); }
+
+/* La sucursal, bien grande en la cabecera, para no equivocarse de sucursal
+   al vender o cargar stock (punto 10 de las mejoras: en vez de colores). */
+.alternar-menu { margin-right: 4px; }
+.elegir-sucursal { margin: 0 auto 0 0; }
+.elegir-sucursal label { gap: 10px; font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.elegir-sucursal select { font-size: 19px; padding: 6px 36px 6px 14px; min-height: 44px; }
+.cabecera .sucursal {
+  margin-right: auto; font-size: 19px; padding: 6px 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.rotulo-sucursal { font-size: 15px; color: var(--text-primary); }
+@media (max-width: 860px) {
+  .elegir-sucursal select, .cabecera .sucursal { font-size: 17px; }
+}
