@@ -3,6 +3,7 @@
 const express = require('express');
 const { consultar } = require('../db');
 const { metricasDelDueno } = require('../metricas');
+const { avisoDeCopias } = require('../copias');
 
 const router = express.Router();
 
@@ -36,7 +37,10 @@ router.get('/', async (req, res, siguiente) => {
       ? await metricasDelDueno(req.sucursal.id_sucursal)
       : null;
 
-    res.render('inicio', { sucursales: rows, totales: totales[0], metricas });
+    // Los duenos ven si la copia de seguridad diaria fallo o es vieja.
+    const avisoCopias = req.session.usuario.rol === 'administrador' ? avisoDeCopias() : null;
+
+    res.render('inicio', { sucursales: rows, totales: totales[0], metricas, avisoCopias });
   } catch (error) {
     siguiente(error);
   }

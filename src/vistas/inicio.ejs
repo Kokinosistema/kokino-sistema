@@ -2,6 +2,10 @@
 
 <h1>Hola, <%= usuario.nombre %></h1>
 
+<% if (avisoCopias) { %>
+  <p class="aviso-atencion" role="alert"><strong>Copia de seguridad:</strong> <%= avisoCopias %></p>
+<% } %>
+
 <p class="ayuda">
   <% if (sucursalesElegibles.length > 1) { %>
     Estás trabajando sobre <strong><%= sucursal.nombre %></strong>. Para ver la otra, cambiala arriba.

@@ -66,6 +66,12 @@ reconstruye entera desde las migraciones.
    hace falta pasarse un backup entre computadoras.
 5. Cargar los precios vigentes: `npm run seed:precios`.
 
+## Usarlo en la heladería
+
+Para dejarlo instalado de verdad (que arranque solo, que se recupere si se cae
+y que haga una copia de seguridad por día), ver
+[docs/INSTALACION.md](docs/INSTALACION.md).
+
 ## Migraciones y seeds
 
 Son dos cosas distintas y conviene no mezclarlas:

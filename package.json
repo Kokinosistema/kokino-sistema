@@ -13,7 +13,8 @@
     "seed:costos-insumo": "node --env-file=.env seeds/costos_insumo.js",
     "start": "node --env-file=.env server.js",
     "dev": "node --env-file=.env --watch server.js",
-    "crear-usuario": "node --env-file=.env scripts/crear-usuario.js"
+    "crear-usuario": "node --env-file=.env scripts/crear-usuario.js",
+    "copia": "node --env-file=.env scripts/copia-de-seguridad.js"
   },
   "keywords": [],
   "author": "",

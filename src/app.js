@@ -35,6 +35,22 @@ function crearAplicacion() {
   // Todas las vistas muestran la plata igual: $17.500 o $17.500,15.
   app.locals.pesos = pesos;
 
+  // Detras de un proxy con HTTPS (como los servicios en la nube), para que la
+  // cookie segura funcione y la IP sea la del cliente.
+  if (process.env.NODE_ENV === 'produccion') app.set('trust proxy', 1);
+
+  // Para saber desde afuera si el sistema esta andando (el administrador de
+  // procesos o el servicio de hosting lo consultan): responde "ok" si la base
+  // contesta. No necesita login ni muestra datos.
+  app.get('/salud', async (req, res) => {
+    try {
+      await require('./db').consultar('SELECT 1');
+      res.type('text').send('ok');
+    } catch (error) {
+      res.status(503).type('text').send('sin base de datos');
+    }
+  });
+
   // Los formularios HTML mandan los datos en este formato, no en JSON.
   app.use(express.urlencoded({ extended: false }));
   app.use(express.static(path.join(__dirname, '..', 'public')));
