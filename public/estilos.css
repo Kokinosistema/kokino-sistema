@@ -936,3 +936,30 @@ label.opcion-turno span { border-radius: var(--radius-md); }
   .menu button.grupo-menu { display: none; }
   .grupo-enlaces, .grupo-enlaces[hidden] { display: contents; }
 }
+
+/* Barra achicada: un icono por grupo; sus opciones se abren en un recuadro
+   flotante al costado, con icono y nombre. */
+.menu button.grupo-menu .icono-grupo { display: none; width: 22px; height: 22px; flex-shrink: 0; }
+.app.menu-cerrado .menu button.grupo-menu {
+  font-size: 14px; height: auto; width: 100%; margin: 2px 0; padding: 10px 0;
+  justify-content: center; background: none; pointer-events: auto; position: relative;
+  color: var(--text-on-brand);
+}
+.app.menu-cerrado .menu button.grupo-menu > * { display: none; }
+.app.menu-cerrado .menu button.grupo-menu .icono-grupo { display: block; }
+.app.menu-cerrado .menu button.grupo-menu .contador-grupo { display: block; position: absolute; top: 2px; right: 2px; margin: 0; min-width: 18px; padding: 0 5px; font-size: 11px; }
+.app.menu-cerrado .menu button.grupo-menu:hover { background: rgba(255, 255, 255, 0.14); }
+.app.menu-cerrado .menu button.grupo-menu.grupo-actual { background: var(--brand-pressed); }
+.app.menu-cerrado .grupo-enlaces, .app.menu-cerrado .grupo-enlaces[hidden] { display: none; }
+.app.menu-cerrado .grupo-enlaces.flotante {
+  display: flex; position: fixed; z-index: 60; min-width: 220px; padding: 8px;
+  background: var(--brand-primary); border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(18, 60, 50, 0.3);
+}
+.app.menu-cerrado .grupo-enlaces.flotante a { justify-content: flex-start; padding: 9px 12px; }
+.app.menu-cerrado .grupo-enlaces.flotante .texto-menu { display: inline; }
+.app.menu-cerrado .grupo-enlaces.flotante .contador { position: static; margin-left: auto; }
+@media (max-height: 900px) and (min-width: 861px) {
+  .app.menu-cerrado .menu button.grupo-menu { padding: 8px 0; margin: 2px 0; }
+}
+.lateral { z-index: 40; }

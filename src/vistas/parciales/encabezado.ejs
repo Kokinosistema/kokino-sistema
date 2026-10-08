@@ -60,7 +60,16 @@
         configuracion: enGrupo(['/usuarios', '/sucursales']),
       };
       const pendientesEnvio = typeof porRecibir !== 'undefined' ? porRecibir.length : 0;
-      const cabeceraGrupo = (id, titulo, extra) => '<button type="button" class="grupo-menu" aria-expanded="' + grupos[id] + '" aria-controls="grupo-' + id + '">'
+      // Con la barra achicada cada grupo es un icono y sus opciones se abren
+      // en un recuadro al costado.
+      const iconosGrupo = {
+        mostrador: '<path d="M4 10l1.5-5h13L20 10"/><path d="M5.5 10v9h13v-9"/><path d="M4 10h16"/><path d="M10 19v-5h4v5"/>',
+        stock: '<path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/>',
+        negocio: '<path d="M4 4v16h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/>',
+        configuracion: '<circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/>',
+      };
+      const cabeceraGrupo = (id, titulo, extra) => '<button type="button" class="grupo-menu' + (grupos[id] ? ' grupo-actual' : '') + '" aria-expanded="' + grupos[id] + '" aria-controls="grupo-' + id + '" title="' + titulo + '">'
+        + '<svg class="icono-grupo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + iconosGrupo[id] + '</svg>'
         + '<span class="nombre-grupo">' + titulo + '</span>' + (extra || '')
         + '<svg class="flecha-grupo" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>';
     %>
@@ -103,11 +112,39 @@
       <% } %>
     </nav>
     <script>
-      // Tocar un grupo lo abre y cierra los demas, asi la barra queda corta.
+      // Grupos del menu. Con la barra grande, tocar un grupo lo abre y cierra
+      // los demas (asi queda corta). Con la barra achicada, abre sus opciones
+      // en un recuadro al costado, que se cierra tocando afuera, con Escape o
+      // tocando el mismo icono.
       (function () {
+        var app = document.querySelector('.app');
         var cabeceras = document.querySelectorAll('.menu .grupo-menu');
+        var flotante = null;
+        function cerrarFlotante() {
+          if (!flotante) return;
+          flotante.classList.remove('flotante');
+          flotante.style.top = '';
+          flotante.style.left = '';
+          flotante = null;
+        }
+        function abrirFlotante(c) {
+          var grupo = document.getElementById(c.getAttribute('aria-controls'));
+          var r = c.getBoundingClientRect();
+          grupo.classList.add('flotante');
+          grupo.style.left = (r.right + 8) + 'px';
+          // Que no se salga por abajo de la pantalla.
+          grupo.style.top = Math.max(8, Math.min(r.top, window.innerHeight - grupo.offsetHeight - 8)) + 'px';
+          flotante = grupo;
+        }
         cabeceras.forEach(function (c) {
-          c.addEventListener('click', function () {
+          c.addEventListener('click', function (e) {
+            if (app.classList.contains('menu-cerrado')) {
+              e.stopPropagation();
+              var mismo = flotante && flotante.id === c.getAttribute('aria-controls');
+              cerrarFlotante();
+              if (!mismo) abrirFlotante(c);
+              return;
+            }
             var abrir = c.getAttribute('aria-expanded') !== 'true';
             cabeceras.forEach(function (otra) {
               var abierta = otra === c ? abrir : false;
@@ -116,6 +153,14 @@
             });
           });
         });
+        document.addEventListener('click', function (e) { if (flotante && !flotante.contains(e.target)) cerrarFlotante(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrarFlotante(); });
+        window.addEventListener('resize', cerrarFlotante);
+        document.querySelector('.menu').addEventListener('scroll', cerrarFlotante);
+        // Al agrandar o achicar la barra se cierra el recuadro.
+        var boton = document.getElementById('alternar-menu');
+        if (boton) boton.addEventListener('click', cerrarFlotante);
+        window.cerrarMenuFlotante = cerrarFlotante;
       })();
     </script>
 
