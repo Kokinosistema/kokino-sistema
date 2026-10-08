@@ -35,4 +35,14 @@ function avisoDeCopias() {
   return null;
 }
 
-module.exports = { carpetaDeCopias, avisoDeCopias, ARCHIVO_ESTADO };
+// Fecha de la ultima copia que salio bien, o null.
+function ultimaCopiaBuena() {
+  try {
+    const estado = JSON.parse(fs.readFileSync(path.join(carpetaDeCopias(), ARCHIVO_ESTADO), 'utf8'));
+    return estado.ok ? new Date(estado.fecha) : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+module.exports = { carpetaDeCopias, avisoDeCopias, ultimaCopiaBuena, ARCHIVO_ESTADO };

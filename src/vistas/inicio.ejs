@@ -34,6 +34,26 @@
   </section>
 <% } %>
 
+<% if (guia && guia.listos < guia.pasos.length) { %>
+  <%# Primeros pasos: lo que falta para dejar el sistema listo. Se tilda solo. %>
+  <details class="panel primeros-pasos" open>
+    <summary>
+      <span class="titulo-guia">Primeros pasos para dejar el sistema listo</span>
+      <span class="avance-guia"><%= guia.listos %> de <%= guia.pasos.length %> listos</span>
+      <span class="barra-guia" aria-hidden="true"><span style="width: <%= Math.round(guia.listos / guia.pasos.length * 100) %>%"></span></span>
+    </summary>
+    <ol class="pasos">
+      <% guia.pasos.forEach(function (p) { %>
+        <li class="<%= p.listo ? 'listo' : '' %>">
+          <span class="marca-paso" aria-label="<%= p.listo ? 'Listo' : 'Pendiente' %>"><%= p.listo ? '✓' : '' %></span>
+          <span class="texto-paso"><strong><%= p.titulo %></strong><br><span class="pista"><%= p.detalle %></span></span>
+          <% if (!p.listo && p.enlace) { %><a class="boton-secundario" href="<%= p.enlace %>">Ir</a><% } %>
+        </li>
+      <% }) %>
+    </ol>
+  </details>
+<% } %>
+
 <% if (metricas) { %>
   <%- include('parciales/metricas') %>
 <% } %>

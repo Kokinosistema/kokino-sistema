@@ -895,3 +895,17 @@ label.opcion-turno span { border-radius: var(--radius-md); }
   .app.menu-cerrado .menu a { padding: 6px 0; }
   .app.menu-cerrado .grupo-menu { margin: 5px 10px; background: rgba(255, 255, 255, 0.5); }
 }
+
+/* Inicio de los dueños: guía de primeros pasos. */
+.primeros-pasos summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; list-style: none; }
+.primeros-pasos summary::-webkit-details-marker { display: none; }
+.titulo-guia { font-family: var(--font-head); font-weight: 700; font-size: 16px; }
+.avance-guia { font-size: 13px; color: var(--text-secondary); }
+.barra-guia { flex: 1 1 160px; height: 8px; background: var(--bg-active); border-radius: var(--radius-pill); overflow: hidden; }
+.barra-guia span { display: block; height: 100%; background: var(--brand-primary); }
+.pasos { list-style: none; padding: 0; margin: 14px 0 0; }
+.pasos li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border-soft); }
+.pasos li .boton-secundario { margin: 0 0 0 auto; text-decoration: none; padding: 5px 16px; }
+.marca-paso { flex: 0 0 26px; height: 26px; border-radius: 50%; border: 2px solid var(--brand-primary); display: grid; place-items: center; color: var(--text-on-brand); font-weight: 700; font-size: 14px; }
+.pasos li.listo .marca-paso { background: var(--brand-primary); }
+.pasos li.listo .texto-paso strong { color: var(--text-secondary); }

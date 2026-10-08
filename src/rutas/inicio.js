@@ -4,6 +4,7 @@ const express = require('express');
 const { consultar } = require('../db');
 const { metricasDelDueno, alertasDeStock } = require('../metricas');
 const { avisoDeCopias } = require('../copias');
+const { primerosPasos } = require('../primeros-pasos');
 
 const router = express.Router();
 
@@ -56,7 +57,10 @@ router.get('/', async (req, res, siguiente) => {
       mostrador = { caja: caja || null, alertas: await alertasDeStock(req.sucursal.id_sucursal) };
     }
 
-    res.render('inicio', { sucursales: rows, totales: totales[0], metricas, avisoCopias, mostrador });
+    // La guia de lo que falta cargar, para los duenos, hasta que este todo.
+    const guia = metricas ? await primerosPasos() : null;
+
+    res.render('inicio', { sucursales: rows, totales: totales[0], metricas, avisoCopias, mostrador, guia });
   } catch (error) {
     siguiente(error);
   }
