@@ -50,8 +50,11 @@
 
     <nav class="menu">
       <a class="<%= activo('/') %>" href="/" title="Inicio"><%- svg('inicio') %> <span class="texto-menu">Inicio</span></a>
+      <%# Agrupado para encontrar rapido cada pantalla (punto 11 de las mejoras). %>
+      <p class="grupo-menu">Mostrador</p>
       <a class="<%= activo('/ventas') %>" href="/ventas" title="Vender"><%- svg('vender') %> <span class="texto-menu">Vender</span></a>
       <a class="<%= activo('/caja') %>" href="/caja" title="Caja"><%- svg('caja') %> <span class="texto-menu">Caja</span></a>
+      <p class="grupo-menu">Stock y fábrica</p>
       <a class="<%= activo('/fabricacion') %>" href="/fabricacion" title="Fabricación"><%- svg('fabricacion') %> <span class="texto-menu">Fabricación</span></a>
       <a class="<%= activo('/mercaderia') %>" href="/mercaderia" title="Llegó mercadería"><%- svg('mercaderia') %> <span class="texto-menu">Llegó mercadería</span></a>
       <a class="<%= activo('/envios') %>" href="/envios" title="Envíos"><%- svg('envios') %> <span class="texto-menu">Envíos</span>
@@ -61,11 +64,13 @@
       </a>
       <a class="<%= activo('/recetas') %>" href="/recetas" title="Recetas"><%- svg('recetas') %> <span class="texto-menu">Recetas</span></a>
       <% if (usuario.rol === 'administrador') { %>
+        <p class="grupo-menu">Negocio</p>
         <a class="<%= activo('/clientes') %>" href="/clientes" title="Clientes mayoristas"><%- svg('clientes') %> <span class="texto-menu">Clientes mayoristas</span></a>
         <a class="<%= activo('/productos') %>" href="/productos" title="Productos"><%- svg('productos') %> <span class="texto-menu">Productos</span></a>
         <a class="<%= activo('/insumos') %>" href="/insumos" title="Insumos"><%- svg('insumos') %> <span class="texto-menu">Insumos</span></a>
         <a class="<%= activo('/costos') %>" href="/costos" title="Costos"><%- svg('costos') %> <span class="texto-menu">Costos</span></a>
         <a class="<%= activo('/proveedores') %>" href="/proveedores" title="Proveedores"><%- svg('proveedores') %> <span class="texto-menu">Proveedores</span></a>
+        <p class="grupo-menu">Configuración</p>
         <a class="<%= activo('/usuarios') %>" href="/usuarios" title="Usuarios"><%- svg('usuarios') %> <span class="texto-menu">Usuarios</span></a>
         <a class="<%= activo('/sucursales') %>" href="/sucursales" title="Sucursales"><%- svg('sucursales') %> <span class="texto-menu">Sucursales</span></a>
       <% } %>
