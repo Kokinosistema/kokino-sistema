@@ -8,7 +8,14 @@
 // de pagar el saludo a PostgreSQL en cada consulta.
 const { Pool } = require('pg');
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Cada conexion trabaja en hora argentina (la misma TZ que el servidor, ver
+// server.js): "hoy", "esta semana" y las fechas que se guardan no dependen de
+// como este configurado PostgreSQL donde se instale.
+const ZONA_HORARIA = process.env.ZONA_HORARIA || 'America/Argentina/Tucuman';
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  options: '-c timezone=' + ZONA_HORARIA,
+});
 
 // Todas las consultas pasan por aca para tener un solo lugar donde agregar
 // log, metricas o reintentos el dia que hagan falta.
