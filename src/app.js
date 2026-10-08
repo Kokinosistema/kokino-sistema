@@ -3,6 +3,8 @@
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
+const AlmacenPg = require('connect-pg-simple')(session);
+const { pool } = require('./db');
 
 const { exigirLogin, exponerUsuario, exponerAviso } = require('./middleware/sesion');
 const { sucursalDeTrabajo, cambiarSucursal } = require('./sucursales');
@@ -41,6 +43,10 @@ function crearAplicacion() {
     session({
       name: 'kokino.sid',
       secret: process.env.SESSION_SECRET,
+      // Las sesiones se guardan en la base (tabla sesiones), no en la memoria
+      // del servidor: asi un reinicio no desloguea a nadie ni pierde el
+      // pedido que se estaba armando en Vender. Las vencidas se borran solas.
+      store: new AlmacenPg({ pool, tableName: 'sesiones' }),
       resave: false,
       // No crear sesion hasta que haya algo que guardar: sin esto se le abre
       // una a cualquiera que pase por el login sin entrar.
