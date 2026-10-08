@@ -233,6 +233,42 @@ router.get('/', async (req, res, siguiente) => {
   }
 });
 
+// El panel del pedido solo (HTML) y cuantos hay de cada producto, para que la
+// pagina lo reemplace sin recargar. Los precios se leen de la base, como
+// siempre. Lo ya elegido para cobrar (canal, medio, montos) lo conserva la
+// pagina, asi que aca va vacio.
+async function responderPanel(req, res, elegida) {
+  const pedido = pedidoDe(req, elegida);
+  const ids = pedido.map((l) => l.id_producto);
+  const { rows } = ids.length === 0 ? { rows: [] } : await consultar(
+    `SELECT p.id_producto, p.nombre, pr.precio
+       FROM productos p
+       ${SQL_PRECIO_VIGENTE}
+      WHERE p.activo AND p.id_producto = ANY($1::int[])`,
+    [ids]
+  );
+  const porId = new Map(rows.map((r) => [r.id_producto, r]));
+  req.session.pedidos[elegida] = pedido.filter((l) => porId.has(l.id_producto));
+  const lineas = pedidoDe(req, elegida).map((l) => {
+    const p = porId.get(l.id_producto);
+    return { id_producto: l.id_producto, nombre: p.nombre, cantidad: l.cantidad, precio: Number(p.precio), subtotal: Number(p.precio) * l.cantidad };
+  });
+  const total = lineas.reduce((suma, l) => suma + l.subtotal, 0);
+  const { rows: medios } = await consultar(
+    'SELECT id_medio_pago, nombre FROM medios_pago WHERE activo ORDER BY id_medio_pago'
+  );
+  const categoria = Number(req.body.categoria);
+  res.render('ventas/_pedido', {
+    elegida, lineas, total, medios, CANALES, VARIOS_MEDIOS,
+    abierta: Number.isInteger(categoria) && categoria > 0 ? { id_categoria: categoria } : null,
+    busqueda: limpiarBusqueda(req.body.busqueda),
+    canal: '', medio: '', montos: {},
+  }, (error, html) => {
+    if (error) throw error;
+    res.json({ html, enPedido: Object.fromEntries(lineas.map((l) => [l.id_producto, l.cantidad])) });
+  });
+}
+
 // Agregar, sacar de a uno, quitar la linea o vaciar el pedido. Solo tocan la
 // sesion; la base no se entera hasta que se cobra.
 router.post('/pedido', async (req, res, siguiente) => {
@@ -279,6 +315,11 @@ router.post('/pedido', async (req, res, siguiente) => {
     }
     req.session.pedidos[elegida] = pedido.filter((l) => l.cantidad > 0);
 
+    // Desde la pagina (public/vender-pedido.js) se pide solo el panel del
+    // pedido actualizado, para no recargar todo con cada toque.
+    if (req.get('X-Kokino-Parcial') === 'pedido') {
+      return responderPanel(req, res, elegida);
+    }
     res.redirect(direccionVender(elegida, req.body.categoria, req.body.busqueda));
   } catch (error) {
     siguiente(error);

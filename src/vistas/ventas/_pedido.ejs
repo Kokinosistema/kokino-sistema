@@ -1,0 +1,106 @@
+<%# El panel del pedido. Lo usa la pantalla de Vender y tambien la respuesta
+    a cada toque (sumar, restar, quitar, vaciar), que reemplaza solo este
+    panel sin recargar la pagina. %>
+      <div class="cabecera-pedido">
+        <h2>Pedido</h2>
+        <% if (lineas.length > 0) { %>
+          <%# Vaciar el pedido: un basurero arriba a la derecha. %>
+          <form method="post" action="/ventas/pedido">
+            <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+            <input type="hidden" name="categoria" value="<%= abierta ? abierta.id_categoria : '' %>">
+            <input type="hidden" name="busqueda" value="<%= busqueda %>">
+            <button class="vaciar-pedido" type="submit" name="accion" value="vaciar"
+                    title="Vaciar el pedido" aria-label="Vaciar el pedido">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 7h16"/><path d="M10 11v6M14 11v6"/>
+                <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/>
+                <path d="M9 7V4h6v3"/>
+              </svg>
+            </button>
+          </form>
+        <% } %>
+      </div>
+
+      <% if (lineas.length === 0) { %>
+        <p class="ayuda">Tocá un producto para sumarlo al pedido.</p>
+      <% } else { %>
+        <table class="tabla">
+          <tbody>
+            <% lineas.forEach(function (l) { %>
+              <tr>
+                <td>
+                  <%= l.nombre %>
+                  <div class="cantidad">
+                    <form method="post" action="/ventas/pedido">
+                      <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+                      <input type="hidden" name="categoria" value="<%= abierta ? abierta.id_categoria : '' %>">
+                      <input type="hidden" name="busqueda" value="<%= busqueda %>">
+                      <input type="hidden" name="id_producto" value="<%= l.id_producto %>">
+                      <button class="boton-secundario" type="submit" name="accion" value="restar" aria-label="Uno menos">−</button>
+                      <span><%= l.cantidad %></span>
+                      <button class="boton-secundario" type="submit" name="accion" value="agregar" aria-label="Uno más">+</button>
+                      <button class="enlace" type="submit" name="accion" value="quitar">Quitar</button>
+                    </form>
+                  </div>
+                </td>
+                <td class="numero"><%= pesos(l.subtotal) %></td>
+              </tr>
+            <% }) %>
+            <tr class="destacada">
+              <th>Total</th>
+              <td class="numero"><%= pesos(total) %></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <form method="post" action="/ventas/cobrar">
+          <input type="hidden" name="id_sucursal" value="<%= elegida %>">
+          <input type="hidden" name="categoria" value="<%= abierta ? abierta.id_categoria : '' %>">
+
+          <%# Botones uno al lado del otro en vez de listas: se elige de un toque.
+              Por debajo son opciones (radio), asi que el servidor recibe lo mismo. %>
+          <fieldset class="opciones-boton">
+            <legend>Por dónde fue la venta</legend>
+            <div class="grupo-botones">
+              <% CANALES.forEach(function (c) { %>
+                <label class="opcion-boton">
+                  <input type="radio" name="canal" value="<%= c.valor %>" <%= c.valor === canal ? 'checked' : '' %> required>
+                  <span><%= c.texto %></span>
+                </label>
+              <% }) %>
+            </div>
+          </fieldset>
+
+          <fieldset class="opciones-boton" id="medio-pago">
+            <legend>Con qué pagó</legend>
+            <div class="grupo-botones">
+              <% medios.forEach(function (m) { %>
+                <label class="opcion-boton">
+                  <input type="radio" name="id_medio_pago" value="<%= m.id_medio_pago %>" <%= String(m.id_medio_pago) === medio ? 'checked' : '' %> required>
+                  <span><%= m.nombre %></span>
+                </label>
+              <% }) %>
+              <label class="opcion-boton">
+                <input type="radio" name="id_medio_pago" value="<%= VARIOS_MEDIOS %>" <%= medio === VARIOS_MEDIOS ? 'checked' : '' %>>
+                <span>Varios medios</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div id="pago-varios" class="pago-varios" data-total="<%= Math.round(total * 100) %>"
+               <%= medio === VARIOS_MEDIOS ? '' : 'hidden' %>>
+            <p class="pista">Poné cuánto se pagó con cada medio. Tiene que sumar <%= pesos(total) %>.</p>
+            <% medios.forEach(function (m) { %>
+              <label class="linea-pago">
+                <span><%= m.nombre %></span>
+                <input type="text" inputmode="decimal" autocomplete="off" class="dinero" name="monto_<%= m.id_medio_pago %>"
+                       value="<%= montos[m.id_medio_pago] || '' %>" placeholder="$0" onfocus="this.select()">
+              </label>
+            <% }) %>
+            <p id="falta-pagar" class="falta-pagar" aria-live="polite"></p>
+          </div>
+
+          <button class="boton" type="submit">Cobrar <%= pesos(total) %></button>
+        </form>
+
+      <% } %>

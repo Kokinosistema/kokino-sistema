@@ -822,3 +822,7 @@ label.opcion-turno span { border-radius: var(--radius-md); }
   .app.menu-cerrado .menu a { padding: 8px 10px; }
 }
 .app.menu-cerrado main { max-width: 1370px; }
+
+/* Al tocar un producto en Vender, un destello mientras se suma (sin recargar). */
+.tarjeta-producto.tocado { transform: scale(0.97); background: var(--bg-active); }
+.tarjeta-producto { transition: transform 0.08s, background 0.15s; }
