@@ -265,6 +265,41 @@
     actualizar();
   };
   window.iniciarPagoVarios();
+
+  // Vuelto: aparece al elegir efectivo. Con cuanto paga (escrito o con un
+  // boton de billete) y cuanto hay que devolver, o cuanto falta.
+  window.iniciarVuelto = function () {
+    var bloque = document.getElementById('vuelto');
+    var selector = document.getElementById('medio-pago');
+    if (!bloque || !selector) return;
+    var campo = document.getElementById('paga-con');
+    var texto = document.getElementById('vuelto-texto');
+    var total = Number(bloque.dataset.total);
+    var dinero = window.dineroKokino;
+    function actualizar() {
+      var elegido = selector.querySelector('input[name="id_medio_pago"]:checked');
+      bloque.hidden = !(elegido && elegido.dataset.efectivo);
+      if (bloque.hidden || !campo.value) { texto.textContent = ''; texto.className = 'vuelto-texto'; return; }
+      var paga = dinero.centavos(campo.value);
+      if (paga >= total) {
+        texto.textContent = 'Vuelto: ' + dinero.pesos(paga - total);
+        texto.className = 'vuelto-texto listo';
+      } else {
+        texto.textContent = 'Faltan ' + dinero.pesos(total - paga);
+        texto.className = 'vuelto-texto falta';
+      }
+    }
+    selector.querySelectorAll('input[name="id_medio_pago"]').forEach(function (o) { o.addEventListener('change', actualizar); });
+    campo.addEventListener('input', actualizar);
+    bloque.querySelectorAll('.billete').forEach(function (b) {
+      b.addEventListener('click', function () {
+        campo.value = dinero.pesos(Number(b.dataset.monto) * 100);
+        actualizar();
+      });
+    });
+    actualizar();
+  };
+  window.iniciarVuelto();
 </script>
 <script src="/vender-pedido.js"></script>
 

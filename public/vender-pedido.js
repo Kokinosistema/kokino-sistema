@@ -74,6 +74,7 @@
         panel.innerHTML = respuesta.html;
         restaurarEleccion(eleccion);
         if (window.iniciarPagoVarios) window.iniciarPagoVarios();
+        if (window.iniciarVuelto) window.iniciarVuelto();
         marcarTarjetas(respuesta.enPedido);
         if (boton) setTimeout(function () { boton.classList.remove('tocado'); }, 150);
       }).catch(function () {

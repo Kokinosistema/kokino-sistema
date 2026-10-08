@@ -160,7 +160,7 @@ async function mostrar(req, res, {
   const total = lineas.reduce((suma, l) => suma + l.subtotal, 0);
 
   const { rows: medios } = await consultar(
-    'SELECT id_medio_pago, nombre FROM medios_pago WHERE activo ORDER BY id_medio_pago'
+    'SELECT id_medio_pago, nombre, afecta_caja_efectivo FROM medios_pago WHERE activo ORDER BY id_medio_pago'
   );
 
   let ultimas = [];
@@ -255,7 +255,7 @@ async function responderPanel(req, res, elegida) {
   });
   const total = lineas.reduce((suma, l) => suma + l.subtotal, 0);
   const { rows: medios } = await consultar(
-    'SELECT id_medio_pago, nombre FROM medios_pago WHERE activo ORDER BY id_medio_pago'
+    'SELECT id_medio_pago, nombre, afecta_caja_efectivo FROM medios_pago WHERE activo ORDER BY id_medio_pago'
   );
   const categoria = Number(req.body.categoria);
   res.render('ventas/_pedido', {
@@ -400,7 +400,7 @@ router.post('/cobrar', async (req, res, siguiente) => {
         : [{ id_medio_pago: Number(medio), centavos: total }];
 
       const { rows: activos } = await ejecutar(
-        'SELECT id_medio_pago, nombre FROM medios_pago WHERE activo AND id_medio_pago = ANY($1::int[])',
+        'SELECT id_medio_pago, nombre, afecta_caja_efectivo FROM medios_pago WHERE activo AND id_medio_pago = ANY($1::int[])',
         [pagos.map((p) => p.id_medio_pago)]
       );
       if (activos.length !== pagos.length) return { error: 'Elegí con qué pagó.' };
@@ -440,8 +440,15 @@ router.post('/cobrar', async (req, res, siguiente) => {
         );
       }
 
+      // El vuelto, si pago en efectivo y dijo con cuanto: solo para el aviso
+      // (no se guarda; en la caja entra el total de la venta).
+      const pagaCon = parsearMonto(typeof req.body.paga_con === 'string' ? req.body.paga_con : '');
+      const enEfectivo = !variosMedios && activos[0] && activos[0].afecta_caja_efectivo;
+      const vuelto = enEfectivo && pagaCon !== null && aCentavos(pagaCon) > total ? aCentavos(pagaCon) - total : 0;
+
       return {
         total,
+        vuelto,
         detalle: pagos.length > 1
           ? pagos.map((p) => nombreDe.get(p.id_medio_pago) + ' ' + textoPesos(p.centavos)).join(', ')
           : null,
@@ -454,7 +461,8 @@ router.post('/cobrar', async (req, res, siguiente) => {
     // Despues de cobrar se vuelve a las categorias: lo que sigue es otro
     // cliente, y no tiene por que arrancar en la categoria del anterior.
     req.session.aviso = 'Venta registrada: ' + textoPesos(resultado.total)
-      + (resultado.detalle ? ' (' + resultado.detalle + ')' : '') + '.';
+      + (resultado.detalle ? ' (' + resultado.detalle + ')' : '') + '.'
+      + (resultado.vuelto ? ' Vuelto: ' + textoPesos(resultado.vuelto) + '.' : '');
     res.redirect(direccionVender(elegida));
   } catch (error) {
     siguiente(error);

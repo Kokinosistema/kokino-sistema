@@ -826,3 +826,14 @@ label.opcion-turno span { border-radius: var(--radius-md); }
 /* Al tocar un producto en Vender, un destello mientras se suma (sin recargar). */
 .tarjeta-producto.tocado { transform: scale(0.97); background: var(--bg-active); }
 .tarjeta-producto { transition: transform 0.08s, background 0.15s; }
+
+/* Vender: vuelto al pagar en efectivo. */
+.vuelto { margin: 4px 0 14px; }
+.vuelto[hidden] { display: none; }
+.vuelto label { margin-top: 6px; }
+.paga-con { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.paga-con input { flex: 1 1 120px; margin-top: 0; }
+.paga-con .billete { margin-top: 0; padding: 6px 12px; font-size: 13px; }
+.vuelto-texto { margin: 8px 0 0; font-family: var(--font-head); font-weight: 700; }
+.vuelto-texto.listo { font-size: 22px; color: var(--brand-pressed); }
+.vuelto-texto.falta { color: var(--status-error); }

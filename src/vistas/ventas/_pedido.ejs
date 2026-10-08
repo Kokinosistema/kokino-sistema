@@ -76,7 +76,7 @@
             <div class="grupo-botones">
               <% medios.forEach(function (m) { %>
                 <label class="opcion-boton">
-                  <input type="radio" name="id_medio_pago" value="<%= m.id_medio_pago %>" <%= String(m.id_medio_pago) === medio ? 'checked' : '' %> required>
+                  <input type="radio" name="id_medio_pago" value="<%= m.id_medio_pago %>" <%= String(m.id_medio_pago) === medio ? 'checked' : '' %> required<%= m.afecta_caja_efectivo ? ' data-efectivo=1' : '' %>>
                   <span><%= m.nombre %></span>
                 </label>
               <% }) %>
@@ -86,6 +86,23 @@
               </label>
             </div>
           </fieldset>
+
+          <%# El vuelto: al pagar en efectivo, con cuanto paga y cuanto hay que
+              devolver. Los botones son los billetes mas probables para el total. %>
+          <% const totalPesos = Math.round(total);
+             const billetes = [];
+             [totalPesos, Math.ceil(totalPesos / 1000) * 1000, Math.ceil(totalPesos / 5000) * 5000, Math.ceil(totalPesos / 10000) * 10000, Math.ceil(totalPesos / 20000) * 20000]
+               .forEach(function (b) { if (b > 0 && billetes.indexOf(b) === -1) billetes.push(b); }); %>
+          <div id="vuelto" class="vuelto" data-total="<%= Math.round(total * 100) %>" hidden>
+            <label for="paga-con">Paga con</label>
+            <div class="paga-con">
+              <input id="paga-con" name="paga_con" type="text" inputmode="decimal" autocomplete="off" class="dinero" placeholder="$0">
+              <% billetes.slice(0, 4).forEach(function (b, i) { %>
+                <button type="button" class="boton-secundario billete" data-monto="<%= b %>"><%= i === 0 ? 'Justo' : pesos(b) %></button>
+              <% }) %>
+            </div>
+            <p id="vuelto-texto" class="vuelto-texto" aria-live="polite"></p>
+          </div>
 
           <div id="pago-varios" class="pago-varios" data-total="<%= Math.round(total * 100) %>"
                <%= medio === VARIOS_MEDIOS ? '' : 'hidden' %>>
