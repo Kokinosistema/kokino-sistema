@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { consultar } = require('../db');
-const { metricasDelDueno } = require('../metricas');
+const { metricasDelDueno, alertasDeStock } = require('../metricas');
 const { avisoDeCopias } = require('../copias');
 
 const router = express.Router();
@@ -40,7 +40,23 @@ router.get('/', async (req, res, siguiente) => {
     // Los duenos ven si la copia de seguridad diaria fallo o es vieja.
     const avisoCopias = req.session.usuario.rol === 'administrador' ? avisoDeCopias() : null;
 
-    res.render('inicio', { sucursales: rows, totales: totales[0], metricas, avisoCopias });
+    // El empleado ve lo que le sirve para el turno (2026-10-07): como esta la
+    // caja, accesos grandes a lo que usa, y el helado que se esta terminando
+    // o esta por vencer en su sucursal. Sin plata: el total del dia es de los
+    // duenos.
+    let mostrador = null;
+    if (!metricas) {
+      const { rows: [caja] } = await consultar(
+        `SELECT c.fecha_apertura, t.nombre AS turno,
+                (SELECT count(*) FROM ventas v WHERE v.id_caja = c.id_caja AND v.fecha_anulacion IS NULL)::int AS ventas
+           FROM cajas c JOIN turnos t ON t.codigo = c.turno
+          WHERE c.id_sucursal = $1 AND c.fecha_cierre IS NULL`,
+        [req.sucursal.id_sucursal]
+      );
+      mostrador = { caja: caja || null, alertas: await alertasDeStock(req.sucursal.id_sucursal) };
+    }
+
+    res.render('inicio', { sucursales: rows, totales: totales[0], metricas, avisoCopias, mostrador });
   } catch (error) {
     siguiente(error);
   }

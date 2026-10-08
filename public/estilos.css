@@ -837,3 +837,20 @@ label.opcion-turno span { border-radius: var(--radius-md); }
 .vuelto-texto { margin: 8px 0 0; font-family: var(--font-head); font-weight: 700; }
 .vuelto-texto.listo { font-size: 22px; color: var(--brand-pressed); }
 .vuelto-texto.falta { color: var(--status-error); }
+
+/* Inicio del empleado: accesos grandes a lo que usa en el turno. */
+.accesos { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; margin: 16px 0 24px; }
+.acceso {
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--bg-panel); border-radius: var(--radius-md); box-shadow: var(--shadow-soft);
+  padding: 18px; text-decoration: none; color: var(--text-primary); border: 2px solid transparent;
+}
+.acceso:hover { border-color: var(--brand-primary); }
+.icono-acceso { width: 44px; height: 44px; border-radius: 50%; background: var(--bg-active); color: var(--brand-pressed); display: grid; place-items: center; }
+.icono-acceso svg { width: 24px; height: 24px; }
+.nombre-acceso { font-family: var(--font-head); font-weight: 700; font-size: 17px; }
+.detalle-acceso { font-size: 13px; color: var(--text-secondary); }
+.acceso-principal { background: var(--brand-primary); color: var(--text-on-brand); }
+.acceso-principal .icono-acceso { background: rgba(255, 255, 255, 0.2); color: var(--text-on-brand); }
+.acceso-principal .detalle-acceso { color: rgba(255, 255, 255, 0.9); }
+.acceso-alerta { border-color: var(--status-warning); }

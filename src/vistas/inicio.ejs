@@ -10,7 +10,7 @@
   <% if (sucursalesElegibles.length > 1) { %>
     Estás trabajando sobre <strong><%= sucursal.nombre %></strong>. Para ver la otra, cambiala arriba.
   <% } else { %>
-    Operas sobre la sucursal <strong><%= sucursal.nombre %></strong>.
+    Operás sobre la sucursal <strong><%= sucursal.nombre %></strong>.
   <% } %>
 </p>
 
@@ -38,6 +38,9 @@
   <%- include('parciales/metricas') %>
 <% } %>
 
+<% if (mostrador) { %>
+  <%- include('parciales/mostrador') %>
+<% } else { %>
 <section class="tarjetas">
   <% sucursales.forEach(function (s) { %>
     <article class="tarjeta">
@@ -62,5 +65,7 @@
     </li>
   </ul>
 </section>
+
+<% } %>
 
 <%- include('parciales/pie') %>

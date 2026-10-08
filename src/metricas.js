@@ -265,4 +265,4 @@ async function metricasDelDueno(idSucursal) {
   return { resumen, dias, sucursales, semana, pico, control, alertas };
 }
 
-module.exports = { metricasDelDueno };
+module.exports = { metricasDelDueno, alertasDeStock };
