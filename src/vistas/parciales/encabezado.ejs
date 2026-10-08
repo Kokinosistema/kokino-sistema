@@ -48,33 +48,76 @@
       <img src="/imagenes/logo-192.png" alt="Kokino, helados de tradición" width="112" height="112">
     </a>
 
+    <%
+      // Menu en grupos desplegables (pedido de la usuaria el 2026-10-07): se
+      // ven los nombres de los grupos y, al tocar uno, sus pestanas. Viene
+      // abierto el grupo de la pantalla en la que se esta.
+      const enGrupo = (prefijos) => prefijos.some((x) => ruta.startsWith(x));
+      const grupos = {
+        mostrador: enGrupo(['/ventas', '/caja']),
+        stock: enGrupo(['/fabricacion', '/mercaderia', '/envios', '/recetas', '/stock']),
+        negocio: enGrupo(['/clientes', '/productos', '/insumos', '/costos', '/proveedores']),
+        configuracion: enGrupo(['/usuarios', '/sucursales']),
+      };
+      const pendientesEnvio = typeof porRecibir !== 'undefined' ? porRecibir.length : 0;
+      const cabeceraGrupo = (id, titulo, extra) => '<button type="button" class="grupo-menu" aria-expanded="' + grupos[id] + '" aria-controls="grupo-' + id + '">'
+        + '<span class="nombre-grupo">' + titulo + '</span>' + (extra || '')
+        + '<svg class="flecha-grupo" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>';
+    %>
     <nav class="menu">
       <a class="<%= activo('/') %>" href="/" title="Inicio"><%- svg('inicio') %> <span class="texto-menu">Inicio</span></a>
-      <%# Agrupado para encontrar rapido cada pantalla (punto 11 de las mejoras). %>
-      <p class="grupo-menu">Mostrador</p>
-      <a class="<%= activo('/ventas') %>" href="/ventas" title="Vender"><%- svg('vender') %> <span class="texto-menu">Vender</span></a>
-      <a class="<%= activo('/caja') %>" href="/caja" title="Caja"><%- svg('caja') %> <span class="texto-menu">Caja</span></a>
-      <p class="grupo-menu">Stock y fábrica</p>
-      <a class="<%= activo('/fabricacion') %>" href="/fabricacion" title="Fabricación"><%- svg('fabricacion') %> <span class="texto-menu">Fabricación</span></a>
-      <a class="<%= activo('/mercaderia') %>" href="/mercaderia" title="Llegó mercadería"><%- svg('mercaderia') %> <span class="texto-menu">Llegó mercadería</span></a>
-      <a class="<%= activo('/envios') %>" href="/envios" title="Envíos"><%- svg('envios') %> <span class="texto-menu">Envíos</span>
-        <% if (typeof porRecibir !== 'undefined' && porRecibir.length > 0) { %>
-          <span class="contador" title="Envíos para recibir"><%= porRecibir.length %><span class="solo-lector"> para recibir</span></span>
-        <% } %>
-      </a>
-      <a class="<%= activo('/recetas') %>" href="/recetas" title="Recetas"><%- svg('recetas') %> <span class="texto-menu">Recetas</span></a>
+
+      <%- cabeceraGrupo('mostrador', 'Mostrador') %>
+      <div class="grupo-enlaces" id="grupo-mostrador" <%= grupos.mostrador ? '' : 'hidden' %>>
+        <a class="<%= activo('/ventas') %>" href="/ventas" title="Vender"><%- svg('vender') %> <span class="texto-menu">Vender</span></a>
+        <a class="<%= activo('/caja') %>" href="/caja" title="Caja"><%- svg('caja') %> <span class="texto-menu">Caja</span></a>
+      </div>
+
+      <%- cabeceraGrupo('stock', 'Stock y fábrica', pendientesEnvio > 0 ? '<span class="contador contador-grupo" title="Envíos para recibir">' + pendientesEnvio + '</span>' : '') %>
+      <div class="grupo-enlaces" id="grupo-stock" <%= grupos.stock ? '' : 'hidden' %>>
+        <a class="<%= activo('/fabricacion') %>" href="/fabricacion" title="Fabricación"><%- svg('fabricacion') %> <span class="texto-menu">Fabricación</span></a>
+        <a class="<%= activo('/mercaderia') %>" href="/mercaderia" title="Llegó mercadería"><%- svg('mercaderia') %> <span class="texto-menu">Llegó mercadería</span></a>
+        <a class="<%= activo('/envios') %>" href="/envios" title="Envíos"><%- svg('envios') %> <span class="texto-menu">Envíos</span>
+          <% if (pendientesEnvio > 0) { %>
+            <span class="contador" title="Envíos para recibir"><%= pendientesEnvio %><span class="solo-lector"> para recibir</span></span>
+          <% } %>
+        </a>
+        <a class="<%= activo('/recetas') %>" href="/recetas" title="Recetas"><%- svg('recetas') %> <span class="texto-menu">Recetas</span></a>
+      </div>
+
       <% if (usuario.rol === 'administrador') { %>
-        <p class="grupo-menu">Negocio</p>
-        <a class="<%= activo('/clientes') %>" href="/clientes" title="Clientes mayoristas"><%- svg('clientes') %> <span class="texto-menu">Clientes mayoristas</span></a>
-        <a class="<%= activo('/productos') %>" href="/productos" title="Productos"><%- svg('productos') %> <span class="texto-menu">Productos</span></a>
-        <a class="<%= activo('/insumos') %>" href="/insumos" title="Insumos"><%- svg('insumos') %> <span class="texto-menu">Insumos</span></a>
-        <a class="<%= activo('/costos') %>" href="/costos" title="Costos"><%- svg('costos') %> <span class="texto-menu">Costos</span></a>
-        <a class="<%= activo('/proveedores') %>" href="/proveedores" title="Proveedores"><%- svg('proveedores') %> <span class="texto-menu">Proveedores</span></a>
-        <p class="grupo-menu">Configuración</p>
-        <a class="<%= activo('/usuarios') %>" href="/usuarios" title="Usuarios"><%- svg('usuarios') %> <span class="texto-menu">Usuarios</span></a>
-        <a class="<%= activo('/sucursales') %>" href="/sucursales" title="Sucursales"><%- svg('sucursales') %> <span class="texto-menu">Sucursales</span></a>
+        <%- cabeceraGrupo('negocio', 'Negocio') %>
+        <div class="grupo-enlaces" id="grupo-negocio" <%= grupos.negocio ? '' : 'hidden' %>>
+          <a class="<%= activo('/clientes') %>" href="/clientes" title="Clientes mayoristas"><%- svg('clientes') %> <span class="texto-menu">Clientes mayoristas</span></a>
+          <a class="<%= activo('/productos') %>" href="/productos" title="Productos"><%- svg('productos') %> <span class="texto-menu">Productos</span></a>
+          <a class="<%= activo('/insumos') %>" href="/insumos" title="Insumos"><%- svg('insumos') %> <span class="texto-menu">Insumos</span></a>
+          <a class="<%= activo('/costos') %>" href="/costos" title="Costos"><%- svg('costos') %> <span class="texto-menu">Costos</span></a>
+          <a class="<%= activo('/proveedores') %>" href="/proveedores" title="Proveedores"><%- svg('proveedores') %> <span class="texto-menu">Proveedores</span></a>
+        </div>
+
+        <%- cabeceraGrupo('configuracion', 'Configuración') %>
+        <div class="grupo-enlaces" id="grupo-configuracion" <%= grupos.configuracion ? '' : 'hidden' %>>
+          <a class="<%= activo('/usuarios') %>" href="/usuarios" title="Usuarios"><%- svg('usuarios') %> <span class="texto-menu">Usuarios</span></a>
+          <a class="<%= activo('/sucursales') %>" href="/sucursales" title="Sucursales"><%- svg('sucursales') %> <span class="texto-menu">Sucursales</span></a>
+        </div>
       <% } %>
     </nav>
+    <script>
+      // Tocar un grupo lo abre y cierra los demas, asi la barra queda corta.
+      (function () {
+        var cabeceras = document.querySelectorAll('.menu .grupo-menu');
+        cabeceras.forEach(function (c) {
+          c.addEventListener('click', function () {
+            var abrir = c.getAttribute('aria-expanded') !== 'true';
+            cabeceras.forEach(function (otra) {
+              var abierta = otra === c ? abrir : false;
+              otra.setAttribute('aria-expanded', abierta ? 'true' : 'false');
+              document.getElementById(otra.getAttribute('aria-controls')).hidden = !abierta;
+            });
+          });
+        });
+      })();
+    </script>
 
     <p class="pie-lateral">Heladería artesanal<br>San Miguel de Tucumán</p>
   </aside>

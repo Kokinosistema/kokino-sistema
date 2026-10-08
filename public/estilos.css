@@ -909,3 +909,30 @@ label.opcion-turno span { border-radius: var(--radius-md); }
 .marca-paso { flex: 0 0 26px; height: 26px; border-radius: 50%; border: 2px solid var(--brand-primary); display: grid; place-items: center; color: var(--text-on-brand); font-weight: 700; font-size: 14px; }
 .pasos li.listo .marca-paso { background: var(--brand-primary); }
 .pasos li.listo .texto-paso strong { color: var(--text-secondary); }
+
+/* Grupos desplegables del menú: el nombre del grupo es un botón que abre
+   sus pestañas (y cierra los demás). */
+.menu button.grupo-menu {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  margin: 4px 0 0; padding: 9px 12px; border: 0; border-radius: var(--radius-sm);
+  background: none; cursor: pointer; text-align: left;
+  font-family: var(--font-head); font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: rgba(255, 255, 255, 0.85);
+}
+.menu button.grupo-menu:hover { background: rgba(255, 255, 255, 0.14); color: var(--text-on-brand); }
+.menu button.grupo-menu .flecha-grupo { margin-left: auto; transition: transform 0.15s; }
+.menu button.grupo-menu[aria-expanded="true"] .flecha-grupo { transform: rotate(180deg); }
+.menu button.grupo-menu .contador-grupo { margin-left: 4px; }
+.menu button.grupo-menu[aria-expanded="true"] .contador-grupo { display: none; }
+.grupo-enlaces { display: flex; flex-direction: column; gap: 2px; padding-left: 6px; }
+.grupo-enlaces[hidden] { display: none; }
+/* Con la barra cerrada (solo iconos) se ven todos los iconos, y el grupo
+   es una linea finita. */
+.app.menu-cerrado .grupo-enlaces, .app.menu-cerrado .grupo-enlaces[hidden] { display: flex; padding-left: 0; }
+.app.menu-cerrado .menu button.grupo-menu { font-size: 0; height: 1px; padding: 0; margin: 8px 10px; background: rgba(255, 255, 255, 0.5); pointer-events: none; width: auto; }
+.app.menu-cerrado .menu button.grupo-menu > * { display: none; }
+/* En pantallas angostas (menu horizontal), todas las pestanas a la vista. */
+@media (max-width: 860px) {
+  .menu button.grupo-menu { display: none; }
+  .grupo-enlaces, .grupo-enlaces[hidden] { display: contents; }
+}
