@@ -170,9 +170,17 @@ async function horasPico(idSucursal) {
   );
   const NOMBRES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
   // Del primer al ultimo horario con ventas, con las horas del medio en cero.
+  // El dia de la heladeria arranca a la manana y termina pasada la
+  // medianoche (el turno Tarde/Noche cierra a la 1): las horas se ordenan
+  // desde las 6, asi la 0 y la 1 quedan al final y no del otro lado de un
+  // hueco vacio. Van del primer al ultimo horario con ventas, con las horas
+  // del medio en cero.
+  const orden = (h) => (h + 18) % 24;
   let porHora = [];
   if (horas.length > 0) {
-    for (let h = horas[0].hora; h <= horas[horas.length - 1].hora; h++) {
+    const claves = horas.map((x) => orden(x.hora));
+    for (let k = Math.min(...claves); k <= Math.max(...claves); k++) {
+      const h = (k + 6) % 24;
       const f = horas.find((x) => x.hora === h);
       porHora.push({ hora: h, promedio: f ? Number(f.promedio) : 0 });
     }

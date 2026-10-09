@@ -111,7 +111,8 @@
             <tr>
               <td class="numero puesto"><%= i + 1 %></td>
               <td><%= x.nombre %></td>
-              <td class="numero"><%= cantidad(x.cantidad, x.unidad) %></td>
+              <%# Lo vendido se cuenta por unidad (un termico de 1 kg es una unidad). %>
+              <td class="numero"><%= cantidad(x.cantidad, x.cantidad === 1 ? 'unidad' : 'unidades') %></td>
               <td class="numero"><%= pesos(x.total) %></td>
               <td class="columna-barra"><span class="barra-h-pista"><span style="width: <%= pct(x.total, maxProducto) %>%"></span></span></td>
             </tr>
@@ -174,12 +175,15 @@
         <% } else { %>
           <p class="ayuda"><%= m.control.anuladas.length %> <%= m.control.anuladas.length === 1 ? 'venta anulada' : 'ventas anuladas' %> por <strong><%= pesos(m.control.totalAnulado) %></strong>.</p>
           <ul class="lista-control">
-            <% m.control.anuladas.forEach(function (a) { %>
+            <% m.control.anuladas.slice(0, 5).forEach(function (a) { %>
               <li>
                 <strong><%= pesos(a.total) %></strong> · venta N° <%= a.id_venta %> de <%= a.vendio %> (<%= fechaHora(a.fecha_hora) %>)<br>
                 <span class="pista">Anuló <%= a.anulo %> el <%= fechaHora(a.fecha_anulacion) %>: <%= a.motivo_anulacion %></span>
               </li>
             <% }) %>
+            <% if (m.control.anuladas.length > 5) { %>
+              <li class="pista">y <%= m.control.anuladas.length - 5 %> más en los últimos 7 días.</li>
+            <% } %>
           </ul>
         <% } %>
       </div>

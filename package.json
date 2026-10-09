@@ -14,7 +14,9 @@
     "start": "node --env-file=.env server.js",
     "dev": "node --env-file=.env --watch server.js",
     "crear-usuario": "node --env-file=.env scripts/crear-usuario.js",
-    "copia": "node --env-file=.env scripts/copia-de-seguridad.js"
+    "copia": "node --env-file=.env scripts/copia-de-seguridad.js",
+    "demo:cargar": "node --env-file=.env scripts/datos-demo.js cargar",
+    "demo:borrar": "node --env-file=.env scripts/datos-demo.js borrar"
   },
   "keywords": [],
   "author": "",
