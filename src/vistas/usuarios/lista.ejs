@@ -32,6 +32,7 @@
           <td><%= u.nombre_rol %></td>
           <td><%= u.sucursal %></td>
           <td class="acciones">
+            <a class="enlace" href="/usuarios/<%= u.id_usuario %>/editar">Editar</a>
             <form method="post" action="/usuarios/<%= u.id_usuario %>/baja">
               <input type="hidden" name="activar" value="<%= u.activo ? '0' : '1' %>">
               <button class="enlace" type="submit" <%= u.activo && u.id_usuario === usuario.id_usuario ? 'disabled' : '' %>>
