@@ -626,6 +626,8 @@ label.opcion-boton input:focus-visible + span { outline: 3px solid var(--bg-acti
 .caja-login .logo-grande { width: 176px; height: 176px; display: block; margin: 0 auto 8px; }
 .caja-login h1 { margin: 0 0 8px; }
 .caja-login button[type="submit"] { width: 100%; margin-top: 24px; }
+/* contain: que el texto se acomode al ancho de la caja en vez de ensancharla. */
+.caja-login .olvido { margin-top: 16px; contain: inline-size; }
 
 /* ---------- Pantallas angostas ---------- */
 
