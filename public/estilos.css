@@ -385,6 +385,17 @@ input:focus, select:focus, textarea:focus {
 .combo-opcion:hover, .combo-opcion.activa { background: var(--bg-active); color: var(--brand-pressed); }
 .combo-vacio { padding: 8px 12px; color: var(--status-error); font-size: 13px; font-weight: 700; }
 input.con-error, input.con-error:focus { border-color: var(--status-error); }
+/* Campo de contrasena con el ojito para verla (ver-contrasena.js). La caja del
+   login toma el ancho de sus campos: el margen negativo descuenta el lugar
+   extra del ojito para que la caja no se agrande ni se achique. */
+.campo-contrasena { position: relative; display: inline-block; width: 100%; vertical-align: top; }
+.campo-contrasena input { padding-right: 44px; margin-right: -32px; }
+.campo-contrasena .ver-contrasena {
+  position: absolute; right: 4px; top: 4px; bottom: 0;
+  width: 38px; display: grid; place-items: center;
+  background: none; border: 0; padding: 0; margin: 0;
+  color: var(--brand-pressed); cursor: pointer;
+}
 /* Casilla de verificacion con su texto al lado, no un campo a todo el ancho. */
 label.casilla { display: flex; align-items: center; gap: 8px; margin-top: 34px; font-size: 14px; color: var(--text-primary); }
 label.casilla input { width: auto; margin: 0; accent-color: var(--brand-primary); }
