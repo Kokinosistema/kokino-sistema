@@ -4,7 +4,7 @@
 <%
   const m = metricas;
   const fechaCorta = (d) => d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' }).replace('.', '');
-  const fechaHora = (f) => f.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' }) + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  const fechaHora = (f) => f.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' }) + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   const pct = (parte, total) => (total > 0 ? Math.round((parte / total) * 100) : 0);
   const maximo = (lista, campo) => Math.max(0, ...lista.map((x) => x[campo]));
   const TURNOS = { MANANA_TARDE: 'mañana/tarde', TARDE_NOCHE: 'tarde/noche' };

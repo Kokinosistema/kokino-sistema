@@ -1,6 +1,6 @@
 <%- include('../parciales/encabezado', { titulo: 'Llegó mercadería - Kokino' }) %>
 
-<% const fechaHora = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); %>
+<% const fechaHora = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); %>
 
 <h1>Llegó mercadería</h1>
 <p class="ayuda">

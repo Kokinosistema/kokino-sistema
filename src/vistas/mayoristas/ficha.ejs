@@ -1,6 +1,6 @@
 <%- include('../parciales/encabezado', { titulo: cliente.nombre_razon_social + ' - Kokino' }) %>
 
-<% const fechaHora = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); %>
+<% const fechaHora = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); %>
 
 <a class="volver" href="/clientes">← Clientes mayoristas</a>
 <div class="titulo-con-accion">

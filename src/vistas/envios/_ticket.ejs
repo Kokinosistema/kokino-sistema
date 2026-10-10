@@ -1,6 +1,6 @@
 <%# El ticket que viaja con la mercaderia. Lo usan la revision antes de
     enviar y la pagina de cada envio; al imprimir sale solo esto. %>
-<% const fechaHora = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); %>
+<% const fechaHora = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); %>
 <article class="ticket">
   <header class="ticket-cabecera">
     <img src="/imagenes/logo-192.png" alt="" width="56" height="56">

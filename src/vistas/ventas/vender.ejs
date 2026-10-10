@@ -140,7 +140,7 @@
         <tbody>
           <% ultimas.forEach(function (v) { %>
             <tr class="<%= v.anulada ? 'anulada' : '' %>">
-              <td><%= v.fecha_hora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) %></td>
+              <td><%= v.fecha_hora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) %></td>
               <td><%= (CANALES.find(function (c) { return c.valor === v.canal_venta; }) || {}).texto %></td>
               <td><%= v.medios || 'Sin pago' %></td>
               <td class="numero"><span class="monto"><%= pesos(Number(v.total)) %></span></td>

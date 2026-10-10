@@ -1,6 +1,6 @@
 <%# El remito que viaja con los tachos. Lo usan la revision antes de
     confirmar y la pagina de cada venta; al imprimir sale solo esto. %>
-<% const fechaHoraR = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+<% const fechaHoraR = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
    const textoEnvase = (v) => (ENVASES.find((e) => e.valor === v) || {}).texto || v; %>
 <article class="ticket remito">
   <header class="ticket-cabecera">

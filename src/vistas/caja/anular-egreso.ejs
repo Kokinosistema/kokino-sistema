@@ -35,7 +35,7 @@
       <% } %>
       <tr>
         <th>Cuándo</th>
-        <td><%= egreso.fecha_hora.toLocaleString('es-AR') %></td>
+        <td><%= egreso.fecha_hora.toLocaleString('es-AR', { hourCycle: 'h23' }) %></td>
       </tr>
       <tr>
         <th>Con qué se pagó</th>

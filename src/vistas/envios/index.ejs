@@ -9,7 +9,7 @@
 <% } %>
 
 <%
-  const fecha = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  const fecha = (f) => f.toLocaleDateString('es-AR') + ' ' + f.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   const contenido = (e) => {
     const partes = [];
     if (e.tachos > 0) partes.push(e.tachos + (e.tachos === 1 ? ' tacho' : ' tachos'));

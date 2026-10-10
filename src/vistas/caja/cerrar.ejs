@@ -4,7 +4,7 @@
 
 <p class="ayuda">
   Turno <%= (TURNOS.find(function (t) { return t.valor === caja.turno; }) || {}).texto %> en <%= caja.sucursal %>,
-  abierto el <%= caja.fecha_apertura.toLocaleString('es-AR') %>.
+  abierto el <%= caja.fecha_apertura.toLocaleString('es-AR', { hourCycle: 'h23' }) %>.
 </p>
 
 <% if (errores.length > 0) { %>

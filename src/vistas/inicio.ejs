@@ -26,7 +26,7 @@
            if (e.productos > 0) partes.push(e.productos + (e.productos === 1 ? ' producto' : ' productos')); %>
         <li>
           <span>Envío N° <%= e.id_traslado %> desde <%= e.origen %>: <%= partes.join(' y ') %>
-            <span class="pista-inline">(salió el <%= e.fecha_envio.toLocaleDateString('es-AR') %> a las <%= e.fecha_envio.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) %>)</span></span>
+            <span class="pista-inline">(salió el <%= e.fecha_envio.toLocaleDateString('es-AR') %> a las <%= e.fecha_envio.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) %>)</span></span>
           <a class="boton" href="/envios/<%= e.id_traslado %>/recibir">Recibir</a>
         </li>
       <% }) %>

@@ -4,7 +4,7 @@
 
 <p class="ayuda">
   Venta por <%= (CANALES.find(function (c) { return c.valor === venta.canal_venta; }) || {}).texto.toLowerCase() %>
-  del <%= venta.fecha_hora.toLocaleString('es-AR') %>.
+  del <%= venta.fecha_hora.toLocaleString('es-AR', { hourCycle: 'h23' }) %>.
   Al anularla el stock vuelve solo. La venta no se borra: queda en la lista
   marcada como anulada, con tu nombre y el motivo.
 </p>

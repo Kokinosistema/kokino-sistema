@@ -13,7 +13,7 @@
     <h2>Turno abierto</h2>
     <p class="ayuda">
       Turno <%= (TURNOS.find(function (t) { return t.valor === abierta.turno; }) || {}).texto %> en <%= abierta.sucursal %>,
-      abierto el <%= abierta.fecha_apertura.toLocaleString('es-AR') %>.
+      abierto el <%= abierta.fecha_apertura.toLocaleString('es-AR', { hourCycle: 'h23' }) %>.
     </p>
 
     <table class="tabla">
@@ -134,7 +134,7 @@
         <tbody>
           <% egresos.forEach(function (e) { %>
             <tr class="<%= e.anulado ? 'anulada' : '' %>">
-              <td><%= e.fecha_hora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) %></td>
+              <td><%= e.fecha_hora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) %></td>
               <td><%= (TIPOS_EGRESO.find(function (t) { return t.valor === e.tipo_egreso; }) || {}).texto %></td>
               <td><%= [e.empleado, e.descripcion].filter(Boolean).join(' — ') %></td>
               <td><%= e.medio %></td>
@@ -209,7 +209,7 @@
         <% const dif = Number(c.diferencia); %>
         <tr>
           <td><%= (TURNOS.find(function (t) { return t.valor === c.turno; }) || {}).texto.toLowerCase() %></td>
-          <td><%= c.fecha_cierre.toLocaleString('es-AR') %></td>
+          <td><%= c.fecha_cierre.toLocaleString('es-AR', { hourCycle: 'h23' }) %></td>
           <td class="numero"><%= pesos(Number(c.monto_cierre_sistema)) %></td>
           <td class="numero"><%= pesos(Number(c.monto_cierre_declarado)) %></td>
           <td class="numero <%= dif === 0 ? '' : 'alerta' %>">
