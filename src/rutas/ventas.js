@@ -98,12 +98,12 @@ async function mostrar(req, res, {
   const caja = await cajaAbiertaDe(elegida);
 
   const { rows: productos } = await consultar(
-    `SELECT p.id_producto, p.nombre, c.id_categoria, c.nombre AS categoria, pr.precio
+    `SELECT p.id_producto, p.nombre, c.id_categoria, c.nombre AS categoria, c.orden, pr.precio
        FROM productos p
        JOIN categorias c ON c.id_categoria = p.id_categoria
        ${SQL_PRECIO_VIGENTE}
       WHERE p.activo
-      ORDER BY c.nombre, p.nombre`
+      ORDER BY c.orden NULLS LAST, c.nombre, p.nombre`
   );
 
   const catalogo = [];
@@ -112,7 +112,7 @@ async function mostrar(req, res, {
     porId.set(p.id_producto, p);
     let grupo = catalogo[catalogo.length - 1];
     if (!grupo || grupo.categoria !== p.categoria) {
-      grupo = { id_categoria: p.id_categoria, categoria: p.categoria, productos: [] };
+      grupo = { id_categoria: p.id_categoria, categoria: p.categoria, orden: p.orden, productos: [] };
       catalogo.push(grupo);
     }
     grupo.productos.push(p);
@@ -124,14 +124,17 @@ async function mostrar(req, res, {
   const esDueno = req.session.usuario.rol === 'administrador';
   if (esDueno) {
     const { rows: todas } = await consultar(
-      "SELECT id_categoria, nombre FROM categorias WHERE tipo = 'PRODUCTO' ORDER BY nombre"
+      "SELECT id_categoria, nombre, orden FROM categorias WHERE tipo = 'PRODUCTO'"
     );
     for (const c of todas) {
       if (!catalogo.some((g) => g.id_categoria === c.id_categoria)) {
-        catalogo.push({ id_categoria: c.id_categoria, categoria: c.nombre, productos: [] });
+        catalogo.push({ id_categoria: c.id_categoria, categoria: c.nombre, orden: c.orden, productos: [] });
       }
     }
-    catalogo.sort((a, b) => a.categoria.localeCompare(b.categoria, 'es'));
+    // Mismo orden que la consulta de productos: por orden, y las que no
+    // tienen, al final y por nombre.
+    catalogo.sort((a, b) => (a.orden ?? Infinity) - (b.orden ?? Infinity)
+      || a.categoria.localeCompare(b.categoria, 'es'));
   }
 
   // Sin categoria elegida (o con una que no existe) se muestra la grilla de
