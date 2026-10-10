@@ -93,7 +93,7 @@ async function cajaAbiertaDe(idSucursal) {
 // Arma todo lo que necesita la pantalla y la muestra. Lo usan tanto la carga
 // normal como los errores al cobrar, para que el pedido siga a la vista.
 async function mostrar(req, res, {
-  sucursales, elegida, categoria, busqueda, errores = [], estado = 200, canal, medio, montos = {},
+  sucursales, elegida, categoria, busqueda, errores = [], estado = 200, canal, medio, montos = {}, pagaCon = '',
 }) {
   const caja = await cajaAbiertaDe(elegida);
 
@@ -218,6 +218,7 @@ async function mostrar(req, res, {
     canal: canal || '',
     medio: medio === VARIOS_MEDIOS ? VARIOS_MEDIOS : (Number(medio) ? String(Number(medio)) : ''),
     montos,
+    pagaCon,
     VARIOS_MEDIOS,
   });
 }
@@ -265,7 +266,7 @@ async function responderPanel(req, res, elegida) {
     elegida, lineas, total, medios, CANALES, VARIOS_MEDIOS,
     abierta: Number.isInteger(categoria) && categoria > 0 ? { id_categoria: categoria } : null,
     busqueda: limpiarBusqueda(req.body.busqueda),
-    canal: '', medio: '', montos: {},
+    canal: '', medio: '', montos: {}, pagaCon: '',
   }, (error, html) => {
     if (error) throw error;
     res.json({ html, enPedido: Object.fromEntries(lineas.map((l) => [l.id_producto, l.cantidad])) });
@@ -342,9 +343,11 @@ router.post('/cobrar', async (req, res, siguiente) => {
     const { canal, id_medio_pago: medio } = req.body;
     const variosMedios = medio === VARIOS_MEDIOS;
     const montos = montosPorMedio(req.body);
+    const textoPagaCon = typeof req.body.paga_con === 'string' ? req.body.paga_con.trim() : '';
     const pedido = pedidoDe(req, elegida);
     const volver = (errores) => mostrar(req, res, {
       sucursales, elegida, categoria: req.body.categoria, errores, estado: 400, canal, medio, montos,
+      pagaCon: textoPagaCon,
     });
 
     const errores = [];
@@ -409,6 +412,24 @@ router.post('/cobrar', async (req, res, siguiente) => {
       if (activos.length !== pagos.length) return { error: 'Elegí con qué pagó.' };
       const nombreDe = new Map(activos.map((m) => [m.id_medio_pago, m.nombre]));
 
+      // En efectivo y en el mostrador, con cuanto paga es obligatorio (pedido
+      // de la usuaria el 2026-10-10): asi siempre se calcula el vuelto y no se
+      // cobra de menos. Por telefono o PedidosYa la plata llega despues y
+      // puede no saberse.
+      const pagaCon = parsearMonto(textoPagaCon);
+      const enEfectivo = !variosMedios && activos[0] && activos[0].afecta_caja_efectivo;
+      if (enEfectivo && canal === 'MOSTRADOR' && total > 0) {
+        if (pagaCon === null) {
+          return { error: textoPagaCon === '' ? 'Poné con cuánto paga el cliente.' : 'Con cuánto paga: ' + MONTO_INVALIDO + '.' };
+        }
+        if (aCentavos(pagaCon) < total) {
+          return {
+            error: 'Paga con ' + textoPesos(aCentavos(pagaCon)) + ' y la venta es de ' + textoPesos(total)
+              + ': faltan ' + textoPesos(total - aCentavos(pagaCon)) + '.',
+          };
+        }
+      }
+
       const pagado = pagos.reduce((suma, p) => suma + p.centavos, 0);
       if (variosMedios && pagado !== total) {
         const diferencia = Math.abs(total - pagado);
@@ -445,8 +466,6 @@ router.post('/cobrar', async (req, res, siguiente) => {
 
       // El vuelto, si pago en efectivo y dijo con cuanto: solo para el aviso
       // (no se guarda; en la caja entra el total de la venta).
-      const pagaCon = parsearMonto(typeof req.body.paga_con === 'string' ? req.body.paga_con : '');
-      const enEfectivo = !variosMedios && activos[0] && activos[0].afecta_caja_efectivo;
       const vuelto = enEfectivo && pagaCon !== null && aCentavos(pagaCon) > total ? aCentavos(pagaCon) - total : 0;
 
       return {

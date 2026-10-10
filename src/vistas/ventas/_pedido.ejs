@@ -96,7 +96,7 @@
           <div id="vuelto" class="vuelto" data-total="<%= Math.round(total * 100) %>" hidden>
             <label for="paga-con">Paga con</label>
             <div class="paga-con">
-              <input id="paga-con" name="paga_con" type="text" inputmode="decimal" autocomplete="off" class="dinero" placeholder="$0">
+              <input id="paga-con" name="paga_con" type="text" inputmode="decimal" autocomplete="off" class="dinero" placeholder="$0" value="<%= typeof pagaCon !== 'undefined' ? pagaCon : '' %>">
               <% billetes.slice(0, 4).forEach(function (b, i) { %>
                 <button type="button" class="boton-secundario billete" data-monto="<%= b %>"><%= i === 0 ? 'Justo' : pesos(b) %></button>
               <% }) %>
