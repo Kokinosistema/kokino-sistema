@@ -245,6 +245,14 @@
     // Al tocar el texto se selecciona entero: si ya habia algo elegido, lo
     // que se escribe lo reemplaza en vez de mezclarse con el nombre anterior.
     texto.addEventListener('focus', function () { texto.select(); });
+    // Tocar el campo ya abre la lista (pedido de la usuaria el 2026-10-10),
+    // sin tener que ir a la flecha; escribir la sigue filtrando.
+    texto.addEventListener('click', function () {
+      if (!lista.hidden) return;
+      var o = elegida();
+      filtrar(o && texto.value === o.textContent.trim() ? '' : texto.value);
+      abrir();
+    });
 
     texto.addEventListener('input', function () {
       oculto.value = '';

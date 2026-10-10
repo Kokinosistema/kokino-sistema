@@ -335,6 +335,13 @@
     });
 
     texto.addEventListener('focus', function () { texto.select(); });
+    // Tocar el campo ya abre la lista (pedido de la usuaria el 2026-10-10),
+    // sin tener que ir a la flecha; escribir la sigue filtrando.
+    texto.addEventListener('click', function () {
+      if (!lista.hidden) return;
+      filtrar(elegida && texto.value === elegida.dataset.nombre ? '' : texto.value);
+      abrir();
+    });
     texto.addEventListener('input', function () { olvidar(); filtrar(texto.value); abrir(); });
     texto.addEventListener('keydown', function (e) {
       var v = visibles();

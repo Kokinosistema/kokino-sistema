@@ -1,8 +1,8 @@
 'use strict';
 
 // Lista de sabores con buscador, como la de Fabricacion y la de Envios:
-// siempre se abre para abajo, la flecha la abre y la cierra, y escribir la
-// despliega con lo que coincide (sin importar acentos ni mayusculas, y con
+// siempre se abre para abajo, tocar el campo la abre, la flecha la abre y la
+// cierra, y escribir la despliega con lo que coincide (sin importar acentos ni mayusculas, y con
 // cada palabra en cualquier orden). Se elige con un clic o con Enter.
 //
 // Uso: comboSabores(elementoCombo, { alElegir: function (opcion) {...},
@@ -76,6 +76,13 @@
     });
 
     texto.addEventListener('focus', function () { texto.select(); });
+    // Tocar el campo ya abre la lista (pedido de la usuaria el 2026-10-10),
+    // sin tener que ir a la flecha; escribir la sigue filtrando.
+    texto.addEventListener('click', function () {
+      if (!lista.hidden) return;
+      filtrar(elegida && texto.value === elegida.dataset.nombre ? '' : texto.value);
+      abrir();
+    });
     texto.addEventListener('input', function () {
       elegida = null;
       if (avisos.alEscribir) avisos.alEscribir();
