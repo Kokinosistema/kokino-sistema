@@ -158,7 +158,8 @@ describe('Anular', () => {
     const vieja = (await ultimaVenta()).id_venta;
     await nav.enviar('/caja/cerrar', { id_sucursal: sucursal, monto_cierre_declarado: '$0' });
     await nav.enviar('/ventas/' + vieja + '/anular', { motivo: 'reclamo' });
-    assert.match(await nav.aviso('/ventas'), /La caja de esa venta ya se cerró/);
+    assert.equal(await nav.aviso('/ventas'),
+      'Esa venta es de un turno que ya se cerró, así que no se puede anular. Si hubo un error al cobrarla, avisale a un dueño.');
     assert.equal((await ultimaVenta()).fecha_anulacion, null);
   });
 });

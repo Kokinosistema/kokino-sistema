@@ -565,9 +565,12 @@ function motivoParaNoAnular(venta, sucursales, carta) {
   if (venta.fecha_anulacion) {
     return 'Esa venta ya estaba anulada.';
   }
+  // No hay devoluciones de dias anteriores (es helado: un cambio se pide en
+  // el momento y se anula en el turno abierto). Lo que queda es un error al
+  // cobrar descubierto tarde, y eso lo ve un dueno.
   if (venta.fecha_cierre) {
-    return 'La caja de esa venta ya se cerró, así que no se puede anular: su arqueo está hecho. '
-      + 'La corrección es una nota de crédito con fecha de hoy.';
+    return 'Esa venta es de un turno que ya se cerró, así que no se puede anular. '
+      + 'Si hubo un error al cobrarla, avisale a un dueño.';
   }
   return null;
 }
