@@ -1,0 +1,19 @@
+# Saltos de linea iguales en todas las computadoras (2026-10-15).
+#
+# Todo archivo de texto va con LF (el salto de Unix), en el repositorio y en
+# la copia de trabajo, sin importar como este configurado git en cada
+# maquina. Las herramientas de Windows que usa el proyecto (VS Code, Node,
+# PostgreSQL) leen LF sin problema, y un solo formato evita avisos y
+# diferencias falsas entre computadoras.
+* text=auto eol=lf
+
+# Binarios: git nunca los toca.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.woff  binary
+*.woff2 binary
+*.pdf   binary
