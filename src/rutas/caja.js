@@ -131,8 +131,9 @@ async function mostrarCaja(res, { usuario, sucursales, elegida, errores = [], es
          FROM empleados WHERE activo ORDER BY nombre, apellido`
     ));
     ({ rows: medios } = await consultar(
+      // Los atados a un canal de venta (solo_canal) no pagan salidas.
       `SELECT id_medio_pago, nombre FROM medios_pago
-        WHERE activo AND ($1 OR afecta_caja_efectivo)
+        WHERE activo AND solo_canal IS NULL AND ($1 OR afecta_caja_efectivo)
         ORDER BY id_medio_pago`,
       [verTodo]
     ));
@@ -374,7 +375,7 @@ router.post('/egresos', async (req, res, siguiente) => {
       if (cajas.length === 0) return { error: 'No hay una caja abierta en esta sucursal.' };
 
       const { rows: medios } = await ejecutar(
-        'SELECT afecta_caja_efectivo FROM medios_pago WHERE id_medio_pago = $1 AND activo',
+        'SELECT afecta_caja_efectivo FROM medios_pago WHERE id_medio_pago = $1 AND activo AND solo_canal IS NULL',
         [egreso.id_medio_pago]
       );
       if (medios.length === 0) return { error: 'Elegí con qué se pagó.' };

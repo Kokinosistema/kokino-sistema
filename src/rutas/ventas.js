@@ -74,6 +74,19 @@ function vaciarPedido(req, idSucursal) {
   delete pedidosDe(req)[idSucursal];
 }
 
+// Los medios con que se puede cobrar en esta carta: los de siempre, mas los
+// atados a uno de sus canales (como "PedidosYa (online)", que solo aparece en
+// PedidosYa). La base rechaza igual un medio usado en otro canal.
+async function mediosDeLaCarta(carta) {
+  const { rows } = await consultar(
+    `SELECT id_medio_pago, nombre, afecta_caja_efectivo FROM medios_pago
+      WHERE activo AND (solo_canal IS NULL OR solo_canal = ANY($1::text[]))
+      ORDER BY id_medio_pago`,
+    [carta.canales.map((c) => c.valor)]
+  );
+  return rows;
+}
+
 function sucursalPedida(valor, sucursales) {
   const id = Number(valor);
   return sucursales.some((s) => s.id_sucursal === id) ? id : null;
@@ -179,9 +192,7 @@ async function mostrar(req, res, {
   });
   const total = lineas.reduce((suma, l) => suma + l.subtotal, 0);
 
-  const { rows: medios } = await consultar(
-    'SELECT id_medio_pago, nombre, afecta_caja_efectivo FROM medios_pago WHERE activo ORDER BY id_medio_pago'
-  );
+  const medios = await mediosDeLaCarta(req.carta);
 
   let ultimas = [];
   if (caja) {
@@ -278,9 +289,7 @@ async function responderPanel(req, res, elegida) {
     return { id_producto: l.id_producto, nombre: p.nombre, cantidad: l.cantidad, precio: Number(p.precio), subtotal: Number(p.precio) * l.cantidad };
   });
   const total = lineas.reduce((suma, l) => suma + l.subtotal, 0);
-  const { rows: medios } = await consultar(
-    'SELECT id_medio_pago, nombre, afecta_caja_efectivo FROM medios_pago WHERE activo ORDER BY id_medio_pago'
-  );
+  const medios = await mediosDeLaCarta(req.carta);
   const categoria = Number(req.body.categoria);
   res.render('ventas/_pedido', {
     elegida, lineas, total, medios, CANALES, canalesAElegir: req.carta.canales, VARIOS_MEDIOS,
@@ -429,8 +438,10 @@ router.post('/cobrar', async (req, res, siguiente) => {
         : [{ id_medio_pago: Number(medio), centavos: total }];
 
       const { rows: activos } = await ejecutar(
-        'SELECT id_medio_pago, nombre, afecta_caja_efectivo FROM medios_pago WHERE activo AND id_medio_pago = ANY($1::int[])',
-        [pagos.map((p) => p.id_medio_pago)]
+        `SELECT id_medio_pago, nombre, afecta_caja_efectivo FROM medios_pago
+          WHERE activo AND id_medio_pago = ANY($1::int[])
+            AND (solo_canal IS NULL OR solo_canal = $2)`,
+        [pagos.map((p) => p.id_medio_pago), canal]
       );
       if (activos.length !== pagos.length) return { error: 'Elegí con qué pagó.' };
       const nombreDe = new Map(activos.map((m) => [m.id_medio_pago, m.nombre]));

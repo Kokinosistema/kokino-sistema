@@ -75,6 +75,37 @@ describe('Vender por PedidosYa', () => {
     assert.equal(Number(rows[0].precio), 39000);
   });
 
+  test('"PedidosYa (online)" se ofrece solo en PedidosYa', async () => {
+    const enPedidosYa = await panel(empleado, 'pedidosya', familiar);
+    const enMostrador = await panel(empleado, 'ventas', familiar);
+    assert.match(enPedidosYa, /PedidosYa \(online\)/);
+    assert.doesNotMatch(enMostrador, /PedidosYa \(online\)/);
+  });
+
+  test('forzar "PedidosYa (online)" en Vender no cobra', async () => {
+    const online = await idMedio('PedidosYa (online)');
+    const r = await empleado.enviar('/ventas/cobrar', { id_sucursal: sucursal, canal: 'MOSTRADOR', id_medio_pago: online });
+    assert.equal(r.estado, 400);
+    assert.deepEqual(erroresDe(r.html), ['Elegí con qué pagó.']);
+    await empleado.enviar('/ventas/pedido', { id_sucursal: sucursal, accion: 'vaciar' });
+  });
+
+  test('un pedido pagado en la app se cobra con "PedidosYa (online)"', async () => {
+    const online = await idMedio('PedidosYa (online)');
+    const r = await empleado.enviar('/pedidosya/cobrar', { id_sucursal: sucursal, id_medio_pago: online });
+    assert.equal(r.estado, 302);
+    assert.equal(await empleado.aviso('/pedidosya'), 'Venta registrada: $39.000.');
+  });
+
+  test('una salida de caja no se paga con "PedidosYa (online)"', async () => {
+    const r = await empleado.enviar('/caja/egresos', {
+      id_sucursal: sucursal, tipo_egreso: 'COMPRA', monto: '$100',
+      id_medio_pago: await idMedio('PedidosYa (online)'), descripcion: 'prueba',
+    });
+    assert.equal(r.estado, 400);
+    assert.deepEqual(erroresDe(r.html), ['Elegí con qué se pagó.']);
+  });
+
   test('una venta de PedidosYa no se anula desde Vender', async () => {
     const { rows } = await consultar("SELECT max(id_venta) AS id FROM ventas WHERE canal_venta = 'PEDIDOSYA'");
     await empleado.enviar('/ventas/' + rows[0].id + '/anular', { motivo: 'prueba' });

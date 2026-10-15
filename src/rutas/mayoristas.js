@@ -162,8 +162,12 @@ async function saboresDisponibles(idSucursal) {
   return rows;
 }
 
+// Los de siempre, mas los atados a la venta mayorista si alguna vez hay uno.
+// "PedidosYa (online)" no aparece aca: es solo para ventas de PedidosYa.
 async function mediosDePago() {
-  const { rows } = await consultar('SELECT id_medio_pago, nombre FROM medios_pago WHERE activo ORDER BY id_medio_pago');
+  const { rows } = await consultar(
+    "SELECT id_medio_pago, nombre FROM medios_pago WHERE activo AND (solo_canal IS NULL OR solo_canal = 'MAYORISTA') ORDER BY id_medio_pago"
+  );
   return rows;
 }
 
