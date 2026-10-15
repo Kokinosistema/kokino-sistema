@@ -3,6 +3,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const { consultar } = require('../db');
+const intentos = require('../intentos');
 
 const router = express.Router();
 
@@ -28,6 +29,16 @@ router.post('/login', async (req, res, siguiente) => {
   const contrasena = req.body.contrasena || '';
 
   try {
+    // Bloqueado por demasiados intentos (ver src/intentos.js): ni se mira la
+    // contrasena, asi probar mientras dura el bloqueo no sirve de nada.
+    const minutos = intentos.minutosBloqueado(username);
+    if (minutos > 0) {
+      return res.status(429).render('login', {
+        error: 'Demasiados intentos con este usuario. Probá de nuevo en ' + minutos + (minutos === 1 ? ' minuto.' : ' minutos.'),
+        username,
+      });
+    }
+
     // La consulta trae todo lo que la sesion necesita de una sola vez: el rol
     // decide que pantallas ve, y la sucursal asignada decide sobre que datos
     // opera. Los duenos la tienen en null, que aca significa "las dos".
@@ -57,12 +68,14 @@ router.post('/login', async (req, res, siguiente) => {
     );
 
     if (!usuario || !coincide) {
+      intentos.anotarFallo(username);
       return res.status(401).render('login', { error: ERROR_CREDENCIALES, username });
     }
 
     // Renovar el id de sesion al entrar cierra la puerta a que alguien deje
     // preparada una sesion vacia en la maquina del local y despues la reuse ya
     // logueada. En un mostrador con una PC compartida esto no es teorico.
+    intentos.olvidar(username);
     req.session.regenerate((err) => {
       if (err) return siguiente(err);
 

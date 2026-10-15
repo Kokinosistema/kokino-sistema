@@ -39,6 +39,51 @@ describe('Login', () => {
   });
 });
 
+describe('Límite de intentos de login', () => {
+  const USUARIO = 'alem.prueba';
+  const CLAVE = 'clave-de-prueba-2';
+  const intentar = (nav, username, contrasena) => nav.enviar('/login', { username, contrasena });
+
+  test('entrar bien antes del límite vuelve el contador a cero', async () => {
+    const nav = new Navegador(sistema.base);
+    for (let i = 0; i < 4; i++) assert.equal((await intentar(nav, USUARIO, 'mal')).estado, 401);
+    assert.equal((await intentar(nav, USUARIO, CLAVE)).estado, 302);
+    // Si no se hubiera reiniciado, el quinto error de ahora lo bloquearia.
+    const otro = new Navegador(sistema.base);
+    for (let i = 0; i < 4; i++) await intentar(otro, USUARIO, 'mal');
+    assert.equal((await intentar(otro, USUARIO, CLAVE)).estado, 302);
+  });
+
+  test('después de 5 errores, ni con la contraseña correcta entra', async () => {
+    const nav = new Navegador(sistema.base);
+    for (let i = 0; i < 5; i++) await intentar(nav, USUARIO, 'mal');
+    const r = await intentar(nav, USUARIO, CLAVE);
+    assert.equal(r.estado, 429);
+    assert.match(r.html, /Demasiados intentos con este usuario\. Probá de nuevo en 5 minutos\./);
+  });
+
+  test('el bloqueo de un usuario no afecta a otro', async () => {
+    const nav = new Navegador(sistema.base);
+    assert.equal((await nav.entrar('empleado')).estado, 302);
+  });
+
+  test('un usuario que no existe se bloquea igual, para no revelar cuáles existen', async () => {
+    const nav = new Navegador(sistema.base);
+    for (let i = 0; i < 5; i++) await intentar(nav, 'no.existe.tampoco', 'mal');
+    assert.equal((await intentar(nav, 'no.existe.tampoco', 'mal')).estado, 429);
+  });
+
+  test('el bloqueo se levanta solo a los 5 minutos', () => {
+    // Con una hora inventada, para no esperar 5 minutos de verdad.
+    const intentos = require('../src/intentos');
+    const t = Date.parse('2026-01-01T10:00:00');
+    for (let i = 0; i < intentos.MAXIMO; i++) intentos.anotarFallo('reloj.prueba', t);
+    assert.equal(intentos.minutosBloqueado('reloj.prueba', t), 5);
+    assert.equal(intentos.minutosBloqueado('reloj.prueba', t + 4 * 60000 + 1), 1);
+    assert.equal(intentos.minutosBloqueado('reloj.prueba', t + 5 * 60000), 0);
+  });
+});
+
 // Que cada pantalla del menu abra para un dueno. Parece obvio, pero un error
 // en una vista (por ejemplo, un nombre repetido) tira la pagina entera, y
 // sin esto no se nota hasta que alguien entra.
@@ -76,6 +121,12 @@ describe('El empleado', () => {
       assert.equal((await nav.abrir(ruta)).estado, 403);
     });
   }
+
+  test('en su Inicio tiene acceso directo a Vender y a Pedidos Ya', async () => {
+    const { html } = await nav.abrir('/');
+    assert.match(html, /class="acceso acceso-principal" href="\/ventas"/);
+    assert.match(html, /class="acceso" href="\/pedidosya"[\s\S]*?Pedidos Ya/);
+  });
 
   test('no ve en el menú las secciones de los dueños', async () => {
     const { html } = await nav.abrir('/');
