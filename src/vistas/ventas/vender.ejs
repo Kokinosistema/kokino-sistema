@@ -43,6 +43,8 @@
         <input type="search" id="buscar-todo" class="buscar buscar-todo" value="<%= busqueda %>"
                placeholder="Buscá cualquier producto (por ejemplo: alfajor o palito)"
                aria-label="Buscar cualquier producto" autocomplete="off">
+        <%# Los atajos de teclado (public/vender-teclado.js). %>
+        <p class="pista atajos"><kbd>/</kbd> buscar · <kbd>↑</kbd><kbd>↓</kbd> elegir · <kbd>Enter</kbd> sumar · <kbd>Esc</kbd> borrar · <kbd>F9</kbd> cobrar</p>
         <div id="resultados-busqueda" hidden>
           <h2>Resultados</h2>
           <p id="sin-resultados-todo" class="ayuda" hidden>Ningún producto coincide con la búsqueda.</p>
@@ -107,6 +109,8 @@
           <input type="search" id="buscar-producto" class="buscar" value="<%= busqueda %>"
                  placeholder="Buscar en <%= abierta.categoria %> por nombre"
                  aria-label="Buscar producto por nombre" autocomplete="off">
+          <%# Los atajos de teclado (public/vender-teclado.js). %>
+        <p class="pista atajos"><kbd>/</kbd> buscar · <kbd>↑</kbd><kbd>↓</kbd> elegir · <kbd>Enter</kbd> sumar · <kbd>Esc</kbd> borrar · <kbd>F9</kbd> cobrar</p>
         </div>
         <p id="sin-resultados" class="ayuda" hidden>Ningún producto de esta categoría coincide con la búsqueda.</p>
         <% if (abierta.productos.length === 0) { %>
@@ -309,5 +313,6 @@
   window.iniciarVuelto();
 </script>
 <script src="/vender-pedido.js"></script>
+<script src="/vender-teclado.js"></script>
 
 <%- include('../parciales/pie') %>

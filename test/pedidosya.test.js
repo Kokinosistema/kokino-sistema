@@ -54,6 +54,17 @@ describe('Vender por PedidosYa', () => {
     await empleado.enviar('/pedidosya/pedido', { id_sucursal: sucursal, accion: 'vaciar' });
   });
 
+  test('las dos pestañas cargan los atajos de teclado y muestran la leyenda', async () => {
+    // Las teclas en si no se pueden probar sin un navegador; esto asegura al
+    // menos que el script y la leyenda esten en las dos cartas.
+    for (const ruta of ['/ventas', '/pedidosya', '/ventas?categoria=1']) {
+      const { html } = await empleado.abrir(ruta);
+      assert.match(html, /<script src="\/vender-teclado\.js"><\/script>/, ruta);
+      assert.match(html, /class="pista atajos"/, ruta);
+    }
+    assert.equal((await fetch(sistema.base + '/vender-teclado.js')).status, 200);
+  });
+
   test('un producto que no está en la carta no se puede sumar', async () => {
     await sumar(empleado, 'pedidosya', cono);
     const { html } = await empleado.abrir('/pedidosya');

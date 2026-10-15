@@ -981,3 +981,11 @@ label.opcion-turno span { border-radius: var(--radius-md); }
    una al lado de la otra, y apiladas en pantallas chicas. */
 .resumen-caja { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 @media (max-width: 860px) { .resumen-caja { grid-template-columns: 1fr; } }
+
+/* Vender con el teclado: la tarjeta elegida con las flechas se ve como al
+   pasar el mouse, con un borde mas marcado; y la leyenda de los atajos. */
+.venta .productos button[type="submit"].tarjeta-producto.marcada { border-color: var(--brand-primary); background: var(--bg-active); box-shadow: 0 0 0 2px var(--brand-primary); }
+.atajos { margin: -10px 0 16px; font-size: 12px; }
+.titulo-categoria .atajos { margin: 6px 0 0; }
+.atajos kbd { font-family: inherit; font-size: 11px; padding: 1px 5px; margin: 0 1px; border: 1px solid var(--border-soft); border-bottom-width: 2px; border-radius: 4px; background: var(--bg-panel); }
+@media (max-width: 860px) { .atajos { display: none; } }
