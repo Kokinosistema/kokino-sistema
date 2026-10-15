@@ -211,11 +211,32 @@
 
   <section class="panel">
     <h2>Alertas de stock en <%= sucursal.nombre %></h2>
-    <% const a = m.alertas; %>
-    <% if (a.pocos.length === 0 && a.porVencer.length === 0 && a.faltantes.length === 0) { %>
-      <p class="ayuda">No hay alertas: ningún sabor abierto se está quedando sin reserva, nada vence en los próximos 30 días y los envíos llegaron completos.</p>
+    <% const a = m.alertas;
+       const negativos = a.negativo.productos.length + a.negativo.insumos.length; %>
+    <% if (a.pocos.length === 0 && a.porVencer.length === 0 && a.faltantes.length === 0 && negativos === 0) { %>
+      <p class="ayuda">No hay alertas: ningún sabor abierto se está quedando sin reserva, nada vence en los próximos 30 días, los envíos llegaron completos y no hay stock en negativo.</p>
     <% } else { %>
       <div class="grilla-metricas">
+        <% if (negativos > 0) { %>
+          <div>
+            <h3 class="subtitulo-panel">Stock en negativo</h3>
+            <p class="pista">Se vendió o se usó más de lo que había cargado: falta registrar una compra o un recuento.</p>
+            <ul class="lista-control">
+              <% a.negativo.productos.forEach(function (x) { %>
+                <li><%= x.item %>: <strong class="alerta"><%= cantidad(Number(x.saldo), x.unidad) %></strong></li>
+              <% }) %>
+              <% a.negativo.insumos.forEach(function (x) { %>
+                <li><%= x.item %> <span class="pista-inline">(insumo)</span>: <strong class="alerta"><%= cantidad(Number(x.saldo), x.unidad) %></strong></li>
+              <% }) %>
+            </ul>
+            <p class="pista">
+              Corregilo cargando lo contado:
+              <% if (a.negativo.productos.length > 0) { %><a class="enlace" href="/productos?cargar=1">stock de productos</a><% } %>
+              <% if (a.negativo.productos.length > 0 && a.negativo.insumos.length > 0) { %> · <% } %>
+              <% if (a.negativo.insumos.length > 0) { %><a class="enlace" href="/insumos?cargar=1">stock de insumos</a><% } %>
+            </p>
+          </div>
+        <% } %>
         <% if (a.pocos.length > 0) { %>
           <div>
             <h3 class="subtitulo-panel">Se están quedando sin reserva</h3>

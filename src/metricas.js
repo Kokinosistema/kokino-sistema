@@ -265,12 +265,29 @@ async function alertasDeStock(idSucursal) {
   return { pocos, porVencer, faltantes };
 }
 
+// Productos e insumos con stock en negativo en la sucursal (2026-10-15). Es
+// la senal de que falta cargar una compra o un recuento: el sistema no frena
+// la venta, avisa (ver la vista alertas_stock_negativo). Solo para los
+// duenos, que son los que cargan el stock contado.
+async function stockNegativo(idSucursal) {
+  const { rows } = await consultar(
+    `SELECT tipo, item, saldo, unidad FROM alertas_stock_negativo
+      WHERE id_sucursal = $1
+      ORDER BY tipo DESC, item`,
+    [idSucursal]
+  );
+  return {
+    productos: rows.filter((r) => r.tipo === 'PRODUCTO'),
+    insumos: rows.filter((r) => r.tipo === 'INSUMO'),
+  };
+}
+
 async function metricasDelDueno(idSucursal) {
-  const [resumen, dias, sucursales, semana, pico, control, alertas] = await Promise.all([
+  const [resumen, dias, sucursales, semana, pico, control, alertas, negativo] = await Promise.all([
     periodos(idSucursal), ultimosDias(idSucursal), comparacion(), ultimaSemana(idSucursal),
-    horasPico(idSucursal), controlDeCaja(idSucursal), alertasDeStock(idSucursal),
+    horasPico(idSucursal), controlDeCaja(idSucursal), alertasDeStock(idSucursal), stockNegativo(idSucursal),
   ]);
-  return { resumen, dias, sucursales, semana, pico, control, alertas };
+  return { resumen, dias, sucursales, semana, pico, control, alertas: { ...alertas, negativo } };
 }
 
 module.exports = { metricasDelDueno, alertasDeStock };

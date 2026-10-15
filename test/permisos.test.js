@@ -39,6 +39,24 @@ describe('Login', () => {
   });
 });
 
+// Que cada pantalla del menu abra para un dueno. Parece obvio, pero un error
+// en una vista (por ejemplo, un nombre repetido) tira la pagina entera, y
+// sin esto no se nota hasta que alguien entra.
+describe('El dueño', () => {
+  let nav;
+  before(async () => {
+    nav = new Navegador(sistema.base);
+    await nav.entrar('dueno');
+  });
+
+  for (const ruta of ['/', '/ventas', '/pedidosya', '/caja', '/fabricacion', '/mercaderia', '/envios', '/recetas',
+    '/historial', '/clientes', '/productos', '/insumos', '/costos', '/proveedores', '/usuarios', '/sucursales']) {
+    test('abre ' + ruta, async () => {
+      assert.equal((await nav.abrir(ruta)).estado, 200);
+    });
+  }
+});
+
 describe('El empleado', () => {
   let nav;
   before(async () => {
