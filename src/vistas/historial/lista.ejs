@@ -1,0 +1,108 @@
+<%- include('../parciales/encabezado', { titulo: 'Historial de ventas - Kokino' }) %>
+<% const hora = function (f) { return f.toLocaleString('es-AR', { hourCycle: 'h23', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
+   const nombreCanal = function (v) { return (CANALES.find(function (c) { return c.valor === v; }) || {}).texto; }; %>
+
+<h1>Historial de ventas</h1>
+
+<%# Los filtros van por GET: la busqueda queda en la direccion y se puede
+    guardar o volver a ella con el boton de atras. %>
+<form method="get" action="/historial" class="formulario">
+  <div class="fila">
+    <div><label for="desde">Desde</label><input id="desde" name="desde" type="date" value="<%= f.desde %>" required></div>
+    <div><label for="hasta">Hasta</label><input id="hasta" name="hasta" type="date" value="<%= f.hasta %>" required></div>
+    <div>
+      <label for="sucursal">Sucursal</label>
+      <select id="sucursal" name="sucursal">
+        <option value="">Las dos</option>
+        <% sucursales.forEach(function (s) { %><option value="<%= s.id_sucursal %>" <%= String(s.id_sucursal) === f.sucursal ? 'selected' : '' %>><%= s.nombre %></option><% }) %>
+      </select>
+    </div>
+  </div>
+  <div class="fila">
+    <div>
+      <label for="canal">Canal</label>
+      <select id="canal" name="canal">
+        <option value="">Todos</option>
+        <% CANALES.forEach(function (c) { %><option value="<%= c.valor %>" <%= c.valor === f.canal ? 'selected' : '' %>><%= c.texto %></option><% }) %>
+      </select>
+    </div>
+    <div>
+      <label for="medio">Medio de pago</label>
+      <select id="medio" name="medio">
+        <option value="">Todos</option>
+        <% medios.forEach(function (m) { %><option value="<%= m.id_medio_pago %>" <%= String(m.id_medio_pago) === f.medio ? 'selected' : '' %>><%= m.nombre %></option><% }) %>
+      </select>
+    </div>
+    <div>
+      <label for="estado">Estado</label>
+      <select id="estado" name="estado">
+        <% ESTADOS.forEach(function (e) { %><option value="<%= e.valor %>" <%= e.valor === f.estado ? 'selected' : '' %>><%= e.texto %></option><% }) %>
+      </select>
+    </div>
+  </div>
+  <div class="botonera">
+    <button type="submit">Buscar</button>
+    <a class="cancelar" href="/historial">Ver las de hoy</a>
+  </div>
+</form>
+
+<section class="panel" id="totales">
+  <p>
+    <strong><%= totales.ventas %> venta<%= totales.ventas === 1 ? '' : 's' %></strong> por
+    <strong><%= pesos(Number(totales.monto)) %></strong>
+    <% if (totales.anuladas > 0) { %>
+      · <%= totales.anuladas %> anulada<%= totales.anuladas === 1 ? '' : 's' %> por <%= pesos(Number(totales.monto_anuladas)) %>, que no suman
+    <% } %>
+  </p>
+</section>
+
+<% if (ventas.length === 0) { %>
+  <p class="ayuda">No hay ventas con estos filtros.</p>
+<% } else { %>
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Sucursal</th>
+        <th>Canal</th>
+        <th>Qué se vendió</th>
+        <th>Pago</th>
+        <th>Vendió</th>
+        <th class="numero">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% ventas.forEach(function (v) { %>
+        <tr class="<%= v.anulada ? 'anulada' : '' %>">
+          <td><a class="enlace" href="/historial/<%= v.id_venta %>?volver=<%= encodeURIComponent(volver) %>"><%= hora(v.fecha_hora) %></a></td>
+          <td><%= v.sucursal %></td>
+          <td><%= nombreCanal(v.canal_venta) %></td>
+          <td>
+            <% if (v.tipo_venta === 'MAYORISTA') { %>
+              <%= v.cliente %>: <%= v.tachos %> tacho<%= v.tachos === 1 ? '' : 's' %>
+            <% } else { %>
+              <%= v.productos %>
+            <% } %>
+            <% if (v.anulada) { %>
+              <span class="marca-anulada">Anulada</span>
+              <span class="motivo">Anuló <%= v.anulo %>: <%= v.motivo_anulacion %></span>
+            <% } %>
+          </td>
+          <td><%= v.medios || (v.tipo_venta === 'MAYORISTA' ? 'A cuenta' : 'Sin pago') %></td>
+          <td><%= v.vendio %></td>
+          <td class="numero"><span class="monto"><%= pesos(Number(v.total)) %></span></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <% if (paginas > 1) { %>
+    <nav class="botonera" aria-label="Páginas">
+      <% if (anterior) { %><a class="boton-secundario" href="<%= anterior %>">← Anteriores</a><% } %>
+      <span>Página <%= f.pagina %> de <%= paginas %> (<%= encontradas %> ventas)</span>
+      <% if (siguiente) { %><a class="boton-secundario" href="<%= siguiente %>">Siguientes →</a><% } %>
+    </nav>
+  <% } %>
+<% } %>
+
+<%- include('../parciales/pie') %>

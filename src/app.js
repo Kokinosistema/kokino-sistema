@@ -19,6 +19,7 @@ const rutasRecetas = require('./rutas/recetas');
 const rutasCaja = require('./rutas/caja');
 const rutasVentas = require('./rutas/ventas');
 const rutasPedidosYa = require('./rutas/pedidosya');
+const rutasHistorial = require('./rutas/historial');
 const rutasInsumos = require('./rutas/insumos');
 const rutasProductos = require('./rutas/productos');
 const rutasFabricacion = require('./rutas/fabricacion');
@@ -121,6 +122,7 @@ function crearAplicacion() {
   app.use('/mercaderia', rutasMercaderia);
   app.use('/stock', rutasStock);
   app.use('/sucursales', rutasSucursales);
+  app.use('/historial', rutasHistorial);
 
   app.use((req, res) => {
     res.status(404).render('error', {

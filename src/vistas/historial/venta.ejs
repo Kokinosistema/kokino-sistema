@@ -1,0 +1,49 @@
+<%- include('../parciales/encabezado', { titulo: 'Venta - Kokino' }) %>
+
+<a class="volver" href="<%= volver %>">← Historial</a>
+<h1>Venta del <%= venta.fecha_hora.toLocaleString('es-AR', { hourCycle: 'h23', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %></h1>
+<p class="ayuda">
+  <%= canal %> en <%= venta.sucursal %>. La cobró <%= venta.vendio %>.
+  <% if (venta.id_caja) { %>
+    <%# El detalle del turno es solo para turnos cerrados; el abierto se ve en Caja. %>
+    <a class="enlace" href="<%= venta.caja_cerrada ? '/caja/' + venta.id_caja : '/caja' %>">Ver el turno de caja</a>
+  <% } %>
+</p>
+
+<% if (venta.anulada) { %>
+  <ul class="errores" role="status">
+    <li>Anulada por <%= venta.anulo %> el <%= venta.fecha_anulacion.toLocaleString('es-AR', { hourCycle: 'h23' }) %>: <%= venta.motivo_anulacion %></li>
+  </ul>
+<% } %>
+
+<section class="panel">
+  <h2>Qué se vendió</h2>
+  <table class="tabla">
+    <thead>
+      <tr><th>Producto</th><th class="numero">Cantidad</th><th class="numero">Precio</th><th class="numero">Subtotal</th></tr>
+    </thead>
+    <tbody>
+      <% lineas.forEach(function (l) { %>
+        <tr><td><%= l.nombre %></td><td class="numero"><%= l.cantidad %></td><td class="numero"><%= pesos(Number(l.precio)) %></td><td class="numero"><%= pesos(Number(l.subtotal)) %></td></tr>
+      <% }) %>
+      <tr class="destacada"><th>Total</th><td></td><td></td><td class="numero"><%= pesos(Number(venta.total)) %></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h2>Cómo se pagó</h2>
+  <% if (pagos.length === 0) { %>
+    <p class="ayuda">Esta venta no tiene pagos (por ejemplo, un producto de regalo).</p>
+  <% } else { %>
+    <table class="tabla">
+      <tbody>
+        <% pagos.forEach(function (p) { %>
+          <tr><td><%= p.medio %></td><td class="numero"><%= pesos(Number(p.monto)) %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
+
+<%- include('../parciales/pie') %>
