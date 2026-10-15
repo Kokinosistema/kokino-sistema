@@ -100,9 +100,10 @@ npm test
 ```
 
 Prueban el sistema como lo usa una persona: entran con un usuario, completan
-formularios y revisan lo que responde (avisos, errores, montos). Cubren lo que
-mueve plata: abrir y cerrar caja, cobrar, anular, PedidosYa y los permisos de
-cada rol.
+formularios y revisan lo que responde (avisos, errores, montos). Cubren caja,
+ventas y anulaciones, PedidosYa, venta mayorista (precios, cuenta corriente,
+envases), fabricación, envíos entre sucursales, ingreso de mercadería, el
+historial de ventas, las alertas de stock y los permisos de cada rol.
 
 Corren contra una base aparte, `kokino_prueba`, que **se borra y se arma de
 nuevo en cada corrida** (migraciones, seeds y usuarios de prueba). Así cada

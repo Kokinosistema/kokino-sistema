@@ -93,7 +93,8 @@ function avisoDe(html) {
 
 // Los errores de un formulario rechazado (la lista roja arriba).
 function erroresDe(html) {
-  const lista = /<ul class="errores"[^>]*>([\s\S]*?)<\/ul>/.exec(html);
+  // La lista puede llevar otras clases ademas de "errores" (no-imprimir, ...).
+  const lista = /<ul class="errores(?: [^"]*)?"[^>]*>([\s\S]*?)<\/ul>/.exec(html);
   if (!lista) return [];
   return [...lista[1].matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => desescapar(m[1]));
 }
@@ -120,6 +121,30 @@ async function idCategoria(nombre) {
   return rows[0].id_categoria;
 }
 
+// Un sabor por nombre y linea: hay nombres repetidos entre la linea
+// artesanal y la familiar (Vainilla, Americana...).
+async function idSabor(nombre, linea) {
+  const { rows } = await consultar('SELECT id_sabor FROM sabores WHERE nombre = $1 AND linea = $2', [nombre, linea]);
+  if (!rows[0]) throw new Error('No existe el sabor ' + nombre + ' (' + linea + ')');
+  return rows[0].id_sabor;
+}
+
+async function idInsumo(nombre) {
+  const { rows } = await consultar('SELECT id_insumo FROM insumos WHERE nombre = $1', [nombre]);
+  if (!rows[0]) throw new Error('No existe el insumo ' + nombre);
+  return rows[0].id_insumo;
+}
+
+// Registra una produccion en la fabrica, como desde Fabricacion. "que" es
+// 'sabor:<id>' (tachos de 10 L) o 'producto:<id>'. Hoy, si no se dice fecha.
+async function producir(navegador, sucursal, que, cantidad, fecha) {
+  const { html } = await navegador.abrir('/fabricacion');
+  const dia = fecha || /name="fecha"[^>]*value="([^"]+)"/.exec(html)[1];
+  const r = await navegador.enviar('/fabricacion/produccion', { id_sucursal: sucursal, fecha: dia, que, cantidad: String(cantidad) });
+  if (r.estado !== 302) throw new Error('No se pudo producir: ' + erroresDe(r.html).join(' '));
+  return r;
+}
+
 async function idSucursal(nombre) {
   const { rows } = await consultar('SELECT id_sucursal FROM sucursales WHERE nombre = $1', [nombre]);
   if (!rows[0]) throw new Error('No existe la sucursal ' + nombre);
@@ -143,4 +168,5 @@ async function cajaNueva(navegador, montoApertura = '$20.000') {
 
 module.exports = {
   levantar, Navegador, avisoDe, erroresDe, consultar, idProducto, idMedio, idCategoria, idSucursal, cajaNueva,
+  idSabor, idInsumo, producir,
 };
