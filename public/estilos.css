@@ -976,3 +976,8 @@ label.opcion-turno span { border-radius: var(--radius-md); }
   .app.menu-cerrado .menu button.grupo-menu { padding: 8px 0; margin: 2px 0; }
 }
 .lateral { z-index: 40; }
+
+/* Resumen de lo cobrado en la caja: las dos tablas (por medio y por canal)
+   una al lado de la otra, y apiladas en pantallas chicas. */
+.resumen-caja { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 860px) { .resumen-caja { grid-template-columns: 1fr; } }

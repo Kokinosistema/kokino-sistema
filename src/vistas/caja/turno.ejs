@@ -1,0 +1,56 @@
+<%- include('../parciales/encabezado', { titulo: 'Turno de caja - Kokino' }) %>
+<% const turno = (TURNOS.find(function (t) { return t.valor === caja.turno; }) || {}).texto;
+   const fecha = function (f) { return f.toLocaleString('es-AR', { hourCycle: 'h23', day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+   const dif = Number(caja.diferencia); %>
+
+<a class="volver" href="/caja">← Caja</a>
+<h1>Turno <%= turno %> en <%= caja.sucursal %></h1>
+<p class="ayuda">
+  Lo abrió <%= caja.abrio %> el <%= fecha(caja.fecha_apertura) %> y lo cerró <%= caja.cerro %>
+  el <%= fecha(caja.fecha_cierre) %>.
+</p>
+
+<section class="panel">
+  <h2>Arqueo del efectivo</h2>
+  <table class="tabla">
+    <tbody>
+      <tr><th>Con lo que se abrió</th><td class="numero"><%= pesos(Number(caja.monto_apertura)) %></td></tr>
+      <tr><th>Debería haber en caja</th><td class="numero"><%= pesos(Number(caja.monto_cierre_sistema)) %></td></tr>
+      <tr><th>Se contó</th><td class="numero"><%= pesos(Number(caja.monto_cierre_declarado)) %></td></tr>
+      <tr class="destacada">
+        <th>Diferencia</th>
+        <td class="numero <%= dif === 0 ? '' : 'alerta' %>">
+          <% if (dif === 0) { %>cuadró<% } else { %><%= dif > 0 ? 'sobró' : 'faltó' %> <%= pesos(Math.abs(dif)) %><% } %>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<%- include('_resumen') %>
+
+<section class="panel">
+  <h2>Salidas del turno</h2>
+  <% if (egresos.length === 0) { %>
+    <p class="ayuda">No hubo salidas en este turno.</p>
+  <% } else { %>
+    <table class="tabla">
+      <thead>
+        <tr><th>Hora</th><th>Tipo</th><th>Detalle</th><th>Pago</th><th class="numero">Monto</th></tr>
+      </thead>
+      <tbody>
+        <% egresos.forEach(function (e) { %>
+          <tr class="<%= e.anulado ? 'anulada' : '' %>">
+            <td><%= e.fecha_hora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) %></td>
+            <td><%= (TIPOS_EGRESO.find(function (t) { return t.valor === e.tipo_egreso; }) || {}).texto %></td>
+            <td><%= [e.empleado, e.descripcion].filter(Boolean).join(' — ') %></td>
+            <td><%= e.medio %></td>
+            <td class="numero"><span class="monto"><%= pesos(Number(e.monto)) %></span><% if (e.anulado) { %> <span class="marca-anulada">Anulada</span><% } %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
+
+<%- include('../parciales/pie') %>

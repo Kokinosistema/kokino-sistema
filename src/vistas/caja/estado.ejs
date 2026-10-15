@@ -48,6 +48,8 @@
     <a class="boton" href="/caja/cerrar">Cerrar la caja</a>
   </section>
 
+  <% if (resumen) { %><%- include('_resumen') %><% } %>
+
   <section class="panel">
     <h2>Salidas del turno</h2>
     <p class="ayuda">
@@ -202,6 +204,7 @@
         <th class="numero">Según el sistema</th>
         <th class="numero">Contado</th>
         <th class="numero">Diferencia</th>
+        <% if (verTodo) { %><th></th><% } %>
       </tr>
     </thead>
     <tbody>
@@ -217,6 +220,8 @@
               <%= dif > 0 ? 'sobró' : 'faltó' %> <%= pesos(Math.abs(dif)) %>
             <% } %>
           </td>
+          <%# El detalle (con lo cobrado por medio y canal) es de los duenos. %>
+          <% if (verTodo) { %><td class="acciones"><a class="enlace" href="/caja/<%= c.id_caja %>">Ver detalle</a></td><% } %>
         </tr>
       <% }) %>
     </tbody>

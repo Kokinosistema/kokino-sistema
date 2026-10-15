@@ -10,6 +10,7 @@ const { levantar, Navegador, erroresDe, consultar, idProducto, idMedio, cajaNuev
 
 let sistema;
 let nav;
+let dueno;
 let sucursal;
 before(async () => {
   sistema = await levantar();
@@ -80,6 +81,31 @@ describe('Cerrar la caja', () => {
     assert.match(texto, /Debería haber en caja \$25\.500/);
   });
 
+  test('el empleado no ve lo cobrado por medio de pago', async () => {
+    const { html } = await nav.abrir('/caja/cerrar');
+    assert.doesNotMatch(html, /Lo cobrado en el turno/);
+    assert.doesNotMatch((await nav.abrir('/caja')).html, /Lo cobrado en el turno/);
+  });
+
+  test('el dueño ve lo cobrado por medio y por canal, sin las ventas anuladas', async () => {
+    // Una venta mas, con debito, que se anula: no tiene que sumar.
+    await nav.enviar('/ventas/pedido', { id_sucursal: sucursal, id_producto: await idProducto('Cono simple'), accion: 'agregar' });
+    await nav.enviar('/ventas/cobrar', { id_sucursal: sucursal, canal: 'MOSTRADOR', id_medio_pago: await idMedio('Débito') });
+    const { rows } = await consultar('SELECT max(id_venta) AS id FROM ventas');
+    await nav.enviar('/ventas/' + rows[0].id + '/anular', { motivo: 'prueba del resumen' });
+
+    dueno = new Navegador(sistema.base);
+    await dueno.entrar('dueno');
+    await dueno.enviar('/sucursal', { id_sucursal: sucursal });
+    const resumen = resumenDe((await dueno.abrir('/caja/cerrar')).html);
+    assert.deepEqual(resumen, [
+      'Efectivo 1 $9.000', 'Débito 1 $15.000', 'Total $24.000',
+      'Mostrador 1 $9.000', 'Teléfono 1 $15.000',
+    ]);
+    // El mismo resumen en la pantalla de la caja, con el turno abierto.
+    assert.deepEqual(resumenDe((await dueno.abrir('/caja')).html), resumen);
+  });
+
   test('si se cuenta menos de lo que debería haber, registra el faltante', async () => {
     const r = await nav.enviar('/caja/cerrar', { id_sucursal: sucursal, monto_cierre_declarado: '$25.000' });
     assert.equal(r.estado, 302);
@@ -91,3 +117,42 @@ describe('Cerrar la caja', () => {
     assert.match(html, /No hay caja abierta/);
   });
 });
+
+describe('Detalle de un turno cerrado', () => {
+  let idCaja;
+  before(async () => {
+    const { rows } = await consultar('SELECT max(id_caja) AS id FROM cajas WHERE id_sucursal = $1 AND fecha_cierre IS NOT NULL', [sucursal]);
+    idCaja = rows[0].id;
+  });
+
+  test('el dueño lo abre desde "Últimos cierres" y ve el arqueo y el resumen', async () => {
+    assert.match((await dueno.abrir('/caja')).html, new RegExp('href="/caja/' + idCaja + '">Ver detalle'));
+    const { estado, html } = await dueno.abrir('/caja/' + idCaja);
+    assert.equal(estado, 200);
+    const texto = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    assert.match(texto, /Debería haber en caja \$25\.500 Se contó \$25\.000 Diferencia faltó \$500/);
+    assert.deepEqual(resumenDe(html), [
+      'Efectivo 1 $9.000', 'Débito 1 $15.000', 'Total $24.000',
+      'Mostrador 1 $9.000', 'Teléfono 1 $15.000',
+    ]);
+    assert.match(texto, /bolsas y servilletas/);
+  });
+
+  test('el empleado no lo puede abrir ni ve el enlace', async () => {
+    assert.equal((await nav.abrir('/caja/' + idCaja)).estado, 403);
+    assert.doesNotMatch((await nav.abrir('/caja')).html, /Ver detalle/);
+  });
+
+  test('un turno que no existe da "no encontrado"', async () => {
+    assert.equal((await dueno.abrir('/caja/999999')).estado, 404);
+  });
+});
+
+// Los renglones del resumen de lo cobrado, como texto: "Efectivo 1 $9.000".
+function resumenDe(html) {
+  const seccion = /<h2>Lo cobrado en el turno<\/h2>([\s\S]*?)<\/section>/.exec(html);
+  if (!seccion) return null;
+  return [...seccion[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)]
+    .map((m) => m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter((fila) => fila && !/^Por (medio|canal)/.test(fila));
+}

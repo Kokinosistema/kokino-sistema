@@ -1,0 +1,37 @@
+<%# Lo cobrado en el turno por medio de pago y por canal. Solo lo ven los
+    duenos (la ruta manda resumen en null para el empleado). Lo usan el turno
+    abierto, la pantalla de cierre y el detalle de un turno cerrado. %>
+<section class="panel">
+  <h2>Lo cobrado en el turno</h2>
+  <% if (resumen.porMedio.length === 0) { %>
+    <p class="ayuda">Todavía no hay ventas cobradas en este turno.</p>
+  <% } else { %>
+    <div class="resumen-caja">
+      <table class="tabla">
+        <thead>
+          <tr><th>Por medio de pago</th><th class="numero">Ventas</th><th class="numero">Total</th></tr>
+        </thead>
+        <tbody>
+          <% resumen.porMedio.forEach(function (m) { %>
+            <tr><td><%= m.nombre %></td><td class="numero"><%= m.ventas %></td><td class="numero"><%= pesos(Number(m.total)) %></td></tr>
+          <% }) %>
+          <tr class="destacada"><th>Total</th><td></td><td class="numero"><%= pesos(resumen.total) %></td></tr>
+        </tbody>
+      </table>
+      <table class="tabla">
+        <thead>
+          <tr><th>Por canal</th><th class="numero">Ventas</th><th class="numero">Total</th></tr>
+        </thead>
+        <tbody>
+          <% resumen.porCanal.forEach(function (c) { %>
+            <tr><td><%= c.nombre %></td><td class="numero"><%= c.ventas %></td><td class="numero"><%= pesos(Number(c.total)) %></td></tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <p class="ayuda">
+      Sirve para comparar con el cierre del posnet, el banco y la liquidación de PedidosYa.
+      Una venta pagada con dos medios cuenta en los dos. Las ventas anuladas no suman.
+    </p>
+  <% } %>
+</section>

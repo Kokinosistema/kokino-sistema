@@ -4,6 +4,8 @@ const express = require('express');
 const { consultar, conTransaccion } = require('../db');
 const { CAMBIO_DE_SUCURSAL } = require('../sucursales');
 const { parsearMonto, MONTO_INVALIDO, pesos, aCentavos } = require('../dinero');
+const { exigirRol } = require('../middleware/sesion');
+const { CANALES } = require('../cartas');
 
 const router = express.Router();
 
@@ -100,6 +102,37 @@ function esDueno(usuario) {
   return usuario.rol === 'administrador';
 }
 
+// Lo cobrado en el turno, por medio de pago y por canal (pedido de la
+// usuaria el 2026-10-15): para comparar con el cierre del posnet, el banco y
+// la liquidacion de PedidosYa. Solo para los duenos, por lo mismo que el
+// total electronico de arriba. Las ventas anuladas no cuentan, igual que en
+// el arqueo: esa plata se devolvio.
+async function resumenDeCaja(idCaja) {
+  const { rows: porMedio } = await consultar(
+    `SELECT m.nombre, count(DISTINCT p.id_venta)::int AS ventas, sum(p.monto) AS total
+       FROM pagos_venta p
+       JOIN medios_pago m ON m.id_medio_pago = p.id_medio_pago
+       JOIN ventas v ON v.id_venta = p.id_venta
+      WHERE p.id_caja = $1 AND v.fecha_anulacion IS NULL
+      GROUP BY m.id_medio_pago, m.nombre
+      ORDER BY m.id_medio_pago`,
+    [idCaja]
+  );
+  const { rows: canales } = await consultar(
+    `SELECT canal_venta, count(*)::int AS ventas, sum(total) AS total
+       FROM ventas_totales
+      WHERE id_caja = $1 AND NOT anulada
+      GROUP BY canal_venta`,
+    [idCaja]
+  );
+  // En el orden de siempre (mostrador, telefono, PedidosYa), con su nombre.
+  const porCanal = CANALES
+    .map((c) => ({ nombre: c.texto, ...canales.find((x) => x.canal_venta === c.valor) }))
+    .filter((c) => c.ventas);
+  const total = porMedio.reduce((suma, m) => suma + aCentavos(m.total), 0) / 100;
+  return { porMedio, porCanal, total };
+}
+
 // Arma todo lo que necesita la pantalla principal. La usan la carga normal y
 // los errores de los formularios, para que no se pierda lo que se escribio.
 async function mostrarCaja(res, { usuario, sucursales, elegida, errores = [], estado = 200, egreso = {}, turnoElegido = '' }) {
@@ -153,6 +186,7 @@ async function mostrarCaja(res, { usuario, sucursales, elegida, errores = [], es
 
   const TURNOS = await leerTurnos();
   res.status(estado).render('caja/estado', {
+    resumen: abierta && verTodo ? await resumenDeCaja(abierta.id_caja) : null,
     turnoElegido: turnoElegido || turnoSugerido(TURNOS),
     sucursales,
     elegida,
@@ -243,6 +277,7 @@ router.get('/cerrar', async (req, res, siguiente) => {
     }
 
     res.render('caja/cerrar', {
+      resumen: esDueno(usuario) ? await resumenDeCaja(abierta.id_caja) : null,
       caja: abierta,
       esperado: esperadoEnCajon(abierta),
       errores: [],
@@ -307,6 +342,7 @@ router.post('/cerrar', async (req, res, siguiente) => {
 
     if (resultado.error) {
       return res.status(400).render('caja/cerrar', {
+        resumen: esDueno(usuario) ? await resumenDeCaja(resultado.caja.id_caja) : null,
         caja: resultado.caja,
         esperado: esperadoEnCajon(resultado.caja),
         errores: [resultado.error],
@@ -503,6 +539,50 @@ router.post('/egresos/:id/anular', async (req, res, siguiente) => {
       ? ' Si la plata había salido del cajón, tiene que volver: el arqueo la vuelve a contar.'
       : '');
     res.redirect('/caja');
+  } catch (error) {
+    siguiente(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Detalle de un turno cerrado (solo duenos)
+//
+// Se llega desde "Ultimos cierres". Sirve para revisar un turno despues,
+// cuando llega el cierre del posnet o la liquidacion de PedidosYa. Va al
+// final para que /:id no tape a /cerrar ni a /egresos.
+
+router.get('/:id', exigirRol('administrador'), async (req, res, siguiente) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return siguiente();
+    const { rows: [caja] } = await consultar(
+      `SELECT c.id_caja, c.turno, c.fecha_apertura, c.fecha_cierre, c.monto_apertura,
+              c.monto_cierre_sistema, c.monto_cierre_declarado,
+              c.monto_cierre_declarado - c.monto_cierre_sistema AS diferencia,
+              s.nombre AS sucursal,
+              (SELECT concat_ws(' ', e.nombre, e.apellido) FROM usuarios u JOIN empleados e ON e.id_empleado = u.id_empleado
+                WHERE u.id_usuario = c.id_usuario_apertura) AS abrio,
+              (SELECT concat_ws(' ', e.nombre, e.apellido) FROM usuarios u JOIN empleados e ON e.id_empleado = u.id_empleado
+                WHERE u.id_usuario = c.id_usuario_cierre) AS cerro
+         FROM cajas c JOIN sucursales s ON s.id_sucursal = c.id_sucursal
+        WHERE c.id_caja = $1 AND c.fecha_cierre IS NOT NULL`,
+      [id]
+    );
+    // Un turno todavia abierto se ve en la pantalla de la caja.
+    if (!caja) return siguiente();
+    const { rows: egresos } = await consultar(
+      `SELECT e.tipo_egreso, e.monto, e.descripcion, e.fecha_hora, e.fecha_anulacion IS NOT NULL AS anulado,
+              m.nombre AS medio, concat_ws(' ', emp.nombre, emp.apellido) AS empleado
+         FROM egresos e
+         JOIN medios_pago m ON m.id_medio_pago = e.id_medio_pago
+         LEFT JOIN empleados emp ON emp.id_empleado = e.id_empleado
+        WHERE e.id_caja = $1
+        ORDER BY e.fecha_hora`,
+      [id]
+    );
+    res.render('caja/turno', {
+      caja, egresos, resumen: await resumenDeCaja(id), TURNOS: await leerTurnos(), TIPOS_EGRESO,
+    });
   } catch (error) {
     siguiente(error);
   }
