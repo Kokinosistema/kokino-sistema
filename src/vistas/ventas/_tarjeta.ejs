@@ -2,7 +2,7 @@
     toque suma uno. La usan las categorias, "Lo mas vendido" y la busqueda
     general. "categoria" es a donde volver despues de tocar (vacio: al
     inicio de Vender). %>
-<form class="producto" method="post" action="/ventas/pedido" data-nombre="<%= p.nombre %> <%= p.categoria %>">
+<form class="producto" method="post" action="<%= carta.base %>/pedido" data-nombre="<%= p.nombre %> <%= p.categoria %>">
   <input type="hidden" name="id_sucursal" value="<%= elegida %>">
   <input type="hidden" name="categoria" value="<%= categoria %>">
   <input type="hidden" name="busqueda" value="<%= busqueda %>">

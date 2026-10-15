@@ -4,14 +4,12 @@ const express = require('express');
 const { consultar, conTransaccion } = require('../db');
 const { CAMBIO_DE_SUCURSAL } = require('../sucursales');
 const { parsearMonto, MONTO_INVALIDO, pesos, aCentavos, textoPesos } = require('../dinero');
+const { CANALES } = require('../cartas');
 
+// Este router sirve a las dos cartas (src/cartas.js): se monta en /ventas
+// para el mostrador y en /pedidosya para PedidosYa, y cada pedido trae su
+// carta en req.carta. Todo lo que cambia entre una y otra sale de ahi.
 const router = express.Router();
-
-const CANALES = [
-  { valor: 'MOSTRADOR', texto: 'Mostrador' },
-  { valor: 'TELEFONO', texto: 'Teléfono' },
-  { valor: 'PEDIDOSYA', texto: 'PedidosYa' },
-];
 
 // Valor de "Con que pago" cuando se paga con mas de un medio. Entonces llega
 // un monto por medio, en campos monto_<id_medio_pago>.
@@ -35,11 +33,18 @@ const CANTIDAD_MAXIMA = 999;
 // y cuantos, nunca el precio, asi un aumento cargado a mitad del turno se
 // aplica en la venta siguiente y nadie puede cobrar un precio inventado
 // tocando la pagina.
-const SQL_PRECIO_VIGENTE = `
+//
+// El tipo de precio va escrito en el SQL y no como parametro porque sale de
+// la carta, que esta fija en el codigo: nunca de lo que manda el navegador.
+const TIPOS_DE_PRECIO = ['MINORISTA', 'PEDIDOSYA'];
+function sqlPrecioVigente(carta) {
+  if (!TIPOS_DE_PRECIO.includes(carta.tipoPrecio)) throw new Error('Tipo de precio desconocido: ' + carta.tipoPrecio);
+  return `
   JOIN precios pr ON pr.id_producto = p.id_producto
-                 AND pr.tipo_precio = 'MINORISTA'
+                 AND pr.tipo_precio = '${carta.tipoPrecio}'
                  AND pr.fecha_vigencia_hasta IS NULL
                  AND pr.fecha_vigencia_desde <= current_date`;
+}
 
 // El pedido se arma en la sesion y recien se escribe en la base al cobrar,
 // todo junto. No se puede ir guardando linea por linea porque la base congela
@@ -48,14 +53,25 @@ const SQL_PRECIO_VIGENTE = `
 //
 // Va uno por sucursal porque el dueno puede cambiar de sucursal en el medio,
 // y no tiene que encontrarse en Alem lo que empezo a cargar en Entre Rios.
+// Y cada carta guarda el suyo aparte (req.carta.sesion).
+function pedidosDe(req) {
+  const clave = req.carta.sesion;
+  if (!req.session[clave]) req.session[clave] = {};
+  return req.session[clave];
+}
+
 function pedidoDe(req, idSucursal) {
-  if (!req.session.pedidos) req.session.pedidos = {};
-  if (!req.session.pedidos[idSucursal]) req.session.pedidos[idSucursal] = [];
-  return req.session.pedidos[idSucursal];
+  const pedidos = pedidosDe(req);
+  if (!pedidos[idSucursal]) pedidos[idSucursal] = [];
+  return pedidos[idSucursal];
+}
+
+function guardarPedido(req, idSucursal, lineas) {
+  pedidosDe(req)[idSucursal] = lineas;
 }
 
 function vaciarPedido(req, idSucursal) {
-  if (req.session.pedidos) delete req.session.pedidos[idSucursal];
+  delete pedidosDe(req)[idSucursal];
 }
 
 function sucursalPedida(valor, sucursales) {
@@ -66,13 +82,13 @@ function sucursalPedida(valor, sucursales) {
 // A donde volver despues de tocar el pedido: a la misma categoria y con la
 // misma busqueda, para seguir cargando sin volver a entrar ni a tipear. Sin
 // categoria es el inicio de Vender, con la busqueda general si habia.
-function direccionVender(idSucursal, categoria, busqueda) {
+function direccionVender(carta, categoria, busqueda) {
   const idCategoria = Number(categoria);
   const texto = limpiarBusqueda(busqueda);
   if (!Number.isInteger(idCategoria) || idCategoria <= 0) {
-    return '/ventas' + (texto ? '?busqueda=' + encodeURIComponent(texto) : '');
+    return carta.base + (texto ? '?busqueda=' + encodeURIComponent(texto) : '');
   }
-  return '/ventas?categoria=' + idCategoria
+  return carta.base + '?categoria=' + idCategoria
     + (texto ? '&busqueda=' + encodeURIComponent(texto) : '');
 }
 
@@ -101,7 +117,7 @@ async function mostrar(req, res, {
     `SELECT p.id_producto, p.nombre, c.id_categoria, c.nombre AS categoria, c.orden, pr.precio
        FROM productos p
        JOIN categorias c ON c.id_categoria = p.id_categoria
-       ${SQL_PRECIO_VIGENTE}
+       ${sqlPrecioVigente(req.carta)}
       WHERE p.activo
       ORDER BY c.orden NULLS LAST, c.nombre, p.nombre`
   );
@@ -120,9 +136,10 @@ async function mostrar(req, res, {
 
   // Los duenos ven tambien las categorias que todavia no tienen productos a
   // la venta, para poder cargarles el primero desde aca. El empleado no: para
-  // el no hay nada que vender ahi.
+  // el no hay nada que vender ahi. En PedidosYa tampoco los duenos: ver
+  // src/cartas.js (categoriasVacias).
   const esDueno = req.session.usuario.rol === 'administrador';
-  if (esDueno) {
+  if (esDueno && req.carta.categoriasVacias) {
     const { rows: todas } = await consultar(
       "SELECT id_categoria, nombre, orden FROM categorias WHERE tipo = 'PRODUCTO'"
     );
@@ -146,7 +163,7 @@ async function mostrar(req, res, {
   const pedido = pedidoDe(req, elegida);
   const faltantes = pedido.filter((l) => !porId.has(l.id_producto));
   if (faltantes.length > 0) {
-    req.session.pedidos[elegida] = pedido.filter((l) => porId.has(l.id_producto));
+    guardarPedido(req, elegida, pedido.filter((l) => porId.has(l.id_producto)));
     errores = errores.concat('Se sacó del pedido un producto que ya no está a la venta.');
   }
 
@@ -183,33 +200,36 @@ async function mostrar(req, res, {
                 WHERE pv.id_venta = vt.id_venta) AS medios
          FROM ventas_totales vt
          JOIN ventas v ON v.id_venta = vt.id_venta
-        WHERE vt.id_caja = $1
+        WHERE vt.id_caja = $1 AND vt.canal_venta = ANY($2::text[])
         ORDER BY vt.fecha_hora DESC
         LIMIT 10`,
-      [caja.id_caja]
+      [caja.id_caja, req.carta.canales.map((c) => c.valor)]
     ));
   }
 
   // Lo mas vendido (pedido de la usuaria el 2026-10-07): los 4 productos que
   // mas unidades vendieron en esta sucursal en los ultimos 30 dias, para
   // sumarlos de un toque cuando hay mucha gente. Solo los que siguen a la venta.
+  // Cada carta cuenta sus propias ventas: lo que mas sale por PedidosYa no
+  // es lo que mas sale en el mostrador.
   const { rows: topVendidos } = await consultar(
     `SELECT d.id_producto
        FROM venta_detalle d
        JOIN ventas v ON v.id_venta = d.id_venta
       WHERE v.id_sucursal = $1 AND v.tipo_venta = 'MINORISTA' AND v.fecha_anulacion IS NULL
+        AND v.canal_venta = ANY($2::text[])
         AND v.fecha_hora >= current_date - 30
       GROUP BY d.id_producto
       ORDER BY sum(d.cantidad) DESC, max(v.fecha_hora) DESC
       LIMIT 8`,
-    [elegida]
+    [elegida, req.carta.canales.map((c) => c.valor)]
   );
   const masVendidos = topVendidos.map((r) => porId.get(r.id_producto)).filter(Boolean).slice(0, 4);
 
   res.status(estado).render('ventas/vender', {
     masVendidos,
     sucursales, elegida, caja, catalogo, abierta, lineas, total, medios, ultimas,
-    CANALES, errores, CANTIDAD_MAXIMA, esDueno,
+    CANALES, canalesAElegir: req.carta.canales, errores, CANTIDAD_MAXIMA, esDueno,
     // Cuantos de cada producto hay ya en el pedido, para mostrarlo en su tarjeta.
     enPedido: Object.fromEntries(lineas.map((l) => [l.id_producto, l.cantidad])),
     busqueda: limpiarBusqueda(busqueda),
@@ -247,12 +267,12 @@ async function responderPanel(req, res, elegida) {
   const { rows } = ids.length === 0 ? { rows: [] } : await consultar(
     `SELECT p.id_producto, p.nombre, pr.precio
        FROM productos p
-       ${SQL_PRECIO_VIGENTE}
+       ${sqlPrecioVigente(req.carta)}
       WHERE p.activo AND p.id_producto = ANY($1::int[])`,
     [ids]
   );
   const porId = new Map(rows.map((r) => [r.id_producto, r]));
-  req.session.pedidos[elegida] = pedido.filter((l) => porId.has(l.id_producto));
+  guardarPedido(req, elegida, pedido.filter((l) => porId.has(l.id_producto)));
   const lineas = pedidoDe(req, elegida).map((l) => {
     const p = porId.get(l.id_producto);
     return { id_producto: l.id_producto, nombre: p.nombre, cantidad: l.cantidad, precio: Number(p.precio), subtotal: Number(p.precio) * l.cantidad };
@@ -263,7 +283,7 @@ async function responderPanel(req, res, elegida) {
   );
   const categoria = Number(req.body.categoria);
   res.render('ventas/_pedido', {
-    elegida, lineas, total, medios, CANALES, VARIOS_MEDIOS,
+    elegida, lineas, total, medios, CANALES, canalesAElegir: req.carta.canales, VARIOS_MEDIOS,
     abierta: Number.isInteger(categoria) && categoria > 0 ? { id_categoria: categoria } : null,
     busqueda: limpiarBusqueda(req.body.busqueda),
     canal: '', medio: '', montos: {}, pagaCon: '',
@@ -281,7 +301,7 @@ router.post('/pedido', async (req, res, siguiente) => {
     const elegida = sucursalPedida(req.body.id_sucursal, sucursales);
     if (!elegida) {
       req.session.aviso = CAMBIO_DE_SUCURSAL;
-      return res.redirect('/ventas');
+      return res.redirect(req.carta.base);
     }
 
     const pedido = pedidoDe(req, elegida);
@@ -317,14 +337,14 @@ router.post('/pedido', async (req, res, siguiente) => {
       default:
         break;
     }
-    req.session.pedidos[elegida] = pedido.filter((l) => l.cantidad > 0);
+    guardarPedido(req, elegida, pedido.filter((l) => l.cantidad > 0));
 
     // Desde la pagina (public/vender-pedido.js) se pide solo el panel del
     // pedido actualizado, para no recargar todo con cada toque.
     if (req.get('X-Kokino-Parcial') === 'pedido') {
       return responderPanel(req, res, elegida);
     }
-    res.redirect(direccionVender(elegida, req.body.categoria, req.body.busqueda));
+    res.redirect(direccionVender(req.carta, req.body.categoria, req.body.busqueda));
   } catch (error) {
     siguiente(error);
   }
@@ -337,10 +357,13 @@ router.post('/cobrar', async (req, res, siguiente) => {
     const elegida = sucursalPedida(req.body.id_sucursal, sucursales);
     if (!elegida) {
       req.session.aviso = CAMBIO_DE_SUCURSAL;
-      return res.redirect('/ventas');
+      return res.redirect(req.carta.base);
     }
 
-    const { canal, id_medio_pago: medio } = req.body;
+    const { id_medio_pago: medio } = req.body;
+    // Con un solo canal (PedidosYa) no se pregunta: va fijo.
+    const canales = req.carta.canales;
+    const canal = canales.length === 1 ? canales[0].valor : req.body.canal;
     const variosMedios = medio === VARIOS_MEDIOS;
     const montos = montosPorMedio(req.body);
     const textoPagaCon = typeof req.body.paga_con === 'string' ? req.body.paga_con.trim() : '';
@@ -352,7 +375,7 @@ router.post('/cobrar', async (req, res, siguiente) => {
 
     const errores = [];
     if (pedido.length === 0) errores.push('El pedido está vacío: agregá al menos un producto.');
-    if (!CANALES.some((c) => c.valor === canal)) errores.push('Elegí por dónde fue la venta.');
+    if (!canales.some((c) => c.valor === canal)) errores.push('Elegí por dónde fue la venta.');
     if (variosMedios) {
       const cargados = Object.values(montos).filter((m) => m !== '');
       if (cargados.length === 0) errores.push('Poné cuánto se pagó con cada medio.');
@@ -385,7 +408,7 @@ router.post('/cobrar', async (req, res, siguiente) => {
       const { rows: precios } = await ejecutar(
         `SELECT p.id_producto, pr.precio
            FROM productos p
-           ${SQL_PRECIO_VIGENTE}
+           ${sqlPrecioVigente(req.carta)}
           WHERE p.activo AND p.id_producto = ANY($1::int[])`,
         [ids]
       );
@@ -485,7 +508,7 @@ router.post('/cobrar', async (req, res, siguiente) => {
     req.session.aviso = 'Venta registrada: ' + textoPesos(resultado.total)
       + (resultado.detalle ? ' (' + resultado.detalle + ')' : '') + '.'
       + (resultado.vuelto ? ' Vuelto: ' + textoPesos(resultado.vuelto) + '.' : '');
-    res.redirect(direccionVender(elegida));
+    res.redirect(direccionVender(req.carta));
   } catch (error) {
     siguiente(error);
   }
@@ -522,8 +545,10 @@ async function ventaParaAnular(ejecutar, idVenta, bloquear) {
 // Por que no se puede anular, en castellano, o null si se puede. Son las
 // mismas reglas que hace cumplir la base; se chequean antes para explicarlas
 // en vez de mostrar el error de PostgreSQL.
-function motivoParaNoAnular(venta, sucursales) {
-  if (!venta || !sucursales.some((s) => s.id_sucursal === venta.id_sucursal)) {
+// Cada venta se anula desde la pestana de su carta, y vuelve ahi.
+function motivoParaNoAnular(venta, sucursales, carta) {
+  if (!venta || !sucursales.some((s) => s.id_sucursal === venta.id_sucursal)
+      || !carta.canales.some((c) => c.valor === venta.canal_venta)) {
     return 'No encontramos esa venta entre las de tu sucursal.';
   }
   if (venta.fecha_anulacion) {
@@ -568,10 +593,10 @@ router.get('/:id/anular', async (req, res, siguiente) => {
   try {
     const sucursales = [req.sucursal];
     const venta = await ventaParaAnular(consultar, Number(req.params.id), false);
-    const impedimento = motivoParaNoAnular(venta, sucursales);
+    const impedimento = motivoParaNoAnular(venta, sucursales, req.carta);
     if (impedimento) {
       req.session.aviso = impedimento;
-      return res.redirect('/ventas');
+      return res.redirect(req.carta.base);
     }
     await mostrarAnulacion(res, venta);
   } catch (error) {
@@ -588,7 +613,7 @@ router.post('/:id/anular', async (req, res, siguiente) => {
 
     const resultado = await conTransaccion(async (ejecutar) => {
       const venta = await ventaParaAnular(ejecutar, idVenta, true);
-      const impedimento = motivoParaNoAnular(venta, sucursales);
+      const impedimento = motivoParaNoAnular(venta, sucursales, req.carta);
       if (impedimento) return { impedimento, venta };
 
       if (motivo === '') return { venta, error: 'Escribí por qué se anula la venta.' };
@@ -617,7 +642,7 @@ router.post('/:id/anular', async (req, res, siguiente) => {
 
     if (resultado.impedimento) {
       req.session.aviso = resultado.impedimento;
-      return res.redirect('/ventas');
+      return res.redirect(req.carta.base);
     }
     if (resultado.error) {
       return mostrarAnulacion(res, resultado.venta, { errores: [resultado.error], motivo, estado: 400 });
@@ -629,7 +654,7 @@ router.post('/:id/anular', async (req, res, siguiente) => {
     req.session.aviso = 'Venta anulada.' + (resultado.efectivo > 0
       ? ' Devolvele al cliente ' + pesos(resultado.efectivo) + ' en efectivo.'
       : '');
-    res.redirect('/ventas');
+    res.redirect(req.carta.base);
   } catch (error) {
     siguiente(error);
   }

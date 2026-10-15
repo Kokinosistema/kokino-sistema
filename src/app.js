@@ -9,6 +9,7 @@ const { pool } = require('./db');
 const { exigirLogin, exponerUsuario, exponerAviso } = require('./middleware/sesion');
 const { sucursalDeTrabajo, cambiarSucursal } = require('./sucursales');
 const { pesos } = require('./dinero');
+const { CARTAS, conCarta } = require('./cartas');
 const rutasAuth = require('./rutas/auth');
 const rutasInicio = require('./rutas/inicio');
 const rutasProveedores = require('./rutas/proveedores');
@@ -17,6 +18,7 @@ const rutasClientes = require('./rutas/clientes');
 const rutasRecetas = require('./rutas/recetas');
 const rutasCaja = require('./rutas/caja');
 const rutasVentas = require('./rutas/ventas');
+const rutasPedidosYa = require('./rutas/pedidosya');
 const rutasInsumos = require('./rutas/insumos');
 const rutasProductos = require('./rutas/productos');
 const rutasFabricacion = require('./rutas/fabricacion');
@@ -106,7 +108,11 @@ function crearAplicacion() {
   app.use('/clientes', rutasClientes);
   app.use('/recetas', rutasRecetas);
   app.use('/caja', rutasCaja);
-  app.use('/ventas', rutasVentas);
+  // Vender es una sola pantalla para las dos cartas (src/cartas.js): el
+  // mismo router, montado dos veces, cada una con su carta. En /pedidosya
+  // van antes las pantallas de los duenos para editar esa carta.
+  app.use('/ventas', conCarta(CARTAS.mostrador), rutasVentas);
+  app.use('/pedidosya', conCarta(CARTAS.pedidosya), rutasPedidosYa, rutasVentas);
   app.use('/insumos', rutasInsumos);
   app.use('/productos', rutasProductos);
   app.use('/fabricacion', rutasFabricacion);

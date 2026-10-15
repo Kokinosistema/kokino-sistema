@@ -17,7 +17,7 @@
   var cola = Promise.resolve();
 
   function guardarEleccion() {
-    var form = panel.querySelector('form[action="/ventas/cobrar"]');
+    var form = panel.querySelector('form[action$="/cobrar"]');
     if (!form) return null;
     var datos = {};
     form.querySelectorAll('input[type=radio]:checked').forEach(function (r) { datos['radio:' + r.name] = r.value; });
@@ -26,7 +26,7 @@
   }
 
   function restaurarEleccion(datos) {
-    var form = panel.querySelector('form[action="/ventas/cobrar"]');
+    var form = panel.querySelector('form[action$="/cobrar"]');
     if (!form || !datos) return;
     Object.keys(datos).forEach(function (clave) {
       var partes = clave.split(':');
@@ -91,7 +91,8 @@
 
   document.addEventListener('submit', function (e) {
     var form = e.target;
-    if (form.getAttribute('action') !== '/ventas/pedido') return;
+    // Vale para las dos cartas: /ventas/pedido y /pedidosya/pedido.
+    if (!/\/pedido$/.test(form.getAttribute('action') || '')) return;
     e.preventDefault();
     enviar(form, e.submitter);
   });

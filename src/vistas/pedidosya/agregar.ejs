@@ -1,0 +1,53 @@
+<%- include('../parciales/encabezado', { titulo: 'Sumar a PedidosYa - Kokino' }) %>
+
+<a class="volver" href="/pedidosya">← Volver</a>
+<h1>Sumar un producto a PedidosYa</h1>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<% if (grupos.length === 0) { %>
+  <p class="ayuda">
+    Todos los productos ya están en PedidosYa. Si falta uno, primero hay que crearlo en
+    Productos: después se suma acá con su precio.
+  </p>
+  <a class="boton-secundario" href="/pedidosya">Volver</a>
+<% } else { %>
+  <form method="post" action="/pedidosya/agregar" class="formulario" autocomplete="off">
+    <p class="pista">
+      Se elige uno de los productos que ya existen: el que sale por PedidosYa es el mismo
+      del mostrador y descuenta el mismo stock. Lo único distinto es el precio.
+    </p>
+    <div class="fila">
+      <div class="campo-ancho">
+        <label for="id_producto">Producto <span class="obligatorio">*</span></label>
+        <select id="id_producto" name="id_producto" required autofocus>
+          <option value="">Elegí uno</option>
+          <% grupos.forEach(function (g) { %>
+            <optgroup label="<%= g.categoria %>">
+              <% g.productos.forEach(function (p) { %>
+                <option value="<%= p.id_producto %>" <%= elegido.id_producto === p.id_producto ? 'selected' : '' %>>
+                  <%= p.nombre %><%= p.precio_mostrador === null ? '' : ' (en el mostrador ' + pesos(Number(p.precio_mostrador)) + ')' %>
+                </option>
+              <% }) %>
+            </optgroup>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label for="precio">Precio en PedidosYa <span class="obligatorio">*</span></label>
+        <input id="precio" name="precio" type="text" inputmode="decimal" class="dinero" required
+               value="<%= elegido.precio || '' %>" placeholder="$0">
+      </div>
+    </div>
+    <div class="botonera">
+      <button type="submit">Sumar a PedidosYa</button>
+      <a class="cancelar" href="/pedidosya">Cancelar</a>
+    </div>
+  </form>
+<% } %>
+
+<%- include('../parciales/pie') %>

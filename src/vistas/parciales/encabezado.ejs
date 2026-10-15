@@ -18,6 +18,7 @@
   const iconos = {
     inicio: '<path d="M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>',
     vender: '<path d="M5 8h14l-1.5 12h-11z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+    pedidosya: '<circle cx="6" cy="17" r="2.5"/><circle cx="18" cy="17" r="2.5"/><path d="M8.5 17h7l-2-6H9"/><path d="M14 6h2.5l1.5 8.5"/><path d="M3 8h5v3H3z"/>',
     caja: '<rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="2.5"/><path d="M7 7V5h10v2"/>',
     clientes: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5a3 3 0 0 1 0 6M18 20c0-2-1-3.7-2.5-4.8"/>',
     recetas: '<path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6M9 7h3"/>',
@@ -54,7 +55,7 @@
       // abierto el grupo de la pantalla en la que se esta.
       const enGrupo = (prefijos) => prefijos.some((x) => ruta.startsWith(x));
       const grupos = {
-        mostrador: enGrupo(['/ventas', '/caja']),
+        mostrador: enGrupo(['/ventas', '/pedidosya', '/caja']),
         stock: enGrupo(['/fabricacion', '/mercaderia', '/envios', '/recetas', '/stock']),
         negocio: enGrupo(['/clientes', '/productos', '/insumos', '/costos', '/proveedores']),
         configuracion: enGrupo(['/usuarios', '/sucursales']),
@@ -79,6 +80,7 @@
       <%- cabeceraGrupo('mostrador', 'Mostrador') %>
       <div class="grupo-enlaces" id="grupo-mostrador" <%= grupos.mostrador ? '' : 'hidden' %>>
         <a class="<%= activo('/ventas') %>" href="/ventas" title="Vender"><%- svg('vender') %> <span class="texto-menu">Vender</span></a>
+        <a class="<%= activo('/pedidosya') %>" href="/pedidosya" title="Pedidos Ya"><%- svg('pedidosya') %> <span class="texto-menu">Pedidos Ya</span></a>
         <a class="<%= activo('/caja') %>" href="/caja" title="Caja"><%- svg('caja') %> <span class="texto-menu">Caja</span></a>
       </div>
 

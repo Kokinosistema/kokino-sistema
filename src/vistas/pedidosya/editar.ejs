@@ -1,0 +1,61 @@
+<%- include('../parciales/encabezado', { titulo: 'Precios de ' + categoria.nombre + ' en PedidosYa - Kokino' }) %>
+
+<a class="volver" href="<%= volver %>">← Volver</a>
+<h1>Precios de <%= categoria.nombre %> en PedidosYa</h1>
+<p class="ayuda">
+  Cambiá los precios que haga falta y guardá todo junto. Un precio nuevo rige desde hoy;
+  las ventas ya hechas conservan el precio al que se vendieron. Estos precios son solo
+  de PedidosYa: el mostrador no cambia.
+</p>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<% if (filas.length === 0) { %>
+  <p class="ayuda">Esta categoría todavía no tiene productos en PedidosYa.</p>
+<% } else { %>
+  <form method="post" action="/pedidosya/categorias/<%= categoria.id_categoria %>/editar" class="panel" autocomplete="off">
+    <table class="tabla tabla-edicion">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th class="numero">En el mostrador</th>
+          <th class="numero">En PedidosYa</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% filas.forEach(function (f) { %>
+          <tr>
+            <td>
+              <input type="hidden" name="id_producto" value="<%= f.id_producto %>">
+              <%= f.nombre %>
+            </td>
+            <td class="numero"><%= f.precio_mostrador === null ? '—' : pesos(Number(f.precio_mostrador)) %></td>
+            <td class="numero">
+              <input name="precio" type="text" inputmode="decimal" class="dinero" required
+                     value="<%= f.precio %>" placeholder="$0" aria-label="Precio de <%= f.nombre %> en PedidosYa">
+            </td>
+            <td class="acciones">
+              <%# Sacar no guarda los precios: manda solo cual sacar. El nombre
+                  va en un data- y no dentro del JavaScript, asi un apostrofo
+                  en el nombre no rompe la confirmacion. %>
+              <button class="enlace" type="submit" name="sacar" value="<%= f.id_producto %>" formnovalidate
+                      data-nombre="<%= f.nombre %>"
+                      onclick="return confirm('¿Sacar ' + this.dataset.nombre + ' de PedidosYa? En el mostrador sigue igual.')">Sacar</button>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <div class="botonera">
+      <button type="submit">Guardar cambios</button>
+      <a class="cancelar" href="<%= volver %>">Cancelar</a>
+    </div>
+  </form>
+<% } %>
+
+<%- include('../parciales/pie') %>

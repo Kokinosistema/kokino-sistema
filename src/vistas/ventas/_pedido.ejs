@@ -5,7 +5,7 @@
         <h2>Pedido</h2>
         <% if (lineas.length > 0) { %>
           <%# Vaciar el pedido: un basurero arriba a la derecha. %>
-          <form method="post" action="/ventas/pedido">
+          <form method="post" action="<%= carta.base %>/pedido">
             <input type="hidden" name="id_sucursal" value="<%= elegida %>">
             <input type="hidden" name="categoria" value="<%= abierta ? abierta.id_categoria : '' %>">
             <input type="hidden" name="busqueda" value="<%= busqueda %>">
@@ -31,7 +31,7 @@
                 <td>
                   <%= l.nombre %>
                   <div class="cantidad">
-                    <form method="post" action="/ventas/pedido">
+                    <form method="post" action="<%= carta.base %>/pedido">
                       <input type="hidden" name="id_sucursal" value="<%= elegida %>">
                       <input type="hidden" name="categoria" value="<%= abierta ? abierta.id_categoria : '' %>">
                       <input type="hidden" name="busqueda" value="<%= busqueda %>">
@@ -53,16 +53,18 @@
           </tbody>
         </table>
 
-        <form method="post" action="/ventas/cobrar">
+        <form method="post" action="<%= carta.base %>/cobrar">
           <input type="hidden" name="id_sucursal" value="<%= elegida %>">
           <input type="hidden" name="categoria" value="<%= abierta ? abierta.id_categoria : '' %>">
 
           <%# Botones uno al lado del otro en vez de listas: se elige de un toque.
               Por debajo son opciones (radio), asi que el servidor recibe lo mismo. %>
+          <%# Con un solo canal (PedidosYa) no se pregunta: va fijo. %>
+          <% if (canalesAElegir.length > 1) { %>
           <fieldset class="opciones-boton">
             <legend>Por dónde fue la venta</legend>
             <div class="grupo-botones">
-              <% CANALES.forEach(function (c) { %>
+              <% canalesAElegir.forEach(function (c) { %>
                 <label class="opcion-boton">
                   <input type="radio" name="canal" value="<%= c.valor %>" <%= c.valor === canal ? 'checked' : '' %> required>
                   <span><%= c.texto %></span>
@@ -70,6 +72,7 @@
               <% }) %>
             </div>
           </fieldset>
+          <% } %>
 
           <fieldset class="opciones-boton" id="medio-pago">
             <legend>Con qué pagó</legend>

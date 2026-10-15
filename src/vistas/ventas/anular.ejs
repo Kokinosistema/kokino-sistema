@@ -58,7 +58,7 @@
 
 <section class="panel">
   <h2>Por qué se anula</h2>
-  <form method="post" action="/ventas/<%= venta.id_venta %>/anular">
+  <form method="post" action="<%= carta.base %>/<%= venta.id_venta %>/anular">
     <label>
       Motivo <span class="obligatorio">*</span>
       <textarea name="motivo" rows="3" maxlength="<%= MOTIVO_MAXIMO %>" required
@@ -68,7 +68,7 @@
 
     <div class="botonera">
       <button type="submit">Anular la venta</button>
-      <a class="enlace" href="/ventas">Volver sin anular</a>
+      <a class="enlace" href="<%= carta.base %>">Volver sin anular</a>
     </div>
   </form>
 </section>
