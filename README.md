@@ -92,3 +92,24 @@ npm run migrate:down                # revierte la última
 npm run migrate:create nombre-corto # crea una migración nueva
 npm run seed:precios                # actualiza los precios de lista
 ```
+
+## Pruebas automáticas
+
+```bash
+npm test
+```
+
+Prueban el sistema como lo usa una persona: entran con un usuario, completan
+formularios y revisan lo que responde (avisos, errores, montos). Cubren lo que
+mueve plata: abrir y cerrar caja, cobrar, anular, PedidosYa y los permisos de
+cada rol.
+
+Corren contra una base aparte, `kokino_prueba`, que **se borra y se arma de
+nuevo en cada corrida** (migraciones, seeds y usuarios de prueba). Así cada
+corrida arranca del mismo punto. Por defecto es la misma conexión del `.env`
+con otro nombre de base; se puede cambiar con `DATABASE_URL_PRUEBA`. Como
+seguro, las pruebas se niegan a correr si el nombre de la base no termina en
+`_prueba`: nunca pueden borrar `kokino_dev` ni la base de la heladería.
+
+Conviene correrlas antes de cada commit. Si una falla, el cambio rompió algo
+que antes andaba.
