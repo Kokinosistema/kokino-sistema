@@ -103,6 +103,29 @@ const PRECIOS = [
 
   // El bano no se vende envasado: se sirve sobre el helado y se cobra aparte.
   { producto: 'Baño de chocolate',        tipo: 'MINORISTA', precio: 2500 },
+
+  // Carta de PedidosYa (pasada por la usuaria el 2026-10-15). Son los mismos
+  // productos del mostrador, mas caros por la plataforma. Un producto que no
+  // esta aca no se vende por PedidosYa.
+  { producto: 'Térmico 1/4 kg', tipo: 'PEDIDOSYA', precio: 11000 },
+  { producto: 'Térmico 1/2 kg', tipo: 'PEDIDOSYA', precio: 16500 },
+  { producto: 'Térmico 1 kg',   tipo: 'PEDIDOSYA', precio: 27500 },
+
+  { producto: 'Familiar 3 lt americana, vainilla y dulce de leche', tipo: 'PEDIDOSYA', precio: 39000 },
+  { producto: 'Familiar 3 lt chocolate, vainilla y dulce de leche', tipo: 'PEDIDOSYA', precio: 39000 },
+  { producto: 'Familiar 3 lt chocolate, vainilla y frutilla',       tipo: 'PEDIDOSYA', precio: 39000 },
+  { producto: 'Familiar 5 lt americana, vainilla y dulce de leche', tipo: 'PEDIDOSYA', precio: 55000 },
+  { producto: 'Familiar 5 lt chocolate, vainilla y dulce de leche', tipo: 'PEDIDOSYA', precio: 55000 },
+  { producto: 'Familiar 5 lt chocolate, vainilla y frutilla',       tipo: 'PEDIDOSYA', precio: 55000 },
+
+  { producto: 'Diet 250 cc chocolate y vainilla',      tipo: 'PEDIDOSYA', precio: 15500 },
+  { producto: 'Diet 250 cc ananá y durazno',           tipo: 'PEDIDOSYA', precio: 15500 },
+  { producto: 'Diet 250 cc dulce de leche y frutilla', tipo: 'PEDIDOSYA', precio: 15500 },
+
+  { producto: 'Torta súper dulce de leche',        tipo: 'PEDIDOSYA', precio: 35000 },
+  { producto: 'Torta chocolatosa',                 tipo: 'PEDIDOSYA', precio: 35000 },
+  { producto: 'Torta frutos rojos',                tipo: 'PEDIDOSYA', precio: 35000 },
+  { producto: 'Torta chocolate blanco y maracuyá', tipo: 'PEDIDOSYA', precio: 35000 },
 ];
 
 async function cargarPrecio(client, { producto, tipo, precio }) {
