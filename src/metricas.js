@@ -72,19 +72,26 @@ async function periodos(idSucursal) {
   });
 }
 
-// Ventas de cada dia de los ultimos 14, con los dias sin ventas en cero.
+// Ventas de cada dia de los ultimos 14, con los dias sin ventas en cero, y
+// al lado lo del mismo dia de la semana anterior (un martes se compara con
+// un martes, no con un sabado). Hoy esta en curso: como en la tarjeta "Hoy",
+// se compara con el mismo dia de la semana pasada hasta esta misma hora.
 async function ultimosDias(idSucursal) {
   const { rows } = await consultar(
-    `WITH v AS (${ventas('current_date - 13')})
-     SELECT d::date AS dia, coalesce(sum(v.total), 0) AS total, count(v.id_venta)::int AS ventas,
-            d::date = current_date AS es_hoy
+    `WITH v AS (${ventas('current_date - 20')}),
+          por_dia AS (SELECT fecha_hora::date AS dia, sum(total) AS total, count(*)::int AS ventas FROM v GROUP BY 1)
+     SELECT d::date AS dia, coalesce(p.total, 0) AS total, coalesce(p.ventas, 0) AS ventas,
+            d::date = current_date AS es_hoy,
+            CASE WHEN d::date = current_date
+                 THEN (SELECT coalesce(sum(total), 0) FROM v WHERE fecha_hora >= current_date - 7 AND fecha_hora < now() - interval '7 days')
+                 ELSE coalesce(a.total, 0) END AS anterior
        FROM generate_series(current_date - 13, current_date, interval '1 day') d
-       LEFT JOIN v ON v.fecha_hora::date = d::date
-      GROUP BY d
+       LEFT JOIN por_dia p ON p.dia = d::date
+       LEFT JOIN por_dia a ON a.dia = d::date - 7
       ORDER BY d`,
     [idSucursal]
   );
-  return rows.map((r) => ({ dia: r.dia, total: Number(r.total), ventas: r.ventas, esHoy: r.es_hoy }));
+  return rows.map((r) => ({ dia: r.dia, total: Number(r.total), ventas: r.ventas, esHoy: r.es_hoy, anterior: Number(r.anterior) }));
 }
 
 // Hoy y la semana de cada sucursal, lado a lado.
@@ -152,22 +159,22 @@ async function ultimaSemana(idSucursal) {
   };
 }
 
-// Horas pico: lo vendido en cada hora del dia y en cada dia de la semana,
-// en promedio, en las ultimas 4 semanas (28 dias, sin contar hoy).
+// Horas pico: lo vendido en cada dia de la semana a cada hora, en promedio,
+// en las ultimas 4 semanas (28 dias, sin contar hoy). Se muestra como mapa
+// de calor (pedido el 2026-10-16): la combinacion de dia y hora es lo que
+// sirve para armar los turnos. En 28 dias cada dia de la semana aparece 4
+// veces, por eso se divide por 4.
 async function horasPico(idSucursal) {
-  const parametros = [idSucursal];
-  const { rows: horas } = await consultar(
+  const { rows: celdas } = await consultar(
     `WITH v AS (${ventas('current_date - 28')} AND v.fecha_hora < current_date)
-     SELECT extract(hour FROM fecha_hora)::int AS hora, sum(total) / 28 AS promedio
-       FROM v GROUP BY 1 ORDER BY 1`,
-    parametros
+     SELECT extract(isodow FROM fecha_hora)::int AS dia, extract(hour FROM fecha_hora)::int AS hora, sum(total) / 4 AS promedio
+       FROM v GROUP BY 1, 2`,
+    [idSucursal]
   );
-  const { rows: dias } = await consultar(
-    `WITH v AS (${ventas('current_date - 28')} AND v.fecha_hora < current_date)
-     SELECT extract(isodow FROM fecha_hora)::int AS dia, sum(total) / 4 AS promedio
-       FROM v GROUP BY 1 ORDER BY 1`,
-    parametros
-  );
+  const horas = [...new Set(celdas.map((c) => c.hora))].map((hora) => ({ hora }));
+  const dias = [...new Set(celdas.map((c) => c.dia))].map((dia) => ({
+    dia, promedio: celdas.filter((c) => c.dia === dia).reduce((a, c) => a + Number(c.promedio), 0),
+  }));
   const NOMBRES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
   // Del primer al ultimo horario con ventas, con las horas del medio en cero.
   // El dia de la heladeria arranca a la manana y termina pasada la
@@ -176,20 +183,24 @@ async function horasPico(idSucursal) {
   // hueco vacio. Van del primer al ultimo horario con ventas, con las horas
   // del medio en cero.
   const orden = (h) => (h + 18) % 24;
-  let porHora = [];
+  const horasDelDia = [];
   if (horas.length > 0) {
     const claves = horas.map((x) => orden(x.hora));
-    for (let k = Math.min(...claves); k <= Math.max(...claves); k++) {
-      const h = (k + 6) % 24;
-      const f = horas.find((x) => x.hora === h);
-      porHora.push({ hora: h, promedio: f ? Number(f.promedio) : 0 });
-    }
+    for (let k = Math.min(...claves); k <= Math.max(...claves); k++) horasDelDia.push((k + 6) % 24);
   }
+  // Una fila por dia de la semana, con una celda por hora (las vacias en cero).
+  const filas = NOMBRES.map((nombre, i) => ({
+    nombre,
+    celdas: horasDelDia.map((hora) => {
+      const f = celdas.find((c) => c.dia === i + 1 && c.hora === hora);
+      return { hora, promedio: f ? Number(f.promedio) : 0 };
+    }),
+  }));
   const porDia = NOMBRES.map((nombre, i) => {
     const f = dias.find((x) => x.dia === i + 1);
-    return { nombre, promedio: f ? Number(f.promedio) : 0 };
+    return { nombre, promedio: f ? f.promedio : 0 };
   });
-  return { porHora, porDia };
+  return { horas: horasDelDia, filas, porDia };
 }
 
 // Control de caja de los ultimos 7 dias: ventas anuladas y cierres con

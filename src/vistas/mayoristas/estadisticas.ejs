@@ -105,7 +105,8 @@
   <h2>Tachos por mes <span class="pista-inline">(últimos 12 meses)</span></h2>
   <div class="barras" role="list">
     <% meses.forEach(function (m) { %>
-      <div class="barra <%= m.esActual ? 'hoy' : '' %>" role="listitem" title="<%= m.mes %>: <%= m.tachos %> <%= m.tachos === 1 ? 'tacho' : 'tachos' %>, <%= pesos(m.total) %>">
+      <div class="barra <%= m.esActual ? 'hoy' : '' %>" role="listitem" tabindex="0"
+           data-detalle-titulo="<%= m.mes %>" data-detalle-texto="<%= m.tachos %> <%= m.tachos === 1 ? 'tacho' : 'tachos' %>, <%= pesos(m.total) %>">
         <span class="barra-valor"><%= m.tachos || '' %></span>
         <span class="barra-columna"><span style="height: <%= maxMes > 0 ? Math.round((m.tachos / maxMes) * 100) : 0 %>%"></span></span>
         <span class="barra-etiqueta"><%= m.mes %></span>

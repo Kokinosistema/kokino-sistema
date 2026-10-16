@@ -47,6 +47,22 @@
   --status-error: #E24C3B;
   --border-soft: rgba(30, 38, 36, 0.12);
 
+  /* Graficos (2026-10-16). Series: para partes de un total, en este orden,
+     validado para daltonismo. Calor: un solo verde, de casi nada a mucho. */
+  --serie-1: #1f8a72;
+  --serie-2: #eda100;
+  --serie-3: #3fa9c9;
+  --serie-4: #eb6834;
+  --serie-5: #7a5fd0;
+  --grafico-anterior: #cfe3dc;
+  --calor-0: #f1f8f5;
+  --calor-1: #d3ede3;
+  --calor-2: #a8dcc9;
+  --calor-3: #74c5aa;
+  --calor-4: #46a98c;
+  --calor-5: #2a8670;
+  --calor-6: #155e4e;
+
   --radius-pill: 999px;
   --radius-lg: 28px;
   --radius-md: 18px;
@@ -758,6 +774,55 @@ details.panel summary { cursor: pointer; font-weight: 700; }
 .barra:hover .barra-columna span { background: var(--brand-hover); opacity: 1; }
 .barra-etiqueta { font-size: 11px; color: var(--text-secondary); margin-top: 4px; white-space: nowrap; }
 .barra.hoy .barra-etiqueta { font-weight: 700; color: var(--brand-pressed); }
+
+/* Cada dia con el mismo dia de la semana anterior al lado: la barra clara
+   es la de la semana anterior. */
+.barra-columna.con-anterior { gap: 2px; justify-content: center; }
+.barra-columna.con-anterior span { width: 50%; max-width: 20px; opacity: 1; }
+.barra-columna.con-anterior span.anterior { background: var(--grafico-anterior); }
+.barra.hoy .barra-columna.con-anterior span:not(.anterior) { background: var(--brand-pressed); }
+.leyenda-grafico { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--text-secondary); }
+.leyenda-grafico li { display: inline-flex; align-items: center; gap: 6px; }
+.leyenda-grafico i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+/* Barra partida: el total y sus partes en una linea. Cada parte tiene un
+   color fijo (sigue a la cosa, no a su puesto) y su nombre y % escritos en la
+   leyenda: nunca el color solo. Paleta validada para daltonismo (2026-10-16). */
+.barra-partida { display: flex; gap: 2px; height: 30px; margin-top: 4px; }
+.barra-partida span { display: block; height: 100%; min-width: 3px; }
+.barra-partida span:first-child { border-radius: 6px 0 0 6px; }
+.barra-partida span:last-child { border-radius: 0 6px 6px 0; }
+.barra-partida span:only-child { border-radius: 6px; }
+.leyenda-partida { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.leyenda-partida li { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; }
+.leyenda-partida i { width: 12px; height: 12px; border-radius: 3px; display: block; }
+.leyenda-partida .valor { color: var(--text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.serie-1 { background: var(--serie-1); } .serie-2 { background: var(--serie-2); } .serie-3 { background: var(--serie-3); }
+.serie-4 { background: var(--serie-4); } .serie-5 { background: var(--serie-5); }
+
+/* Mapa de calor de horas pico: un verde, mas oscuro cuanto mas se vende. */
+.mapa-calor-caja { overflow-x: auto; }
+.mapa-calor { display: grid; gap: 2px; min-width: 480px; font-size: 12px; }
+.mapa-calor .dia { color: var(--text-secondary); padding-right: 6px; align-self: center; }
+.mapa-calor .hora { color: var(--text-secondary); text-align: center; font-variant-numeric: tabular-nums; }
+.mapa-calor .celda { height: 26px; border-radius: 4px; }
+.mapa-calor .celda.pico { outline: 2px solid var(--text-primary); outline-offset: -2px; }
+.calor-0 { background: var(--calor-0); } .calor-1 { background: var(--calor-1); } .calor-2 { background: var(--calor-2); }
+.calor-3 { background: var(--calor-3); } .calor-4 { background: var(--calor-4); } .calor-5 { background: var(--calor-5); }
+.calor-6 { background: var(--calor-6); }
+.escala-calor { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); margin-top: 10px; }
+.escala-calor .tiras { display: flex; gap: 2px; }
+.escala-calor .tiras i { width: 22px; height: 12px; border-radius: 3px; display: block; }
+
+/* El recuadro de detalle de los graficos (public/detalle.js). */
+[data-detalle-titulo] { cursor: pointer; }
+[data-detalle-titulo]:focus-visible { outline: 2px solid var(--brand-pressed); outline-offset: 2px; }
+.detalle-grafico {
+  position: fixed; z-index: 50; pointer-events: none; max-width: 260px;
+  background: var(--text-primary); color: var(--bg-panel); box-shadow: var(--shadow-soft);
+  font-size: 13px; line-height: 1.35; padding: 7px 10px; border-radius: 8px;
+}
+.detalle-grafico strong { display: block; font-family: var(--font-head); font-size: 14px; }
 
 /* Barras horizontales: medios de pago, canales y mas vendidos. */
 .barra-h { display: grid; grid-template-columns: 130px 1fr auto; align-items: center; gap: 10px; margin: 8px 0; font-size: 14px; }
