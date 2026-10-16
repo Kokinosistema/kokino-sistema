@@ -25,13 +25,6 @@ router.get('/', async (req, res, siguiente) => {
       [req.sucursal.id_sucursal]
     );
 
-    const { rows: totales } = await consultar(
-      `SELECT (SELECT count(*) FROM productos WHERE activo)::int   AS productos,
-              (SELECT count(*) FROM sabores)::int                  AS sabores,
-              (SELECT count(*) FROM insumos)::int                  AS insumos,
-              (SELECT count(*) FROM recetas)::int                  AS recetas`
-    );
-
     // Las metricas de ventas son solo para los duenos: a los empleados ni se
     // les calculan.
     const metricas = req.session.usuario.rol === 'administrador'
@@ -60,7 +53,7 @@ router.get('/', async (req, res, siguiente) => {
     // La guia de lo que falta cargar, para los duenos, hasta que este todo.
     const guia = metricas ? await primerosPasos() : null;
 
-    res.render('inicio', { sucursales: rows, totales: totales[0], metricas, avisoCopias, mostrador, guia });
+    res.render('inicio', { sucursales: rows, metricas, avisoCopias, mostrador, guia });
   } catch (error) {
     siguiente(error);
   }

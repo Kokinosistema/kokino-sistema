@@ -82,21 +82,6 @@
   <% }) %>
 </section>
 
-<section class="catalogo">
-  <h2>Catalogo cargado</h2>
-  <ul>
-    <li><strong><%= totales.productos %></strong> productos</li>
-    <li><strong><%= totales.sabores %></strong> sabores</li>
-    <li><strong><%= totales.insumos %></strong> insumos</li>
-    <li>
-      <strong><%= totales.recetas %></strong> recetas
-      <% if (totales.recetas === 0) { %>
-        <span class="pendiente">- las cargan los duenos desde el sistema</span>
-      <% } %>
-    </li>
-  </ul>
-</section>
-
 <% } %>
 
 <%- include('parciales/pie') %>
