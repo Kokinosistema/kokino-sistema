@@ -91,7 +91,7 @@
 
     <section class="panel">
       <h2>Cómo pagan <span class="pista-inline">(últimos 7 días)</span></h2>
-      <%# Barras partidas (2026-10-16): el total y sus partes en una linea. El
+      <%# Tortas (2026-10-16): el total y sus partes. El
           color de cada medio sale de su lugar en la lista de medios, que no
           cambia: si hoy no se uso uno, los demas conservan su color. Hay 5
           colores validados; un sexto medio necesita sumar uno a la paleta. %>
@@ -99,7 +99,7 @@
       <% if (totalMedios === 0) { %>
         <p class="ayuda">No hubo ventas en los últimos 7 días.</p>
       <% } else { %>
-        <%- include('_barra-partida', { partes: m.semana.medios.map((x, i) => ({ nombre: x.nombre, total: x.total, serie: i + 1, detalle: pesos(x.total) })) }) %>
+        <%- include('_torta', { partes: m.semana.medios.map((x, i) => ({ nombre: x.nombre, total: x.total, serie: i + 1, detalle: pesos(x.total) })) }) %>
       <% } %>
 
       <h2 class="subtitulo-panel">Por dónde compran</h2>
@@ -107,7 +107,7 @@
       <% if (totalCanales === 0) { %>
         <p class="ayuda">No hubo ventas en los últimos 7 días.</p>
       <% } else { %>
-        <%- include('_barra-partida', { partes: m.semana.canales.map((x, i) => ({ nombre: x.nombre, total: x.total, serie: i + 1, detalle: x.ventas + (x.ventas === 1 ? ' venta' : ' ventas') })) }) %>
+        <%- include('_torta', { partes: m.semana.canales.map((x, i) => ({ nombre: x.nombre, total: x.total, serie: i + 1, detalle: x.ventas + (x.ventas === 1 ? ' venta' : ' ventas') })) }) %>
       <% } %>
     </section>
   </div>

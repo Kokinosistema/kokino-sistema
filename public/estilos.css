@@ -781,18 +781,25 @@ details.panel summary { cursor: pointer; font-weight: 700; }
 .leyenda-grafico li { display: inline-flex; align-items: center; gap: 6px; }
 .leyenda-grafico i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 
-/* Barra partida: el total y sus partes en una linea. Cada parte tiene un
+/* Torta con su lista al lado (parciales/_torta.ejs). Cada parte tiene un
    color fijo (sigue a la cosa, no a su puesto) y su nombre y % escritos en la
-   leyenda: nunca el color solo. Paleta validada para daltonismo (2026-10-16). */
-.barra-partida { display: flex; gap: 2px; height: 30px; margin-top: 4px; }
-.barra-partida span { display: block; height: 100%; min-width: 3px; }
-.barra-partida span:first-child { border-radius: 6px 0 0 6px; }
-.barra-partida span:last-child { border-radius: 0 6px 6px 0; }
-.barra-partida span:only-child { border-radius: 6px; }
-.leyenda-partida { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
-.leyenda-partida li { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; }
-.leyenda-partida i { width: 12px; height: 12px; border-radius: 3px; display: block; }
-.leyenda-partida .valor { color: var(--text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+   lista: nunca el color solo. Paleta validada para daltonismo (2026-10-16).
+   El borde del color del panel separa las porciones. */
+.torta-con-leyenda { display: grid; grid-template-columns: 132px 1fr; gap: 20px; align-items: center; }
+.torta { width: 132px; height: 132px; display: block; }
+.torta path, .torta circle { stroke: var(--bg-panel); stroke-width: 2px; vector-effect: non-scaling-stroke; }
+.torta path:hover, .torta circle:hover { opacity: 0.85; }
+@media (max-width: 420px) {
+  .torta-con-leyenda { grid-template-columns: 1fr; justify-items: center; }
+  .torta-con-leyenda .leyenda-partes { width: 100%; }
+}
+.leyenda-partes { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.leyenda-partes li { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; }
+.leyenda-partes i { width: 12px; height: 12px; border-radius: 3px; display: block; }
+.leyenda-partes .valor { color: var(--text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* "Por donde compran" va debajo de "Como pagan" en el mismo panel: sin esto,
+   ".panel h2" le saca el margen de arriba y queda pegado a la lista. */
+.panel h2.subtitulo-panel { margin-top: 28px; }
 .serie-1 { background: var(--serie-1); } .serie-2 { background: var(--serie-2); } .serie-3 { background: var(--serie-3); }
 .serie-4 { background: var(--serie-4); } .serie-5 { background: var(--serie-5); }
 

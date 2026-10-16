@@ -1,0 +1,33 @@
+<%# Grafico de torta (pedido por la usuaria el 2026-10-16), con la lista al
+    lado: nombre, % y detalle de cada parte. En una torta cuesta comparar
+    porciones parecidas, asi que el numero exacto queda siempre escrito, y
+    el color nunca es lo unico que identifica una parte.
+    Recibe partes: [{ nombre, total, serie, detalle }]. "serie" es el color
+    fijo de esa cosa (1 a 5), el mismo aunque cambie su puesto.
+    Se dibuja en el servidor como SVG: un circulo de radio 1 centrado en 0,0,
+    que arranca arriba y va en el sentido del reloj. %>
+<% const totalPartes = partes.reduce((a, x) => a + x.total, 0);
+   const porcentaje = (x) => Math.round((x.total / totalPartes) * 100);
+   const conVentas = partes.filter((x) => x.total > 0);
+   const punto = (angulo) => Math.cos(angulo).toFixed(4) + ' ' + Math.sin(angulo).toFixed(4);
+   let desde = -Math.PI / 2; %>
+<div class="torta-con-leyenda">
+  <svg class="torta" viewBox="-1.02 -1.02 2.04 2.04" aria-hidden="true">
+    <% conVentas.forEach(function (x) {
+         const angulo = (x.total / totalPartes) * 2 * Math.PI;
+         const hasta = desde + angulo;
+         // Una parte que es el 100 % no se puede dibujar como arco: es el circulo entero.
+         const forma = conVentas.length === 1
+           ? '<circle r="1"'
+           : '<path d="M0 0 L' + punto(desde) + ' A1 1 0 ' + (angulo > Math.PI ? 1 : 0) + ' 1 ' + punto(hasta) + ' Z"';
+         desde = hasta; %>
+      <%- forma %> style="fill: var(--serie-<%= x.serie %>)"
+        data-detalle-titulo="<%= x.nombre %>" data-detalle-texto="<%= porcentaje(x) %> % · <%= x.detalle %>" />
+    <% }) %>
+  </svg>
+  <ul class="leyenda-partes">
+    <% conVentas.forEach(function (x) { %>
+      <li><i class="serie-<%= x.serie %>"></i><span><%= x.nombre %></span><span class="valor"><%= porcentaje(x) %> % · <%= x.detalle %></span></li>
+    <% }) %>
+  </ul>
+</div>

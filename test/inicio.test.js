@@ -77,8 +77,8 @@ describe('Gráficos del Inicio', () => {
     assert.ok(pico.some((m) => m[1] === '0'));
   });
 
-  test('cómo pagan y por dónde compran son barras partidas que suman 100 %', async () => {
-    const leyendas = [...html.matchAll(/<ul class="leyenda-partida">([\s\S]*?)<\/ul>/g)];
+  test('cómo pagan y por dónde compran son tortas que suman 100 %', async () => {
+    const leyendas = [...html.matchAll(/<ul class="leyenda-partes">([\s\S]*?)<\/ul>/g)];
     assert.equal(leyendas.length, 2);
     for (const [, lista] of leyendas) {
       const porcentajes = [...lista.matchAll(/class="valor">(\d+) %/g)].map((m) => Number(m[1]));
@@ -86,6 +86,13 @@ describe('Gráficos del Inicio', () => {
       // Redondeados: pueden sumar 99 o 101.
       const suma = porcentajes.reduce((a, b) => a + b, 0);
       assert.ok(suma >= 98 && suma <= 102, 'suman ' + suma);
+    }
+    // Cada torta tiene una porcion por cada fila de su lista.
+    const tortas = [...html.matchAll(/<svg class="torta"[^>]*>([\s\S]*?)<\/svg>\s*<ul class="leyenda-partes">([\s\S]*?)<\/ul>/g)];
+    assert.equal(tortas.length, 2);
+    for (const [, dibujo, lista] of tortas) {
+      const porciones = [...dibujo.matchAll(/<(path d="M0 0 L[^"]+ Z"|circle r="1")/g)].length;
+      assert.equal(porciones, [...lista.matchAll(/<li>/g)].length);
     }
     // El color de cada medio es fijo: Débito es el segundo medio de la lista.
     assert.match(html, /<li><i class="serie-2"><\/i><span>Débito<\/span>/);
