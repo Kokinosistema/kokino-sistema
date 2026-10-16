@@ -167,7 +167,11 @@ describe('Anular una venta mayorista', () => {
 // El pronostico usa las fechas de las compras: se venden por la pantalla y
 // despues se corren dias para atras en la base, para saber que tiene que dar.
 describe('Qué fabricar para los mayoristas', () => {
-  let vuelve; // compra cada 10 dias, 3 tachos por compra, la ultima hace 6
+  // Compra cada 10 dias, 3 tachos por compra, la ultima hace 7: la proxima
+  // cae a los 3 dias y la siguiente a los 13, lejos de los bordes de los
+  // plazos (7, 14 y 30). Con la ultima hace 6, la segunda caia justo en el
+  // dia 14, y la prueba pasaba o no segun los milisegundos entre ventas.
+  let vuelve;
   let noVuelve; // compraba cada 10 dias, pero hace 30 que no compra
 
   const atrasar = (venta, dias) => consultar("UPDATE ventas SET fecha_hora = now() - $2 * interval '1 day' WHERE id_venta = $1", [venta, dias]);
@@ -189,8 +193,8 @@ describe('Qué fabricar para los mayoristas', () => {
     [vuelve, noVuelve] = rows.map((r) => r.id_cliente);
     const tres = [{ envase: 'RETORNABLE', cantidad: 3, precio: '$30.000' }];
     const uno = [{ envase: 'RETORNABLE', cantidad: 1, precio: '$30.000' }];
-    await atrasar(await vender(vuelve, tres, { pago: 'CUENTA' }), 16);
-    await atrasar(await vender(vuelve, tres, { pago: 'CUENTA' }), 6);
+    await atrasar(await vender(vuelve, tres, { pago: 'CUENTA' }), 17);
+    await atrasar(await vender(vuelve, tres, { pago: 'CUENTA' }), 7);
     await atrasar(await vender(noVuelve, uno, { pago: 'CUENTA' }), 40);
     await atrasar(await vender(noVuelve, uno, { pago: 'CUENTA' }), 30);
   });
@@ -209,7 +213,7 @@ describe('Qué fabricar para los mayoristas', () => {
 
   test('cliente por cliente: cuándo vuelve, y quiénes no se cuentan', async () => {
     const { html } = await dueno.abrir('/clientes/estadisticas');
-    assert.match(html, new RegExp('Kiosco que vuelve</a>:\\s*<strong>unos 6 tachos</strong>[\\s\\S]*?Próxima compra alrededor del ' + diaMes(4)
+    assert.match(html, new RegExp('Kiosco que vuelve</a>:\\s*<strong>unos 6 tachos</strong>[\\s\\S]*?Próxima compra alrededor del ' + diaMes(3)
       + '\\.\\s*Compra cada 10 días y lleva unos 3 tachos'));
     const afuera = html.slice(html.indexOf('No se cuentan'));
     assert.match(afuera, /Kiosco que no vuelve<\/a>:\s*<span class="pista">\s*hace 30 días que no compra, más del doble de lo habitual \(cada 10 días\)/);
@@ -220,7 +224,7 @@ describe('Qué fabricar para los mayoristas', () => {
 
   test('en la ficha del cliente, la próxima compra probable', async () => {
     const { html } = await dueno.abrir('/clientes/' + vuelve);
-    assert.match(html, new RegExp('Próxima compra probable</h3>\\s*<p class="metrica-valor-chico">Alrededor del ' + diaMes(4) + '</p>'));
+    assert.match(html, new RegExp('Próxima compra probable</h3>\\s*<p class="metrica-valor-chico">Alrededor del ' + diaMes(3) + '</p>'));
     assert.match(html, /Suele llevar unos 3 tachos\. Es un promedio\./);
     assert.match((await dueno.abrir('/clientes/' + noVuelve)).html, /Hace más del doble de lo habitual que no compra: no se puede prever\./);
   });
