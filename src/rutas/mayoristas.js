@@ -240,6 +240,87 @@ async function estadisticasDelCliente(idCliente) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Que fabricar para los mayoristas (pedido por un dueno el 2026-10-16: "tener
+// previsibilidad a la hora de preparar y de fabricar").
+//
+// Es un promedio, no una prediccion: con las compras de los ultimos 6 meses
+// de cada cliente se saca cada cuanto compra (de la primera a la ultima,
+// dividido por los intervalos) y cuantos tachos lleva por compra. Siguiendo
+// ese ritmo desde su ultima compra, se cuentan las compras que caen en el
+// plazo elegido. Lo esperado de cada cliente se reparte entre sabores segun
+// la parte que compra de cada uno.
+//
+// Quedan afuera, y se avisa: el que tiene una sola compra (no hay ritmo) y
+// el que lleva mas del doble de su ritmo sin comprar (probablemente dejo de
+// comprar o compra en otro lado).
+
+const PLAZOS = [7, 14, 30];
+const PLAZO_PREDETERMINADO = 14;
+
+const COMPRAS_RECIENTES = `
+  t AS (${TACHOS_VENDIDOS} AND v.fecha_hora >= now() - interval '6 months'),
+  compras AS (SELECT id_venta, id_cliente, min(fecha_hora) AS fecha, count(*) AS tachos FROM t GROUP BY id_venta, id_cliente),
+  ritmo AS (
+    SELECT id_cliente, count(*)::int AS compras, max(fecha) AS ultima, avg(tachos) AS por_compra,
+           CASE WHEN count(*) > 1
+                THEN greatest(1, extract(epoch FROM max(fecha) - min(fecha)) / 86400 / (count(*) - 1)) END AS cada,
+           extract(epoch FROM now() - max(fecha)) / 86400 AS desde
+      FROM compras GROUP BY id_cliente),
+  esperado AS (
+    SELECT r.*,
+           CASE WHEN r.cada IS NULL THEN 'POCAS_COMPRAS'
+                WHEN r.desde > 2 * r.cada THEN 'NO_VUELVE'
+                ELSE 'ESTIMADO' END AS estado,
+           CASE WHEN r.cada IS NOT NULL AND r.desde <= 2 * r.cada
+                THEN floor((r.desde + $1) / r.cada) * r.por_compra ELSE 0 END AS tachos
+      FROM ritmo r)`;
+
+// El pronostico de cada cliente con compras recientes. $2 = un cliente, o
+// null para todos.
+async function pronosticoPorCliente(dias, idCliente) {
+  const { rows } = await consultar(
+    `WITH ${COMPRAS_RECIENTES}
+     SELECT e.id_cliente, c.nombre_razon_social, e.compras, e.estado, e.tachos AS esperados,
+            round(e.cada)::int AS cada_dias, floor(e.desde)::int AS dias_desde, e.por_compra,
+            (e.ultima + e.cada * interval '1 day')::date AS proxima,
+            (e.ultima + e.cada * interval '1 day')::date < current_date AS atrasado
+       FROM esperado e JOIN clientes c ON c.id_cliente = e.id_cliente
+      WHERE c.activo AND ($2::int IS NULL OR e.id_cliente = $2)
+      ORDER BY e.tachos DESC, c.nombre_razon_social`,
+    [dias, idCliente]
+  );
+  return rows.map((r) => ({ ...r, esperados: Number(r.esperados), por_compra: Number(r.por_compra) }));
+}
+
+// Los tachos esperados de cada sabor contra los llenos de hoy en la fabrica,
+// que es de donde salen las ventas mayoristas. Se redondea para arriba: para
+// fabricar, mejor que sobre a que falte.
+async function pronosticoPorSabor(dias) {
+  const { rows } = await consultar(
+    `WITH ${COMPRAS_RECIENTES},
+          parte AS (SELECT id_cliente, id_sabor, count(*)::numeric / sum(count(*)) OVER (PARTITION BY id_cliente) AS parte
+                      FROM t GROUP BY id_cliente, id_sabor),
+          fabrica AS (SELECT id_sucursal FROM sucursales WHERE tiene_fabrica AND activa ORDER BY id_sucursal LIMIT 1),
+          por_sabor AS (
+            SELECT s.nombre || ' (' || lower(s.linea) || ')' AS sabor, s.linea,
+                   ceil(sum(e.tachos * p.parte))::int AS esperados,
+                   (SELECT count(*) FROM tachos tt JOIN lotes ll ON ll.id_lote = tt.id_lote
+                     WHERE ll.id_sabor = s.id_sabor AND tt.estado = 'LLENO'
+                       AND tt.id_sucursal = (SELECT id_sucursal FROM fabrica))::int AS llenos
+              FROM parte p
+              JOIN esperado e ON e.id_cliente = p.id_cliente
+              JOIN clientes c ON c.id_cliente = p.id_cliente AND c.activo
+              JOIN sabores s ON s.id_sabor = p.id_sabor
+             GROUP BY s.id_sabor, s.nombre, s.linea
+            HAVING sum(e.tachos * p.parte) > 0)
+     -- Primero lo que mas falta fabricar.
+     SELECT * FROM por_sabor ORDER BY esperados - llenos DESC, sabor`,
+    [dias]
+  );
+  return rows.map((r) => ({ ...r, fabricar: Math.max(0, r.esperados - r.llenos) }));
+}
+
 // Todos los mayoristas juntos: los sabores que mas piden (para fabricar) y
 // como viene cada cliente.
 router.get('/estadisticas', async (req, res, siguiente) => {
@@ -276,9 +357,13 @@ router.get('/estadisticas', async (req, res, siguiente) => {
         GROUP BY c.id_cliente, c.nombre_razon_social
         ORDER BY este_mes DESC, mes_pasado DESC, c.nombre_razon_social`
     );
+    // El plazo del pronostico sale de la direccion (?dias=7); cualquier otra
+    // cosa usa el predeterminado.
+    const dias = PLAZOS.includes(Number(req.query.dias)) ? Number(req.query.dias) : PLAZO_PREDETERMINADO;
     res.render('mayoristas/estadisticas', {
       meses, sabores, clientes: clientes.map((c) => ({ ...c, total_mes: Number(c.total_mes) })),
       fabrica: fabrica ? fabrica.nombre : null,
+      pronostico: { dias, PLAZOS, clientes: await pronosticoPorCliente(dias, null), sabores: await pronosticoPorSabor(dias) },
     });
   } catch (error) {
     siguiente(error);
@@ -315,6 +400,7 @@ router.get('/:id', async (req, res, siguiente) => {
       [cliente.id_cliente]
     );
     const estadisticas = await estadisticasDelCliente(cliente.id_cliente);
+    [estadisticas.pronostico] = await pronosticoPorCliente(PLAZO_PREDETERMINADO, cliente.id_cliente);
     res.render('mayoristas/ficha', { cliente, cuenta, ventas, devoluciones, estadisticas, errores: [] });
   } catch (error) {
     siguiente(error);

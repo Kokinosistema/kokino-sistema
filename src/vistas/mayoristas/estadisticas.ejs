@@ -8,6 +8,86 @@
 <h1>Estadísticas de mayoristas</h1>
 <p class="ayuda">Todos los mayoristas juntos, sin contar las ventas anuladas. Sirve para prever qué fabricar.</p>
 
+<%# Que fabricar: el pronostico de las proximas semanas (ver pronosticoPorCliente
+    en la ruta para como se calcula). %>
+<% const p = pronostico;
+   const diaMes = (d) => d.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' });
+   const tachos = (n) => n + (n === 1 ? ' tacho' : ' tachos');
+   const PLAZO_TEXTO = { 7: 'la próxima semana', 14: 'las próximas 2 semanas', 30: 'el próximo mes' };
+   const estimados = p.clientes.filter((c) => c.estado === 'ESTIMADO');
+   const afuera = p.clientes.filter((c) => c.estado !== 'ESTIMADO');
+   const hayArtesanal = p.sabores.some((s) => s.linea === 'ARTESANAL'); %>
+<section class="panel" id="que-fabricar">
+  <div class="titulo-con-accion">
+    <h2>Qué fabricar para los mayoristas</h2>
+    <nav class="elegir-plazo" aria-label="Plazo del pronóstico">
+      <% p.PLAZOS.forEach(function (d) { %>
+        <a class="<%= d === p.dias ? 'boton' : 'boton-secundario' %>" href="/clientes/estadisticas?dias=<%= d %>#que-fabricar"
+           <%= d === p.dias ? 'aria-current=true' : '' %>><%= d === 7 ? '1 semana' : d === 14 ? '2 semanas' : '1 mes' %></a>
+      <% }) %>
+    </nav>
+  </div>
+  <p class="ayuda">
+    Lo que se espera que pidan los mayoristas en <%= PLAZO_TEXTO[p.dias] %>, según cada cuánto compra cada uno y qué lleva
+    (sus compras de los últimos 6 meses). Es un promedio: sirve para planificar, no es exacto.
+  </p>
+
+  <% if (p.sabores.length === 0) { %>
+    <p class="ayuda">No se espera ninguna compra de mayoristas en este plazo.</p>
+  <% } else { %>
+    <table class="tabla">
+      <thead><tr><th>Sabor</th><th class="numero">Se esperan</th><th class="numero">Llenos en <%= fabrica || 'la fábrica' %></th><th class="numero">Fabricar</th></tr></thead>
+      <tbody>
+        <% p.sabores.forEach(function (s) { %>
+          <tr>
+            <td><%= s.sabor %><%= s.linea === 'ARTESANAL' ? ' *' : '' %></td>
+            <td class="numero">unos <%= s.esperados %></td>
+            <td class="numero"><%= s.llenos %></td>
+            <td class="numero"><%- s.fabricar > 0 ? '<strong class="alerta">' + tachos(s.fabricar) + '</strong>' : 'Alcanza' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% if (hayArtesanal) { %>
+      <p class="pista">* Los tachos artesanales también se usan en el mostrador: no todos los llenos quedan libres para los mayoristas.</p>
+    <% } %>
+  <% } %>
+
+  <% if (estimados.length > 0) { %>
+    <h3 class="subtitulo-panel">Cliente por cliente</h3>
+    <ul class="lista-control">
+      <% estimados.forEach(function (c) { const esperados = Math.ceil(c.esperados); %>
+        <li>
+          <a href="/clientes/<%= c.id_cliente %>"><%= c.nombre_razon_social %></a>:
+          <% if (esperados > 0) { %><strong>unos <%= tachos(esperados) %></strong><% } else { %>no le toca comprar en este plazo<% } %>
+          <br><span class="pista">
+            <%= c.atrasado ? 'Ya debería haber comprado: tocaba alrededor del ' + diaMes(c.proxima) : 'Próxima compra alrededor del ' + diaMes(c.proxima) %>.
+            Compra cada <%= c.cada_dias %> <%= c.cada_dias === 1 ? 'día' : 'días' %> y lleva unos <%= tachos(Math.round(c.por_compra)) %>.
+          </span>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+
+  <% if (afuera.length > 0) { %>
+    <h3 class="subtitulo-panel">No se cuentan</h3>
+    <ul class="lista-control">
+      <% afuera.forEach(function (c) { %>
+        <li>
+          <a href="/clientes/<%= c.id_cliente %>"><%= c.nombre_razon_social %></a>:
+          <span class="pista">
+            <% if (c.estado === 'NO_VUELVE') { %>
+              hace <%= c.dias_desde %> días que no compra, más del doble de lo habitual (cada <%= c.cada_dias %> días).
+            <% } else { %>
+              tiene una sola compra en los últimos 6 meses: todavía no se puede estimar cada cuánto compra.
+            <% } %>
+          </span>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</section>
+
 <div class="tarjetas-metricas">
   <article class="tarjeta metrica">
     <h3>Tachos este mes</h3>

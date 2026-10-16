@@ -629,6 +629,10 @@ label.opcion-boton input:focus-visible + span { outline: 3px solid var(--bg-acti
 /* contain: que el texto se acomode al ancho de la caja en vez de ensancharla. */
 .caja-login .olvido { margin-top: 16px; contain: inline-size; }
 
+/* Plazo del pronostico de mayoristas: el elegido lleno, los otros con borde. */
+.elegir-plazo { display: flex; gap: 8px; flex-wrap: wrap; }
+.elegir-plazo a { margin-top: 0; text-decoration: none; padding: 6px 14px; font-size: 14px; }
+
 /* Elegir sucursal al entrar: un boton grande por sucursal. */
 .caja-login .logo-mediano { width: 112px; height: 112px; display: block; margin: 0 auto 8px; }
 .opciones-sucursal { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }

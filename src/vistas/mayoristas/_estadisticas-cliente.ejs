@@ -31,6 +31,22 @@
           </p>
         <% } %>
       </div>
+      <%# El mismo pronostico que "Que fabricar", en Estadisticas de mayoristas. %>
+      <% const pr = e.pronostico; %>
+      <div>
+        <h3 class="subtitulo-panel">Próxima compra probable</h3>
+        <% if (pr && pr.estado === 'ESTIMADO') { %>
+          <p class="metrica-valor-chico"><%= pr.atrasado ? 'Ya debería' : 'Alrededor del ' + pr.proxima.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' }) %></p>
+          <p class="pista">
+            <%= pr.atrasado ? 'Tocaba alrededor del ' + pr.proxima.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' }) + '. ' : '' %>Suele llevar unos <%= Math.round(pr.por_compra) %> <%= Math.round(pr.por_compra) === 1 ? 'tacho' : 'tachos' %>. Es un promedio.
+          </p>
+        <% } else { %>
+          <p class="metrica-valor-chico neutra">—</p>
+          <p class="pista">
+            <%= pr && pr.estado === 'NO_VUELVE' ? 'Hace más del doble de lo habitual que no compra: no se puede prever.' : 'Se calcula con al menos dos compras en los últimos 6 meses.' %>
+          </p>
+        <% } %>
+      </div>
     </div>
 
     <div class="grilla-metricas">
