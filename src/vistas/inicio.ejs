@@ -52,6 +52,17 @@
       <% }) %>
     </ol>
   </details>
+  <%# Si el dueno la achico, sigue achicada la proxima vez (en esa computadora,
+      como el menu lateral). No se esconde del todo: el avance queda a la vista. %>
+  <script>
+    (function () {
+      var guia = document.querySelector('.primeros-pasos');
+      try { if (localStorage.getItem('kokino-guia') === 'cerrada') guia.open = false; } catch (e) {}
+      guia.addEventListener('toggle', function () {
+        try { localStorage.setItem('kokino-guia', guia.open ? 'abierta' : 'cerrada'); } catch (e) {}
+      });
+    })();
+  </script>
 <% } %>
 
 <% if (metricas) { %>
