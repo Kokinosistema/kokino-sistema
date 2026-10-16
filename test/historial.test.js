@@ -59,6 +59,7 @@ before(async () => {
   sucursal = await cajaNueva(empleado);
   dueno = new Navegador(sistema.base);
   await dueno.entrar('dueno');
+  await dueno.enviar('/sucursal', { id_sucursal: sucursal });
 
   for (const [nombre, busqueda] of Object.entries(BUSQUEDAS)) antes[nombre] = (await buscar(dueno, busqueda)).totales;
 

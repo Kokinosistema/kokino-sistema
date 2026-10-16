@@ -629,6 +629,23 @@ label.opcion-boton input:focus-visible + span { outline: 3px solid var(--bg-acti
 /* contain: que el texto se acomode al ancho de la caja en vez de ensancharla. */
 .caja-login .olvido { margin-top: 16px; contain: inline-size; }
 
+/* Elegir sucursal al entrar: un boton grande por sucursal. */
+.caja-login .logo-mediano { width: 112px; height: 112px; display: block; margin: 0 auto 8px; }
+.opciones-sucursal { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.caja-login .opciones-sucursal button[type="submit"] {
+  flex: 1 1 140px;
+  margin-top: 0;
+  padding: 18px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.opciones-sucursal .nombre-sucursal { font-family: var(--font-head); font-size: 20px; }
+.opciones-sucursal .detalle-sucursal { font-size: 13px; font-weight: normal; opacity: 0.9; }
+.caja-login .salir-sin-elegir { text-align: center; }
+.caja-login .salir-sin-elegir button[type="submit"] { width: auto; margin-top: 16px; }
+
 /* ---------- Pantallas angostas ---------- */
 
 @media (max-width: 860px) {

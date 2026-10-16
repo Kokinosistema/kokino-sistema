@@ -38,7 +38,8 @@
   const ruta = typeof rutaActual !== 'undefined' ? rutaActual : '';
   const activo = (prefijo) => (prefijo === '/' ? ruta === '/' : ruta.startsWith(prefijo)) ? 'activo' : '';
 %>
-<% if (usuario) { %>
+<%# Una pantalla suelta (como elegir sucursal al entrar) va sin menu aunque haya alguien logueado. %>
+<% if (usuario && !(typeof pantallaSuelta !== 'undefined' && pantallaSuelta)) { %>
 <div class="app">
   <%# Menu abierto o cerrado: lo recuerda cada navegador (localStorage). Se
       aplica aca, antes de pintar, para que no se vea abrirse y cerrarse. %>

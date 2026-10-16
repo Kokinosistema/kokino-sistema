@@ -1,0 +1,24 @@
+<%- include('../parciales/encabezado', { titulo: 'Elegir sucursal - Kokino' }) %>
+
+<div class="caja-login elegir-sucursal-al-entrar">
+  <img class="logo-mediano" src="/imagenes/logo-512.png" alt="Kokino, helados de tradición" width="112" height="112">
+  <h1>¿En qué sucursal vas a trabajar?</h1>
+  <p class="ayuda">Hola, <%= usuario.nombre %>. La caja, las ventas y el stock que veas van a ser de la sucursal que elijas. Después la podés cambiar desde arriba, en cualquier pantalla.</p>
+
+  <%# Un boton por sucursal, todos del mismo formulario: el que se toca manda su id_sucursal. %>
+  <form method="post" action="/sucursal" class="opciones-sucursal">
+    <input type="hidden" name="volver" value="<%= volver %>">
+    <% disponibles.forEach(function (s) { %>
+      <button type="submit" name="id_sucursal" value="<%= s.id_sucursal %>">
+        <span class="nombre-sucursal"><%= s.nombre %></span>
+        <span class="detalle-sucursal"><%= s.tiene_fabrica ? 'Local y fábrica' : 'Local' %></span>
+      </button>
+    <% }) %>
+  </form>
+
+  <form method="post" action="/logout" class="salir-sin-elegir">
+    <button type="submit" class="boton-secundario">Salir</button>
+  </form>
+</div>
+
+<%- include('../parciales/pie') %>

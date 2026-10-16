@@ -4,7 +4,7 @@
 
 const { describe, test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { levantar, Navegador } = require('./ayudantes');
+const { levantar, Navegador, idSucursal } = require('./ayudantes');
 
 let sistema;
 before(async () => { sistema = await levantar(); });
@@ -87,11 +87,64 @@ describe('Límite de intentos de login', () => {
 // Que cada pantalla del menu abra para un dueno. Parece obvio, pero un error
 // en una vista (por ejemplo, un nombre repetido) tira la pagina entera, y
 // sin esto no se nota hasta que alguien entra.
+describe('Elegir sucursal al entrar', () => {
+  test('al dueño, después de entrar, se le pregunta en qué sucursal va a trabajar', async () => {
+    const nav = new Navegador(sistema.base);
+    const login = await nav.entrar('dueno');
+    const inicio = await nav.abrir(login.destino);
+    assert.equal(inicio.estado, 302);
+    assert.match(inicio.destino, /^\/sucursal$/);
+    const { estado, html } = await nav.abrir('/sucursal');
+    assert.equal(estado, 200);
+    assert.match(html, /¿En qué sucursal vas a trabajar\?/);
+    // Un boton por cada sucursal activa.
+    assert.equal([...html.matchAll(/name="id_sucursal" value="\d+"/g)].length, 2);
+  });
+
+  test('sin elegir no puede usar ninguna pantalla, y después de elegir vuelve a la que pidió', async () => {
+    const nav = new Navegador(sistema.base);
+    await nav.entrar('dueno');
+    const caja = await nav.abrir('/caja');
+    assert.equal(caja.destino, '/sucursal?volver=%2Fcaja');
+    const er = await idSucursal('Entre Ríos');
+    const eleccion = await nav.enviar('/sucursal', { id_sucursal: er, volver: '/caja' });
+    assert.equal(eleccion.destino, '/caja');
+    const { estado, html } = await nav.abrir('/caja');
+    assert.equal(estado, 200);
+    assert.match(html, /<option value="\d+" selected>Entre Ríos<\/option>/);
+  });
+
+  test('una sucursal que no existe no cuenta como elegida', async () => {
+    const nav = new Navegador(sistema.base);
+    await nav.entrar('dueno');
+    await nav.enviar('/sucursal', { id_sucursal: '99999' });
+    assert.match((await nav.abrir('/')).destino, /^\/sucursal$/);
+  });
+
+  test('la vuelta después de elegir no puede llevar a otro sitio', async () => {
+    const nav = new Navegador(sistema.base);
+    await nav.entrar('dueno');
+    const r = await nav.enviar('/sucursal', { id_sucursal: await idSucursal('Alem'), volver: '//otro.com' });
+    assert.equal(r.destino, '/');
+  });
+
+  test('al empleado no se le pregunta: entra directo a su sucursal', async () => {
+    const nav = new Navegador(sistema.base);
+    // No con alem.prueba: la prueba del limite de intentos lo deja bloqueado.
+    const login = await nav.entrar('empleado');
+    const inicio = await nav.abrir(login.destino);
+    assert.equal(inicio.estado, 200);
+    assert.match(inicio.html, /class="sucursal"><span class="rotulo-sucursal">Sucursal<\/span> Entre Ríos</);
+    assert.equal((await nav.abrir('/sucursal')).destino, '/');
+  });
+});
+
 describe('El dueño', () => {
   let nav;
   before(async () => {
     nav = new Navegador(sistema.base);
     await nav.entrar('dueno');
+    await nav.enviar('/sucursal', { id_sucursal: await idSucursal('Entre Ríos') });
   });
 
   for (const ruta of ['/', '/ventas', '/pedidosya', '/caja', '/fabricacion', '/mercaderia', '/envios', '/recetas',

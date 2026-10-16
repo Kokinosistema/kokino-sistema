@@ -27,8 +27,14 @@ async function sucursalesDisponibles(usuario) {
 
 // La sucursal sobre la que se esta trabajando, para todas las pantallas a la
 // vez: las dos sucursales funcionan por separado (caja, ventas y stock
-// propios), asi que el dueno elige una arriba y todo el sistema le muestra
-// esa hasta que la cambie. El empleado no elige: es la suya.
+// propios), asi que el dueno elige una y todo el sistema le muestra esa hasta
+// que la cambie desde arriba. El empleado no elige: es la suya.
+//
+// El dueno elige al entrar (pedido por la usuaria el 2026-10-16): antes se le
+// asignaba la primera por orden alfabetico, y podia ponerse a trabajar sobre
+// Alem sin darse cuenta. Mientras no elige, cualquier pantalla lo manda a
+// elegir y despues lo lleva a donde iba. La eleccion dura lo que la sesion:
+// al volver a entrar se le pregunta de nuevo.
 //
 // Queda en req.sucursal y, para las vistas, en res.locals.sucursal. Las
 // sucursales entre las que se puede elegir van en res.locals.sucursalesElegibles
@@ -37,7 +43,15 @@ async function sucursalDeTrabajo(req, res, siguiente) {
   try {
     const disponibles = await sucursalesDisponibles(req.session.usuario);
     const guardada = Number(req.session.idSucursalDeTrabajo);
-    const actual = disponibles.find((s) => s.id_sucursal === guardada) || disponibles[0];
+    const elegida = disponibles.find((s) => s.id_sucursal === guardada);
+    if (!elegida && disponibles.length > 1) {
+      // Lo unico que se puede hacer sin haber elegido es elegir.
+      if (req.path === '/sucursal') return siguiente();
+      // Un formulario mandado sin sucursal no se puede retomar: se vuelve al Inicio.
+      const volver = req.method === 'GET' ? req.originalUrl : '/';
+      return res.redirect(volver === '/' ? '/sucursal' : '/sucursal?volver=' + encodeURIComponent(volver));
+    }
+    const actual = elegida || disponibles[0];
     if (actual && actual.id_sucursal !== guardada) req.session.idSucursalDeTrabajo = actual.id_sucursal;
 
     req.sucursal = actual;
@@ -49,11 +63,32 @@ async function sucursalDeTrabajo(req, res, siguiente) {
   }
 }
 
-// Cambia la sucursal de trabajo y vuelve a la pantalla donde se estaba.
 // La direccion de vuelta se acepta solo si es una ruta de este mismo sitio:
 // si no, un enlace armado a mano podria mandar al usuario a otra pagina.
 // Tiene que empezar con una barra y no seguir con otra barra ni con una
 // invertida: los navegadores leen "//otro.com" y "/\otro.com" como otro sitio.
+function rutaPropia(volver) {
+  return typeof volver === 'string' && /^\/(?![/\\])/.test(volver) ? volver : '/';
+}
+
+// La pantalla para elegir sucursal al entrar. Tambien se puede abrir despues,
+// ya elegida; a quien tiene una sola no le sirve y va al Inicio.
+async function mostrarEleccion(req, res, siguiente) {
+  try {
+    const disponibles = await sucursalesDisponibles(req.session.usuario);
+    if (disponibles.length < 2) return res.redirect('/');
+    res.render('sucursales/elegir', {
+      pantallaSuelta: true,
+      disponibles,
+      volver: rutaPropia(req.query.volver),
+    });
+  } catch (error) {
+    siguiente(error);
+  }
+}
+
+// Cambia la sucursal de trabajo y vuelve a la pantalla donde se estaba. Es
+// la misma para la eleccion al entrar y para el selector de arriba.
 async function cambiarSucursal(req, res, siguiente) {
   try {
     const disponibles = await sucursalesDisponibles(req.session.usuario);
@@ -62,8 +97,7 @@ async function cambiarSucursal(req, res, siguiente) {
       req.session.idSucursalDeTrabajo = pedida.id_sucursal;
       req.session.aviso = 'Ahora estás trabajando sobre ' + pedida.nombre + '.';
     }
-    const volver = typeof req.body.volver === 'string' ? req.body.volver : '/';
-    res.redirect(/^\/(?![/\\])/.test(volver) ? volver : '/');
+    res.redirect(rutaPropia(req.body.volver));
   } catch (error) {
     siguiente(error);
   }
@@ -76,4 +110,4 @@ async function cambiarSucursal(req, res, siguiente) {
 const CAMBIO_DE_SUCURSAL =
   'Cambiaste de sucursal mientras tenías esta pantalla abierta: revisá los datos y volvé a intentar.';
 
-module.exports = { sucursalesDisponibles, sucursalDeTrabajo, cambiarSucursal, CAMBIO_DE_SUCURSAL };
+module.exports = { sucursalesDisponibles, sucursalDeTrabajo, mostrarEleccion, cambiarSucursal, CAMBIO_DE_SUCURSAL };

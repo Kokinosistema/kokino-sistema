@@ -7,7 +7,7 @@ const AlmacenPg = require('connect-pg-simple')(session);
 const { pool } = require('./db');
 
 const { exigirLogin, exponerUsuario, exponerAviso } = require('./middleware/sesion');
-const { sucursalDeTrabajo, cambiarSucursal } = require('./sucursales');
+const { sucursalDeTrabajo, mostrarEleccion, cambiarSucursal } = require('./sucursales');
 const { pesos } = require('./dinero');
 const { CARTAS, conCarta } = require('./cartas');
 const rutasAuth = require('./rutas/auth');
@@ -92,6 +92,7 @@ function crearAplicacion() {
   app.use(rutasAuth);
   app.use(exigirLogin);
   app.use(sucursalDeTrabajo);
+  app.get('/sucursal', mostrarEleccion);
   app.post('/sucursal', cambiarSucursal);
   app.use(rutasEnvios.exponerPorRecibir);
 
