@@ -33,7 +33,7 @@
 // No se usa en produccion: solo para mostrar el sistema.
 //
 // Se carga en dos tandas dentro de la misma transaccion:
-// 1. Con los triggers apagados (session_replication_role = replica): el
+// 1. Con los triggers apagados (ver apagarTriggers, mas abajo): el
 //    historial de mostrador, porque las cajas de dias pasados ya estan
 //    cerradas y la base no deja agregarles ventas ni egresos; por eso el stock
 //    de demostracion se carga aparte, con movimientos de AJUSTE. El catalogo
@@ -569,6 +569,25 @@ DELETE FROM usuarios WHERE id_usuario IN (SELECT id_usuario FROM demo_u);
 DELETE FROM empleados WHERE id_empleado IN (SELECT id_empleado FROM demo_u);
 `;
 
+// Apaga o prende los triggers propios de cada tabla (no las claves foraneas,
+// que siguen controlando). Se hace tabla por tabla y no con
+// session_replication_role porque eso pide ser superusuario, y en la nube
+// (Render) nadie lo es; ALTER TABLE solo pide ser el dueno de la tabla, y el
+// dueno es el usuario que corrio las migraciones. Va dentro de la
+// transaccion: si algo falla, los triggers quedan como estaban.
+async function apagarTriggers(c, apagar) {
+  const { rows } = await c.query(
+    `SELECT DISTINCT format('%I.%I', n.nspname, cl.relname) AS tabla
+       FROM pg_trigger t
+       JOIN pg_class cl ON cl.oid = t.tgrelid
+       JOIN pg_namespace n ON n.oid = cl.relnamespace
+      WHERE NOT t.tgisinternal AND n.nspname = 'public'`
+  );
+  for (const { tabla } of rows) {
+    await c.query('ALTER TABLE ' + tabla + (apagar ? ' DISABLE' : ' ENABLE') + ' TRIGGER USER');
+  }
+}
+
 async function principal() {
   const accion = process.argv[2];
   if (!['cargar', 'borrar'].includes(accion)) {
@@ -592,12 +611,10 @@ async function principal() {
       return;
     }
     await c.query('BEGIN');
-    await c.query('SET LOCAL session_replication_role = replica');
+    await apagarTriggers(c, true);
     await c.query(accion === 'cargar' ? SQL_CARGAR : SQL_BORRAR);
-    if (accion === 'cargar') {
-      await c.query('SET LOCAL session_replication_role = origin');
-      await c.query(SQL_OPERAR);
-    }
+    await apagarTriggers(c, false);
+    if (accion === 'cargar') await c.query(SQL_OPERAR);
     await c.query('COMMIT');
     if (accion === 'cargar') {
       const { rows: [r] } = await c.query(
