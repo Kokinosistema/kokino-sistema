@@ -44,9 +44,10 @@
 <% if (usuario && !(typeof pantallaSuelta !== 'undefined' && pantallaSuelta)) { %>
 <div class="app">
   <%# Menu abierto o cerrado: lo recuerda cada navegador (localStorage). Se
-      aplica aca, antes de pintar, para que no se vea abrirse y cerrarse. %>
+      aplica aca, antes de pintar, para que no se vea abrirse y cerrarse. En
+      el celular no: ahi el menu es un panel que arranca siempre escondido. %>
   <script>
-    try { if (localStorage.getItem('kokino-menu') === 'cerrado') document.currentScript.parentElement.classList.add('menu-cerrado'); } catch (e) {}
+    try { if (localStorage.getItem('kokino-menu') === 'cerrado' && window.matchMedia('(min-width: 861px)').matches) document.currentScript.parentElement.classList.add('menu-cerrado'); } catch (e) {}
   </script>
   <aside class="lateral">
     <a class="logo" href="/">
@@ -181,19 +182,49 @@
       </button>
       <script>
         // Abre y cierra la franja del menu y lo recuerda en este navegador.
+        // En el celular el mismo boton abre el menu como un panel encima de
+        // la pantalla; ese no se recuerda, porque al elegir una opcion se
+        // cambia de pagina y lo natural es que la nueva arranque sin el menu.
         (function () {
           var app = document.querySelector('.app');
           var boton = document.getElementById('alternar-menu');
+          var celular = window.matchMedia('(max-width: 860px)');
+          function cerrado() {
+            return celular.matches ? !app.classList.contains('menu-celular') : app.classList.contains('menu-cerrado');
+          }
           function mostrar() {
-            var cerrado = app.classList.contains('menu-cerrado');
-            var texto = cerrado ? 'Abrir el menú' : 'Cerrar el menú';
+            var texto = cerrado() ? 'Abrir el menú' : 'Cerrar el menú';
             boton.setAttribute('aria-label', texto);
             boton.title = texto;
-            boton.setAttribute('aria-expanded', cerrado ? 'false' : 'true');
+            boton.setAttribute('aria-expanded', cerrado() ? 'false' : 'true');
           }
-          boton.addEventListener('click', function () {
-            app.classList.toggle('menu-cerrado');
-            try { localStorage.setItem('kokino-menu', app.classList.contains('menu-cerrado') ? 'cerrado' : 'abierto'); } catch (e) {}
+          function cerrarCelular() {
+            if (!app.classList.contains('menu-celular')) return;
+            app.classList.remove('menu-celular');
+            mostrar();
+          }
+          boton.addEventListener('click', function (e) {
+            if (celular.matches) {
+              e.stopPropagation();
+              app.classList.toggle('menu-celular');
+            } else {
+              app.classList.toggle('menu-cerrado');
+              try { localStorage.setItem('kokino-menu', app.classList.contains('menu-cerrado') ? 'cerrado' : 'abierto'); } catch (e) {}
+            }
+            mostrar();
+          });
+          // Con el panel abierto, tocar afuera o Escape lo cierra.
+          document.addEventListener('click', function (e) {
+            if (celular.matches && !e.target.closest('.lateral')) cerrarCelular();
+          });
+          document.addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrarCelular(); });
+          // Si la ventana pasa de un tamano al otro (girar una tablet), cada
+          // forma del menu vuelve a su estado propio.
+          celular.addEventListener('change', function () {
+            app.classList.remove('menu-celular');
+            var achicado = false;
+            try { achicado = localStorage.getItem('kokino-menu') === 'cerrado'; } catch (e) {}
+            app.classList.toggle('menu-cerrado', !celular.matches && achicado);
             mostrar();
           });
           mostrar();
@@ -204,7 +235,7 @@
         <form class="elegir-sucursal" method="post" action="/sucursal">
           <input type="hidden" name="volver" value="<%= rutaActual %>">
           <label>
-            Sucursal
+            <span class="rotulo-sucursal">Sucursal</span>
             <select name="id_sucursal" onchange="this.form.submit()">
               <% sucursalesElegibles.forEach(function (s) { %>
                 <option value="<%= s.id_sucursal %>" <%= s.id_sucursal === sucursal.id_sucursal ? 'selected' : '' %>><%= s.nombre %></option>
@@ -218,7 +249,7 @@
       <% } %>
       <span class="quien">
         <span class="avatar"><%= (usuario.nombre || '?').charAt(0).toUpperCase() %></span>
-        <%= usuario.nombre %>
+        <span class="nombre-quien"><%= usuario.nombre %></span>
         <span class="etiqueta"><%= usuario.rol === 'administrador' ? 'dueña/o' : 'empleado' %></span>
       </span>
       <form method="post" action="/logout">

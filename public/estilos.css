@@ -666,12 +666,6 @@ label.opcion-boton input:focus-visible + span { outline: 3px solid var(--bg-acti
 
 @media (max-width: 860px) {
   .app { flex-direction: column; background: var(--bg-base); }
-  .lateral { width: 100%; height: auto; position: static; padding: 12px 16px; }
-  .logo { margin-bottom: 12px; justify-content: flex-start; }
-  .logo img { width: 64px; height: 64px; }
-  .menu { flex-direction: row; flex-wrap: wrap; }
-  .pie-lateral { display: none; }
-  .cabecera { height: auto; padding: 10px 16px; flex-wrap: wrap; }
   main { padding: 16px; }
   .venta { grid-template-columns: 1fr; }
   .pedido { position: static; }
@@ -917,12 +911,6 @@ label.opcion-turno span { border-radius: var(--radius-md); }
 .app.menu-cerrado .menu a { justify-content: center; padding: 10px 0; position: relative; }
 .app.menu-cerrado .menu svg { width: 22px; height: 22px; }
 .app.menu-cerrado .menu .contador { position: absolute; top: 2px; right: 2px; margin: 0; min-width: 18px; padding: 0 5px; font-size: 11px; }
-@media (max-width: 860px) {
-  .app.menu-cerrado { background: var(--bg-base); }
-  .app.menu-cerrado .lateral { width: 100%; padding: 8px 12px; }
-  .app.menu-cerrado .logo { display: none; }
-  .app.menu-cerrado .menu a { padding: 8px 10px; }
-}
 .app.menu-cerrado main { max-width: 1370px; }
 
 /* Al tocar un producto en Vender, un destello mientras se suma (sin recargar). */
@@ -980,9 +968,6 @@ label.opcion-turno span { border-radius: var(--radius-md); }
 .menu { overflow-y: auto; min-height: 0; }
 .menu a { padding: 8px 12px; }
 .app.menu-cerrado .grupo-menu { font-size: 0; height: 1px; margin: 8px 10px; background: rgba(255, 255, 255, 0.35); }
-@media (max-width: 860px) {
-  .grupo-menu { display: none; }
-}
 /* Pantallas bajas (notebooks de 768 px): el menú de los dueños tiene que
    entrar entero. */
 .menu { flex: 1 1 auto; }
@@ -1033,11 +1018,6 @@ label.opcion-turno span { border-radius: var(--radius-md); }
 .app.menu-cerrado .grupo-enlaces, .app.menu-cerrado .grupo-enlaces[hidden] { display: flex; padding-left: 0; }
 .app.menu-cerrado .menu button.grupo-menu { font-size: 0; height: 1px; padding: 0; margin: 8px 10px; background: rgba(255, 255, 255, 0.5); pointer-events: none; width: auto; }
 .app.menu-cerrado .menu button.grupo-menu > * { display: none; }
-/* En pantallas angostas (menu horizontal), todas las pestanas a la vista. */
-@media (max-width: 860px) {
-  .menu button.grupo-menu { display: none; }
-  .grupo-enlaces, .grupo-enlaces[hidden] { display: contents; }
-}
 
 /* Barra achicada: un icono por grupo; sus opciones se abren en un recuadro
    flotante al costado, con icono y nombre. */
@@ -1078,3 +1058,59 @@ label.opcion-turno span { border-radius: var(--radius-md); }
 .titulo-categoria .atajos { margin: 6px 0 0; }
 .atajos kbd { font-family: inherit; font-size: 11px; padding: 1px 5px; margin: 0 1px; border: 1px solid var(--border-soft); border-bottom-width: 2px; border-radius: 4px; background: var(--bg-panel); }
 @media (max-width: 860px) { .atajos { display: none; } }
+
+/* ---------- Celular ---------- */
+
+/* El menú es un panel que sale desde la izquierda al tocar el botón de las
+   tres rayas, por encima de la pantalla, en vez de ocupar la mitad de arriba
+   de cada página. Arranca escondido y se cierra tocando afuera. */
+@media (max-width: 860px) {
+  .lateral {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 70;
+    width: min(300px, 85vw); height: auto; padding: 16px 12px;
+    overflow-y: auto;
+    transform: translateX(-100%); visibility: hidden;
+    transition: transform 0.2s ease, visibility 0s 0.2s;
+  }
+  .app.menu-celular .lateral {
+    transform: none; visibility: visible;
+    transition: transform 0.2s ease;
+    box-shadow: 0 10px 30px rgba(18, 60, 50, 0.3);
+  }
+  /* Oscurece lo de atrás mientras el menú está abierto. */
+  .app.menu-celular::after {
+    content: ''; position: fixed; inset: 0; z-index: 65;
+    background: rgba(18, 40, 35, 0.4);
+  }
+  .logo { margin-bottom: 12px; }
+  .logo img { width: 72px; height: 72px; }
+  .menu a { padding: 10px 12px; font-size: 15px; }
+  .pie-lateral { display: none; }
+
+  /* La barra de arriba en un solo renglón: menú, sucursal, quién y Salir.
+     El nombre se esconde porque la inicial ya dice quién está. */
+  .cabecera { height: auto; min-height: 56px; padding: 8px 12px; gap: 8px; }
+  .nombre-quien, .etiqueta { display: none; }
+  .elegir-sucursal { min-width: 0; }
+  .elegir-sucursal label { gap: 6px; }
+  .elegir-sucursal select { max-width: 100%; }
+  .cabecera .sucursal { min-width: 0; }
+
+  /* Las tablas anchas se deslizan de costado dentro de su recuadro, y la
+     página queda quieta. */
+  .tabla { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabla th, .tabla td { white-space: nowrap; }
+
+  /* Gráfico de barras: los montos de arriba se pisan entre sí, y al tocar
+     una barra ya aparece su detalle. Abajo, una fecha sí y una no, siempre
+     con "hoy" a la vista. */
+  .barra-valor { visibility: hidden; }
+  .barras:not(.barras-chicas) .barra:nth-child(even):not(.hoy) .barra-etiqueta { visibility: hidden; }
+}
+
+/* En los celulares más angostos no entra la palabra "Sucursal": queda el
+   nombre de la sucursal solo. Se esconde a la vista pero no para los
+   lectores de pantalla, que la siguen leyendo como rótulo del selector. */
+@media (max-width: 400px) {
+  .rotulo-sucursal { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
