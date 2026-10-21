@@ -13,7 +13,7 @@
     "seed:costos-insumo": "node --env-file=.env seeds/costos_insumo.js",
     "start": "node --env-file-if-exists=.env server.js",
     "dev": "node --env-file=.env --watch server.js",
-    "crear-usuario": "node --env-file=.env scripts/crear-usuario.js",
+    "crear-usuario": "node --env-file-if-exists=.env scripts/crear-usuario.js",
     "copia": "node --env-file=.env scripts/copia-de-seguridad.js",
     "demo:cargar": "node --env-file=.env scripts/datos-demo.js cargar",
     "demo:borrar": "node --env-file=.env scripts/datos-demo.js borrar"
@@ -26,8 +26,7 @@
     "node": ">=22.9"
   },
   "devDependencies": {
-    "dotenv": "^17.4.2",
-    "node-pg-migrate": "^9.0.0"
+    "dotenv": "^17.4.2"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -35,6 +34,7 @@
     "ejs": "^6.0.1",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
+    "node-pg-migrate": "^9.0.0",
     "pg": "^8.23.0"
   }
 }
