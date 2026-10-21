@@ -7,8 +7,9 @@
 //   cajas cerradas por turno y algunos egresos;
 // - stock de productos e insumos y tachos de helado;
 // - lo que todavia no cargaron los duenos, inventado: clientes mayoristas,
-//   precios mayoristas, costos de los productos que no tienen, insumos de los
-//   productos de cafeteria y recetas de los sabores;
+//   precios mayoristas, costos de los productos y de los insumos que no
+//   tienen, insumos de los productos de cafeteria y de los postres que se
+//   arman al vender, y recetas de los sabores;
 // - la operacion de los ultimos 30 dias: fabricacion, envios a Alem, ventas
 //   mayoristas con su cuenta corriente, devoluciones de envases e ingresos de
 //   mercaderia de los proveedores.
@@ -20,8 +21,8 @@
 // - lo operativo queda a nombre del usuario "demo.datos" (empleado "Datos de
 //   demostracion", inactivo: no puede entrar);
 // - los lotes de helado tienen codigo DEMO-...;
-// - lo que va a tablas que ya tienen datos reales (costos, insumos de
-//   productos, recetas, clientes) se reconoce por su created_at: todo se carga
+// - lo que va a tablas que ya tienen datos reales (costos de productos e
+//   insumos, insumos de productos, recetas, clientes) se reconoce por su created_at: todo se carga
 //   en una sola transaccion, y now() es el mismo durante toda la transaccion,
 //   asi que esas filas tienen exactamente el created_at del usuario demo.
 //
@@ -247,8 +248,20 @@ BEGIN
    WHERE p.activo
      AND NOT EXISTS (SELECT 1 FROM costos_producto c WHERE c.id_producto = p.id_producto AND c.fecha_vigencia_hasta IS NULL);
 
-  -- Insumos de los productos de cafeteria (los demas productos no tienen un
-  -- insumo cargado que les corresponda, como el envase del pote familiar).
+  -- Costo de los insumos que no estan en la planilla de formulaciones
+  -- (cucuruchos, envases, cafe y algunas materias primas), segun su unidad.
+  INSERT INTO costos_insumo (id_insumo, costo, fecha_vigencia_desde)
+  SELECT i.id_insumo,
+         round((CASE um.abreviatura WHEN 'un' THEN 60 + random() * 340 ELSE 4000 + random() * 11000 END)::numeric, -1),
+         current_date - ${DIAS}
+    FROM insumos i
+    JOIN unidades_medida um ON um.id_unidad = i.id_unidad_medida
+   WHERE i.activo
+     AND NOT EXISTS (SELECT 1 FROM costos_insumo c WHERE c.id_insumo = i.id_insumo AND c.fecha_vigencia_hasta IS NULL);
+
+  -- Insumos de los productos de cafeteria y de los postres que se arman al
+  -- vender (los demas productos no tienen un insumo cargado que les
+  -- corresponda, como el envase del pote familiar).
   SELECT id_unidad INTO v_gr FROM unidades_medida WHERE abreviatura = 'gr';
   SELECT id_unidad INTO v_un FROM unidades_medida WHERE abreviatura = 'un';
   INSERT INTO producto_insumos (id_producto, id_insumo, cantidad, id_unidad_medida)
@@ -257,7 +270,11 @@ BEGIN
                  ('Jarrito', 'Café (bolsas de 1/2 kg)', 14, 'gr'),
                  ('Jarrito y alfajor', 'Café (bolsas de 1/2 kg)', 14, 'gr'),
                  ('Affogato', 'Café (bolsas de 1/2 kg)', 10, 'gr'),
-                 ('Affogato', 'Vasito', 1, 'un')) AS d (producto, insumo, cantidad, unidad)
+                 ('Affogato', 'Vasito', 1, 'un'),
+                 ('Baño de chocolate', 'Cobertura amarga', 30, 'gr'),
+                 ('Brownie con helado', 'Vaso', 1, 'un'),
+                 ('Brownie con helado', 'Cobertura amarga', 20, 'gr'),
+                 ('Volcán con helado', 'Vaso', 1, 'un')) AS d (producto, insumo, cantidad, unidad)
     JOIN productos p ON p.nombre = d.producto
     JOIN insumos i ON i.nombre = d.insumo
    WHERE NOT EXISTS (SELECT 1 FROM producto_insumos x WHERE x.id_producto = p.id_producto AND x.id_insumo = i.id_insumo);
@@ -545,6 +562,7 @@ DELETE FROM receta_detalle WHERE created_at = (SELECT marca FROM demo_u);
 DELETE FROM recetas WHERE created_at = (SELECT marca FROM demo_u);
 DELETE FROM producto_insumos WHERE created_at = (SELECT marca FROM demo_u);
 DELETE FROM costos_producto WHERE created_at = (SELECT marca FROM demo_u);
+DELETE FROM costos_insumo WHERE created_at = (SELECT marca FROM demo_u);
 DELETE FROM precios_mayoristas WHERE id_usuario IN (SELECT id_usuario FROM demo_u);
 DELETE FROM clientes WHERE created_at = (SELECT marca FROM demo_u) AND nombre_razon_social LIKE 'Demo · %';
 DELETE FROM usuarios WHERE id_usuario IN (SELECT id_usuario FROM demo_u);
@@ -594,6 +612,7 @@ async function principal() {
                 (SELECT count(*) FROM ingresos_mercaderia WHERE id_usuario IN (SELECT id_usuario FROM u))::int AS ingresos,
                 (SELECT count(*) FROM recetas WHERE created_at = (SELECT created_at FROM u))::int AS recetas,
                 (SELECT count(*) FROM costos_producto WHERE created_at = (SELECT created_at FROM u))::int AS costos,
+                (SELECT count(*) FROM costos_insumo WHERE created_at = (SELECT created_at FROM u))::int AS costos_insumo,
                 (SELECT count(*) FROM clientes WHERE created_at = (SELECT created_at FROM u))::int AS clientes`,
         [USUARIO]
       );
@@ -601,7 +620,7 @@ async function principal() {
       console.log('  ' + r.ventas + ' ventas de mostrador en ' + r.cajas + ' turnos de caja, con ' + r.egresos + ' egresos');
       console.log('  ' + r.clientes + ' clientes mayoristas y ' + r.mayoristas + ' ventas mayoristas');
       console.log('  ' + r.producciones + ' fabricaciones, ' + r.envios + ' envíos, ' + r.ingresos + ' ingresos de mercadería y ' + r.tachos + ' tachos');
-      console.log('  ' + r.recetas + ' recetas y ' + r.costos + ' costos de producto');
+      console.log('  ' + r.recetas + ' recetas, ' + r.costos + ' costos de producto y ' + r.costos_insumo + ' costos de insumo');
       console.log('Para sacarlos: npm run demo:borrar');
     } else {
       console.log('Datos de demostración borrados.');
