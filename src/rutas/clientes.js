@@ -37,7 +37,10 @@ function soloAdministrador(req, res) {
 // Los campos de cuenta corriente solo los lee el administrador. Para el
 // empleado ni siquiera se miran: asi no puede borrar un limite mandando el
 // formulario sin esos campos.
-function leerFormulario(cuerpo, puedeTocarCredito, valoresActuales) {
+//
+// La lista de precios va con la cuenta corriente: tambien es una decision de
+// los duenos. Elegir la Lista general guarda vacio, que es lo mismo.
+function leerFormulario(cuerpo, puedeTocarCredito, valoresActuales, listas) {
   const datos = {
     nombre_razon_social: (cuerpo.nombre_razon_social || '').trim(),
     // Solo se cargan mayoristas: no se toma el tipo del formulario.
@@ -47,6 +50,7 @@ function leerFormulario(cuerpo, puedeTocarCredito, valoresActuales) {
     direccion: (cuerpo.direccion || '').trim() || null,
     limite_cuenta_corriente: valoresActuales ? valoresActuales.limite_cuenta_corriente : null,
     plazo_pago_dias: valoresActuales ? valoresActuales.plazo_pago_dias : null,
+    id_lista_precios: valoresActuales ? valoresActuales.id_lista_precios : null,
   };
   const errores = [];
 
@@ -81,6 +85,10 @@ function leerFormulario(cuerpo, puedeTocarCredito, valoresActuales) {
     if (dias !== '' && datos.plazo_pago_dias === null) {
       errores.push('Los días para pagar tienen que ser un número entero, sin letras ni comas (por ejemplo, 30).');
     }
+    const elegida = typeof cuerpo.id_lista_precios === 'string' ? cuerpo.id_lista_precios : '';
+    const lista = listas.find((l) => String(l.id_lista_precios) === elegida);
+    datos.id_lista_precios = lista && !lista.es_general ? lista.id_lista_precios : null;
+    if (elegida !== '' && !lista) errores.push('Elegí una de las listas de precios.');
   }
 
   // La base tiene un constraint que impide que un minorista tenga cuenta
@@ -120,54 +128,65 @@ router.get('/', async (req, res, siguiente) => {
   }
 });
 
-router.get('/nuevo', (req, res) => {
-  res.render('clientes/formulario', {
-    cliente: {
-      nombre_razon_social: '', tipo_cliente: 'MAYORISTA', cuit: '',
-      telefono: '', direccion: '', limite_cuenta_corriente: '', plazo_pago_dias: '',
-    },
-    errores: [],
-    esNuevo: true,
-    puedeCredito: esAdministrador(req),
-    TIPOS,
+// Las listas de precios para elegir, la general primero.
+async function listasDePrecios() {
+  const { rows } = await consultar(
+    'SELECT id_lista_precios, nombre, es_general FROM listas_precios_mayoristas ORDER BY es_general DESC, nombre'
+  );
+  return rows;
+}
+
+async function mostrarFormulario(req, res, { cliente, errores = [], esNuevo, estado = 200 }) {
+  res.status(estado).render('clientes/formulario', {
+    cliente, errores, esNuevo, puedeCredito: esAdministrador(req), TIPOS, listas: await listasDePrecios(),
   });
+}
+
+router.get('/nuevo', async (req, res, siguiente) => {
+  try {
+    await mostrarFormulario(req, res, {
+      cliente: {
+        nombre_razon_social: '', tipo_cliente: 'MAYORISTA', cuit: '',
+        telefono: '', direccion: '', limite_cuenta_corriente: '', plazo_pago_dias: '', id_lista_precios: '',
+      },
+      esNuevo: true,
+    });
+  } catch (error) {
+    siguiente(error);
+  }
 });
 
 router.post('/', async (req, res, siguiente) => {
-  const puedeCredito = esAdministrador(req);
-  const { datos, errores } = leerFormulario(req.body, puedeCredito, null);
-
-  if (!puedeCredito && datos.tipo_cliente === 'MAYORISTA') {
-    return soloAdministrador(req, res);
-  }
-
-  if (errores.length > 0) {
-    return res.status(400).render('clientes/formulario', {
-      cliente: req.body, errores, esNuevo: true, puedeCredito, TIPOS,
-    });
-  }
-
   try {
-    await consultar(
-      `INSERT INTO clientes
-         (nombre_razon_social, tipo_cliente, cuit, telefono, direccion,
-          limite_cuenta_corriente, plazo_pago_dias)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [datos.nombre_razon_social, datos.tipo_cliente, datos.cuit, datos.telefono,
-        datos.direccion, datos.limite_cuenta_corriente, datos.plazo_pago_dias]
-    );
+    const puedeCredito = esAdministrador(req);
+    const { datos, errores } = leerFormulario(req.body, puedeCredito, null, await listasDePrecios());
+
+    if (!puedeCredito && datos.tipo_cliente === 'MAYORISTA') {
+      return soloAdministrador(req, res);
+    }
+
+    if (errores.length > 0) {
+      return mostrarFormulario(req, res, { cliente: req.body, errores, esNuevo: true, estado: 400 });
+    }
+
+    try {
+      await consultar(
+        `INSERT INTO clientes
+           (nombre_razon_social, tipo_cliente, cuit, telefono, direccion,
+            limite_cuenta_corriente, plazo_pago_dias, id_lista_precios)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [datos.nombre_razon_social, datos.tipo_cliente, datos.cuit, datos.telefono,
+          datos.direccion, datos.limite_cuenta_corriente, datos.plazo_pago_dias, datos.id_lista_precios]
+      );
+    } catch (error) {
+      if (error.code !== '23505') throw error;
+      return mostrarFormulario(req, res, {
+        cliente: req.body, errores: ['Ya hay otro cliente cargado con ese CUIT.'], esNuevo: true, estado: 409,
+      });
+    }
     req.session.aviso = 'Se agrego a ' + datos.nombre_razon_social + '.';
     res.redirect('/clientes');
   } catch (error) {
-    if (error.code === '23505') {
-      return res.status(409).render('clientes/formulario', {
-        cliente: req.body,
-        errores: ['Ya hay otro cliente cargado con ese CUIT.'],
-        esNuevo: true,
-        puedeCredito,
-        TIPOS,
-      });
-    }
     siguiente(error);
   }
 });
@@ -184,9 +203,7 @@ router.get('/:id/editar', async (req, res, siguiente) => {
     if (cliente.tipo_cliente === 'MAYORISTA' && !esAdministrador(req)) {
       return soloAdministrador(req, res);
     }
-    res.render('clientes/formulario', {
-      cliente, errores: [], esNuevo: false, puedeCredito: esAdministrador(req), TIPOS,
-    });
+    await mostrarFormulario(req, res, { cliente, esNuevo: false });
   } catch (error) {
     siguiente(error);
   }
@@ -204,38 +221,34 @@ router.post('/:id', async (req, res, siguiente) => {
 
     // Al empleado se le conservan los valores que ya tenia el cliente, para
     // que guardar el telefono no le borre nada que no ve.
-    const { datos, errores } = leerFormulario(req.body, puedeCredito, actual);
+    const { datos, errores } = leerFormulario(req.body, puedeCredito, actual, await listasDePrecios());
+    const cliente = Object.assign({ id_cliente: req.params.id }, req.body);
 
     if (errores.length > 0) {
-      return res.status(400).render('clientes/formulario', {
-        cliente: Object.assign({ id_cliente: req.params.id }, req.body),
-        errores, esNuevo: false, puedeCredito, TIPOS,
-      });
+      return mostrarFormulario(req, res, { cliente, errores, esNuevo: false, estado: 400 });
     }
 
-    await consultar(
-      `UPDATE clientes
-          SET nombre_razon_social = $1, tipo_cliente = $2, cuit = $3,
-              telefono = $4, direccion = $5,
-              limite_cuenta_corriente = $6, plazo_pago_dias = $7
-        WHERE id_cliente = $8`,
-      [datos.nombre_razon_social, datos.tipo_cliente, datos.cuit, datos.telefono,
-        datos.direccion, datos.limite_cuenta_corriente, datos.plazo_pago_dias,
-        req.params.id]
-    );
+    try {
+      await consultar(
+        `UPDATE clientes
+            SET nombre_razon_social = $1, tipo_cliente = $2, cuit = $3,
+                telefono = $4, direccion = $5,
+                limite_cuenta_corriente = $6, plazo_pago_dias = $7, id_lista_precios = $8
+          WHERE id_cliente = $9`,
+        [datos.nombre_razon_social, datos.tipo_cliente, datos.cuit, datos.telefono,
+          datos.direccion, datos.limite_cuenta_corriente, datos.plazo_pago_dias,
+          datos.id_lista_precios, req.params.id]
+      );
+    } catch (error) {
+      if (error.code !== '23505') throw error;
+      return mostrarFormulario(req, res, {
+        cliente, errores: ['Ya hay otro cliente cargado con ese CUIT.'], esNuevo: false, estado: 409,
+      });
+    }
 
     req.session.aviso = 'Se guardaron los cambios de ' + datos.nombre_razon_social + '.';
     res.redirect('/clientes');
   } catch (error) {
-    if (error.code === '23505') {
-      return res.status(409).render('clientes/formulario', {
-        cliente: Object.assign({ id_cliente: req.params.id }, req.body),
-        errores: ['Ya hay otro cliente cargado con ese CUIT.'],
-        esNuevo: false,
-        puedeCredito: esAdministrador(req),
-        TIPOS,
-      });
-    }
     siguiente(error);
   }
 });

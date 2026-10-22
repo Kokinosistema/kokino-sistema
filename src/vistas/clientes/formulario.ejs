@@ -64,6 +64,16 @@
                value="<%= cliente.plazo_pago_dias === null || cliente.plazo_pago_dias === undefined ? '' : cliente.plazo_pago_dias %>">
       </div>
     </div>
+
+    <h2>Precios</h2>
+    <label for="id_lista_precios">Lista de precios</label>
+    <select id="id_lista_precios" name="id_lista_precios">
+      <% listas.forEach(function (l) { %>
+        <% const elegida = l.es_general ? !cliente.id_lista_precios : String(cliente.id_lista_precios) === String(l.id_lista_precios); %>
+        <option value="<%= l.es_general ? '' : l.id_lista_precios %>" <%= elegida ? 'selected' : '' %>><%= l.nombre %></option>
+      <% }) %>
+    </select>
+    <p class="pista">Con la que se le cotiza. La Lista general es para los que no tienen precios especiales.</p>
   <% } %>
 
   <div class="botonera">

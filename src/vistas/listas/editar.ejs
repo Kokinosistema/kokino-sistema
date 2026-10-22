@@ -1,0 +1,80 @@
+<%- include('../parciales/encabezado', { titulo: lista.nombre + ' - Kokino' }) %>
+
+<a class="volver" href="/clientes/listas">← Listas de precios</a>
+<h1><%= lista.nombre %></h1>
+<p class="ayuda">
+  <%= lista.lineas %>. Cambiá los precios que hagan falta y tocá Guardar: solo se graban los que
+  cambiaron, y rigen desde hoy. Si borrás un precio, ese sabor queda sin precio en esta lista
+  (en la cotización sale como "precio a confirmar" y no se puede confirmar).
+</p>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<form method="post" action="/clientes/listas/<%= lista.id_lista_precios %>/precios" class="panel" autocomplete="off">
+  <table class="tabla tabla-edicion">
+    <thead><tr><th>Sabor</th><th class="numero">Precio por tacho</th></tr></thead>
+    <tbody>
+      <% let lineaAnterior = null;
+         sabores.forEach(function (s) {
+           if (s.linea !== lineaAnterior) { lineaAnterior = s.linea; %>
+        <tr><th colspan="2"><%= s.linea === 'FAMILIAR' ? 'Familiar' : 'Artesanal' %></th></tr>
+      <%   }
+           const valor = valores ? valores[s.id_sabor] : (s.precio === null ? '' : pesos(s.precio)); %>
+        <tr>
+          <td><label for="precio-<%= s.id_sabor %>"><%= s.nombre %></label></td>
+          <td class="numero">
+            <input id="precio-<%= s.id_sabor %>" name="precio_<%= s.id_sabor %>" class="dinero" inputmode="decimal"
+                   value="<%= valor %>" placeholder="Sin precio">
+            <span class="pista"><%= s.precio === null ? 'sin precio' : 'desde el ' + s.desde.toLocaleDateString('es-AR') %></span>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <div class="botonera">
+    <button type="submit">Guardar precios</button>
+    <a class="cancelar" href="/clientes/listas">Cancelar</a>
+  </div>
+</form>
+
+<details class="panel" <%= errores.length > 0 && valores === null ? 'open' : '' %>>
+  <summary>Nombre y líneas de la lista</summary>
+  <form method="post" action="/clientes/listas/<%= lista.id_lista_precios %>" class="formulario" autocomplete="off">
+    <label for="nombre-lista">Nombre</label>
+    <input id="nombre-lista" name="nombre" required maxlength="100" value="<%= datos.nombre %>">
+    <p class="etiqueta-campo">Qué líneas se le cotizan</p>
+    <% if (lista.es_general) { %>
+      <p class="pista">La Lista general tiene siempre las dos líneas.</p>
+    <% } else { %>
+      <label class="casilla"><input type="checkbox" name="incluye_familiar" value="1" <%= datos.incluye_familiar ? 'checked' : '' %>> Familiar</label>
+      <label class="casilla"><input type="checkbox" name="incluye_artesanal" value="1" <%= datos.incluye_artesanal ? 'checked' : '' %>> Artesanal</label>
+    <% } %>
+    <button type="submit" class="boton-secundario">Guardar nombre y líneas</button>
+  </form>
+</details>
+
+<% if (historial.length > 0) { %>
+  <section class="panel">
+    <h2>Cambios de precio</h2>
+    <table class="tabla">
+      <thead><tr><th>Sabor</th><th class="numero">Precio</th><th>Desde</th><th>Hasta</th><th>Cargó</th></tr></thead>
+      <tbody>
+        <% historial.forEach(function (h) { %>
+          <tr class="<%= h.hasta ? 'inactiva' : '' %>">
+            <td><%= h.sabor %></td>
+            <td class="numero"><%= pesos(h.precio) %></td>
+            <td><%= h.desde.toLocaleDateString('es-AR') %></td>
+            <td><%= h.hasta ? h.hasta.toLocaleDateString('es-AR') : 'vigente' %></td>
+            <td><%= h.quien %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+<% } %>
+
+<%- include('../parciales/pie') %>

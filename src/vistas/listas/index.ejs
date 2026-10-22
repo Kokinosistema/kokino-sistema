@@ -1,0 +1,68 @@
+<%- include('../parciales/encabezado', { titulo: 'Listas de precios - Kokino' }) %>
+
+<a class="volver" href="/clientes">← Clientes mayoristas</a>
+<h1>Listas de precios</h1>
+<p class="ayuda">
+  Cada cliente mayorista cotiza con su lista; el que no tiene una propia, con la Lista general.
+  La lista de cada cliente se elige en Editar cliente. Un precio nuevo rige desde hoy: las
+  ventas ya hechas conservan el suyo.
+</p>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<table class="tabla">
+  <thead><tr><th>Lista</th><th>Líneas</th><th class="numero">Clientes</th><th class="numero">Sabores con precio</th><th></th></tr></thead>
+  <tbody>
+    <% listas.forEach(function (l) { %>
+      <tr>
+        <td><a href="/clientes/listas/<%= l.id_lista_precios %>"><%= l.nombre %></a>
+          <% if (l.es_general) { %><span class="etiqueta">para los que no tienen lista propia</span><% } %></td>
+        <td><%= l.lineas %></td>
+        <td class="numero"><%= l.clientes %></td>
+        <td class="numero"><%= l.precios %></td>
+        <td class="acciones"><a class="enlace" href="/clientes/listas/<%= l.id_lista_precios %>">Ver y cambiar precios</a></td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>
+
+<section class="panel">
+  <h2>Precio del envase</h2>
+  <p class="ayuda">Lo que paga el cliente por cada envase que se queda. Es el mismo para todas las listas; el prestado no se cobra.</p>
+  <form method="post" action="/clientes/listas/envase" class="formulario" autocomplete="off">
+    <label for="precio-envase">Envase</label>
+    <input id="precio-envase" name="precio" class="dinero" inputmode="decimal" required placeholder="$0"
+           value="<%= valorEnvase !== null ? valorEnvase : (envase ? pesos(envase.precio) : '') %>">
+    <p class="pista"><%= envase ? 'Desde el ' + envase.desde.toLocaleDateString('es-AR') : 'Todavía sin precio: sin él no se puede cotizar a quien compra los envases.' %></p>
+    <button type="submit" class="boton-secundario">Guardar el precio del envase</button>
+  </form>
+</section>
+
+<details class="panel" <%= errores.length > 0 && nueva.nombre !== '' ? 'open' : '' %>>
+  <summary>Nueva lista, para un cliente fijo</summary>
+  <form method="post" action="/clientes/listas" class="formulario" autocomplete="off">
+    <label for="nombre-lista">Nombre</label>
+    <input id="nombre-lista" name="nombre" required maxlength="100" placeholder="Por ejemplo: Lista Terminal" value="<%= nueva.nombre %>">
+
+    <p class="etiqueta-campo">Qué líneas se le cotizan</p>
+    <label class="casilla"><input type="checkbox" name="incluye_familiar" value="1" <%= nueva.incluye_familiar ? 'checked' : '' %>> Familiar</label>
+    <label class="casilla"><input type="checkbox" name="incluye_artesanal" value="1" <%= nueva.incluye_artesanal ? 'checked' : '' %>> Artesanal</label>
+
+    <label for="copiar-de">Arrancar con los precios de</label>
+    <select id="copiar-de" name="copiar_de">
+      <option value="">Ninguna: la cargo de cero</option>
+      <% listas.forEach(function (l) { %>
+        <option value="<%= l.id_lista_precios %>" <%= String(nueva.copiar_de) === String(l.id_lista_precios) ? 'selected' : '' %>><%= l.nombre %></option>
+      <% }) %>
+    </select>
+    <p class="pista">Se copian los precios de hoy de las líneas que elegiste. Después cambiás los que sean distintos.</p>
+
+    <button type="submit">Crear la lista</button>
+  </form>
+</details>
+
+<%- include('../parciales/pie') %>

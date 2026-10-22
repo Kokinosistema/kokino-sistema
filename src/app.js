@@ -26,6 +26,7 @@ const rutasFabricacion = require('./rutas/fabricacion');
 const rutasEnvios = require('./rutas/envios');
 const rutasMayoristas = require('./rutas/mayoristas');
 const rutasCotizar = require('./rutas/cotizar');
+const rutasListas = require('./rutas/listas');
 const rutasCostos = require('./rutas/costos');
 const rutasMercaderia = require('./rutas/mercaderia');
 const rutasStock = require('./rutas/stock');
@@ -107,6 +108,7 @@ function crearAplicacion() {
   app.use('/usuarios', rutasUsuarios);
   // Antes que clientes: sus direcciones (/clientes/precios...) no tienen que
   // caer en el /:id del router de clientes.
+  app.use('/clientes/listas', rutasListas);
   app.use('/clientes', rutasMayoristas);
   app.use('/clientes', rutasClientes);
   app.use('/cotizar', rutasCotizar);
