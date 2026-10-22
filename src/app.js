@@ -106,7 +106,7 @@ function crearAplicacion() {
   app.use(rutasInicio);
   app.use('/proveedores', rutasProveedores);
   app.use('/usuarios', rutasUsuarios);
-  // Antes que clientes: sus direcciones (/clientes/precios...) no tienen que
+  // Antes que clientes: sus direcciones (/clientes/listas...) no tienen que
   // caer en el /:id del router de clientes.
   app.use('/clientes/listas', rutasListas);
   app.use('/clientes', rutasMayoristas);

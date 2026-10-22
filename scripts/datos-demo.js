@@ -7,12 +7,14 @@
 //   cajas cerradas por turno y algunos egresos;
 // - stock de productos e insumos y tachos de helado;
 // - lo que todavia no cargaron los duenos, inventado: clientes mayoristas,
-//   precios mayoristas, costos de los productos y de los insumos que no
+//   costos de los productos y de los insumos que no
 //   tienen, insumos de los productos de cafeteria y de los postres que se
 //   arman al vender, y recetas de los sabores;
 // - la operacion de los ultimos 30 dias: fabricacion, envios a Alem, ventas
 //   mayoristas con su cuenta corriente, devoluciones de envases e ingresos de
-//   mercaderia de los proveedores.
+//   mercaderia de los proveedores. Las ventas mayoristas usan los precios
+//   reales de la Lista general (npm run seed:precios-mayoristas): sin ellos
+//   no se arma ninguna.
 //
 //   npm run demo:cargar    carga los datos
 //   npm run demo:borrar    los borra todos, sin tocar nada mas
@@ -229,15 +231,6 @@ BEGIN
     ('Demo · Despensa San Cayetano',  'MAYORISTA', '381 400-0004', 'Av. Roca 2100 (ficticia)',         300000,  7),
     ('Demo · Bar El Molino',          'MAYORISTA', '381 400-0005', 'Yerba Buena (ficticia)',           800000, 15);
 
-  -- Precios mayoristas por tacho de 10 L, solo si todavia no hay reales.
-  IF NOT EXISTS (SELECT 1 FROM precios_mayoristas WHERE fecha_vigencia_hasta IS NULL) THEN
-    INSERT INTO precios_mayoristas (linea, envase, precio, fecha_vigencia_desde, id_usuario) VALUES
-      ('ARTESANAL', 'INCLUIDO',   140000, current_date - ${DIAS}, v_usuario),
-      ('ARTESANAL', 'RETORNABLE', 125000, current_date - ${DIAS}, v_usuario),
-      ('FAMILIAR',  'INCLUIDO',   100000, current_date - ${DIAS}, v_usuario),
-      ('FAMILIAR',  'RETORNABLE',  88000, current_date - ${DIAS}, v_usuario);
-  END IF;
-
   -- Costo de los productos que no lo tienen: una parte del precio de venta.
   INSERT INTO costos_producto (id_producto, costo, fecha_vigencia_desde)
   SELECT p.id_producto,
@@ -358,6 +351,7 @@ DECLARE
   v_sab RECORD; v_t RECORD; v_p RECORD; v_receta INT; v_prod INT; v_lote INT;
   v_codigo TEXT; v_tachos INT; i INT; j INT; v_envio INT; v_n INT; v_stock NUMERIC;
   v_cli INT; v_linea TEXT; v_envase TEXT; v_precio NUMERIC; v_venta INT; v_total NUMERIC;
+  v_general INT;
   v_r NUMERIC; v_medio INT; m_efectivo INT; m_transf INT; v_ingreso INT;
   v_proveedor INT; v_semana INT;
 BEGIN
@@ -451,27 +445,36 @@ BEGIN
     END IF;
 
     -- Ventas mayoristas: un par por semana por cliente, casi siempre familiar.
+    -- Como en Cotizar: cada tacho al precio de su sabor en la Lista general
+    -- (los clientes de demostracion no tienen lista propia), y el envase que
+    -- se queda el cliente se cobra aparte. Un sabor sin precio no se vende.
     IF random() < 0.5 THEN
       SELECT id_cliente INTO v_cli FROM clientes WHERE tipo_cliente = 'MAYORISTA' AND nombre_razon_social LIKE 'Demo · %' ORDER BY random() LIMIT 1;
       v_linea := CASE WHEN random() < 0.85 THEN 'FAMILIAR' ELSE 'ARTESANAL' END;
       v_envase := CASE WHEN random() < 0.6 THEN 'RETORNABLE' ELSE 'INCLUIDO' END;
-      SELECT precio INTO v_precio FROM precios_mayoristas WHERE linea = v_linea AND envase = v_envase AND fecha_vigencia_hasta IS NULL;
+      SELECT id_lista_precios INTO v_general FROM listas_precios_mayoristas WHERE es_general;
+      v_precio := CASE WHEN v_envase = 'INCLUIDO'
+                       THEN coalesce((SELECT precio FROM precios_envase_mayorista WHERE fecha_vigencia_hasta IS NULL), 0)
+                       ELSE 0 END;
       v_n := 2 + floor(random() * 5);
-      IF v_precio IS NOT NULL AND (SELECT count(*) FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote JOIN sabores s ON s.id_sabor = l.id_sabor
-                                    WHERE t.id_sucursal = v_fab AND t.estado = 'LLENO' AND s.linea = v_linea
-                                      AND l.codigo_lote LIKE 'DEMO-L%' AND l.fecha_elaboracion <= v_dia) >= v_n THEN
+      IF (SELECT count(*) FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote JOIN sabores s ON s.id_sabor = l.id_sabor
+            JOIN precios_lista_mayorista p ON p.id_sabor = s.id_sabor AND p.id_lista_precios = v_general AND p.fecha_vigencia_hasta IS NULL
+           WHERE t.id_sucursal = v_fab AND t.estado = 'LLENO' AND s.linea = v_linea
+             AND l.codigo_lote LIKE 'DEMO-L%' AND l.fecha_elaboracion <= v_dia) >= v_n THEN
         v_hora := v_dia + time '11:00' + random() * interval '5 hours';
         INSERT INTO ventas (id_usuario, id_cliente, canal_venta, tipo_venta, id_sucursal, fecha_hora)
         VALUES (v_usuario, v_cli, 'MAYORISTA', 'MAYORISTA', v_fab, v_hora) RETURNING id_venta INTO v_venta;
+        v_total := 0;
         FOR v_t IN
-          SELECT t.id_tacho FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote JOIN sabores s ON s.id_sabor = l.id_sabor
+          SELECT t.id_tacho, p.precio FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote JOIN sabores s ON s.id_sabor = l.id_sabor
+            JOIN precios_lista_mayorista p ON p.id_sabor = s.id_sabor AND p.id_lista_precios = v_general AND p.fecha_vigencia_hasta IS NULL
            WHERE t.id_sucursal = v_fab AND t.estado = 'LLENO' AND s.linea = v_linea
              AND l.codigo_lote LIKE 'DEMO-L%' AND l.fecha_elaboracion <= v_dia
            ORDER BY l.fecha_vencimiento, random() LIMIT v_n
         LOOP
-          INSERT INTO venta_tachos (id_venta, id_tacho, envase, precio_aplicado) VALUES (v_venta, v_t.id_tacho, v_envase, v_precio);
+          INSERT INTO venta_tachos (id_venta, id_tacho, envase, precio_aplicado, precio_envase) VALUES (v_venta, v_t.id_tacho, v_envase, v_t.precio, v_precio);
+          v_total := v_total + v_t.precio + v_precio;
         END LOOP;
-        v_total := v_n * v_precio;
         -- La mitad paga en el momento, algunos dejan una parte y otros
         -- quedan debiendo, para que se vea la cuenta corriente.
         v_r := random();
@@ -563,7 +566,6 @@ DELETE FROM recetas WHERE created_at = (SELECT marca FROM demo_u);
 DELETE FROM producto_insumos WHERE created_at = (SELECT marca FROM demo_u);
 DELETE FROM costos_producto WHERE created_at = (SELECT marca FROM demo_u);
 DELETE FROM costos_insumo WHERE created_at = (SELECT marca FROM demo_u);
-DELETE FROM precios_mayoristas WHERE id_usuario IN (SELECT id_usuario FROM demo_u);
 DELETE FROM clientes WHERE created_at = (SELECT marca FROM demo_u) AND nombre_razon_social LIKE 'Demo · %';
 DELETE FROM usuarios WHERE id_usuario IN (SELECT id_usuario FROM demo_u);
 DELETE FROM empleados WHERE id_empleado IN (SELECT id_empleado FROM demo_u);

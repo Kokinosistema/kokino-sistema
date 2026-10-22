@@ -1,8 +1,9 @@
 'use strict';
 
-// Venta mayorista de tachos (solo duenos): lista de precios, vender a cuenta
-// o pagando, cobrar lo que se debe, devolver envases y anular. Usa el Dulce
-// de leche de la linea familiar, que no usa ninguna otra prueba.
+// Venta mayorista de tachos (solo duenos): vender a cuenta o pagando, cobrar
+// lo que se debe, devolver envases, anular y prever que fabricar. Se vende
+// desde Cotizar (test/cotizar.test.js prueba esa pantalla en detalle). Usa el
+// Dulce de leche de la linea familiar, que no usa ninguna otra prueba.
 
 const { describe, test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,22 +26,21 @@ async function estadoTachos() {
   return Object.fromEntries(rows.map((r) => [r.estado, r.n]));
 }
 
-// Arma la venta (con renglones como listas paralelas, igual que el
-// formulario), la revisa y la confirma. Devuelve el numero de venta.
-function armar(cliente, renglones, pago) {
-  const pares = [['id_sucursal', String(er)]];
-  for (const r of renglones) {
-    pares.push(['renglon_sabor', String(ddl)], ['renglon_envase', r.envase], ['renglon_cantidad', String(r.cantidad)], ['renglon_precio', r.precio]);
-  }
-  for (const [k, v] of Object.entries(pago)) pares.push([k, String(v)]);
-  return dueno.enviar('/clientes/' + cliente + '/vender', pares);
+// "Se lo lleva" en Cotizar: tantos tachos de Dulce de leche, a ese precio,
+// con los envases prestados salvo que se diga otra cosa.
+function seLoLleva(cliente, tachos, precio, compraEnvases = 'NO') {
+  const pares = [['id_sucursal', String(er)], ['compra_envases', compraEnvases]];
+  if (tachos) pares.push(['renglon_sabor', String(ddl)], ['renglon_tachos', String(tachos)], ['renglon_precio', precio]);
+  return dueno.enviar('/cotizar/' + cliente, pares);
 }
 
-async function vender(cliente, renglones, pago) {
-  const r = await armar(cliente, renglones, pago);
+// Cotiza, revisa y confirma con el pago dado. Devuelve el numero de venta.
+async function vender(cliente, tachos, precio, pago) {
+  const r = await seLoLleva(cliente, tachos, precio);
   assert.equal(r.estado, 302, erroresDe(r.html).join(' '));
-  assert.equal((await dueno.abrir('/clientes/' + cliente + '/vender/revisar')).estado, 200);
-  const confirmado = await dueno.enviar('/clientes/' + cliente + '/vender/confirmar');
+  assert.equal((await dueno.abrir('/cotizar/' + cliente + '/revisar')).estado, 200);
+  const confirmado = await dueno.enviar('/cotizar/' + cliente + '/confirmar', pago);
+  assert.equal(confirmado.estado, 302, erroresDe(confirmado.html).join(' '));
   return Number(/\/clientes\/ventas\/(\d+)$/.exec(confirmado.destino)[1]);
 }
 
@@ -63,38 +63,31 @@ before(async () => {
 });
 after(() => sistema.apagar());
 
-describe('Lista de precios mayoristas', () => {
-  test('el empleado no entra', async () => {
-    assert.equal((await empleado.abrir('/clientes/precios')).estado, 403);
-    assert.equal((await empleado.abrir('/clientes/' + conCuenta + '/vender')).estado, 403);
-  });
-
-  test('se cargan los precios y rigen desde hoy', async () => {
-    await dueno.enviar('/clientes/precios', { 'FAMILIAR:RETORNABLE': '$30.000', 'FAMILIAR:INCLUIDO': '$38.000' });
-    assert.equal(await dueno.aviso('/clientes/precios'), 'Se guardaron 2 precios nuevos. Rigen desde hoy.');
-  });
-
-  test('un precio ya cargado no se puede dejar vacío', async () => {
-    const r = await dueno.enviar('/clientes/precios', { 'FAMILIAR:RETORNABLE': '', 'FAMILIAR:INCLUIDO': '$38.000' });
-    assert.equal(r.estado, 400);
-    assert.deepEqual(erroresDe(r.html), ['El precio de familiar con envase retornable no se puede dejar vacío: poné el nuevo precio.']);
-  });
-});
-
 describe('Vender', () => {
-  test('pide al menos un sabor y cómo se paga', async () => {
-    const r = await armar(conCuenta, [], {});
+  test('el empleado no entra a la ficha ni a cotizar', async () => {
+    assert.equal((await empleado.abrir('/clientes/' + conCuenta)).estado, 403);
+    assert.equal((await empleado.abrir('/cotizar/' + conCuenta)).estado, 403);
+  });
+
+  test('la venta de antes ya no existe', async () => {
+    assert.equal((await dueno.abrir('/clientes/' + conCuenta + '/vender')).estado, 404);
+    assert.equal((await dueno.abrir('/clientes/precios')).estado, 404);
+  });
+
+  test('pide al menos un sabor y si compra los envases', async () => {
+    const r = await seLoLleva(conCuenta, 0, '', '');
     assert.equal(r.estado, 400);
-    assert.deepEqual(erroresDe(r.html), ['Agregá al menos un sabor.', 'Elegí si pagó ahora o queda a cuenta.']);
+    assert.deepEqual(erroresDe(r.html), ['Agregá al menos un sabor.', 'Respondé si compra los envases.']);
   });
 
   test('no deja vender más tachos de los que hay', async () => {
-    const r = await armar(conCuenta, [{ envase: 'RETORNABLE', cantidad: 5, precio: '$30.000' }], { pago: 'CUENTA' });
-    assert.deepEqual(erroresDe(r.html), ['De Dulce de leche (familiar) hay 4 tachos llenos: no se pueden vender 5.']);
+    const r = await seLoLleva(conCuenta, 5, '$30.000');
+    assert.deepEqual(erroresDe(r.html), ['De Dulce de leche (familiar) hay 4 tachos llenos en Entre Ríos: no alcanzan para 5.']);
   });
 
   test('a un cliente sin cuenta corriente no se le vende a cuenta', async () => {
-    const r = await armar(sinCuenta, [{ envase: 'INCLUIDO', cantidad: 1, precio: '$38.000' }], { pago: 'CUENTA' });
+    assert.equal((await seLoLleva(sinCuenta, 1, '$38.000')).estado, 302);
+    const r = await dueno.enviar('/cotizar/' + sinCuenta + '/confirmar', { pago: 'CUENTA' });
     assert.deepEqual(erroresDe(r.html), ['Kiosco sin cuenta no tiene cuenta corriente habilitada. Para venderle a cuenta, cargale un límite en Editar cliente.']);
   });
 });
@@ -103,7 +96,7 @@ describe('Venta a cuenta, cobros y envases', () => {
   let venta;
 
   test('vende 2 tachos retornables a cuenta: salen del stock y quedan debiendo', async () => {
-    venta = await vender(conCuenta, [{ envase: 'RETORNABLE', cantidad: 2, precio: '$30.000' }], { pago: 'CUENTA' });
+    venta = await vender(conCuenta, 2, '$30.000', { pago: 'CUENTA' });
     assert.equal(await dueno.aviso('/clientes/ventas/' + venta),
       'Se registró la venta N° ' + venta + ' a Kiosco con cuenta. Imprimí el remito para que viaje con los tachos.');
     assert.deepEqual(await estadoTachos(), { ENTREGADO_MAYORISTA: 2, LLENO: 2 });
@@ -124,8 +117,8 @@ describe('Venta a cuenta, cobros y envases', () => {
   });
 
   test('"PedidosYa (online)" no sirve para cobrar a un mayorista', async () => {
-    const r = await armar(conCuenta, [{ envase: 'INCLUIDO', cantidad: 1, precio: '$38.000' }],
-      { pago: 'AHORA', id_medio_pago: await idMedio('PedidosYa (online)') });
+    assert.equal((await seLoLleva(conCuenta, 1, '$38.000')).estado, 302);
+    const r = await dueno.enviar('/cotizar/' + conCuenta + '/confirmar', { pago: 'AHORA', id_medio_pago: await idMedio('PedidosYa (online)') });
     assert.deepEqual(erroresDe(r.html), ['Elegí con qué pagó.']);
   });
 
@@ -140,8 +133,7 @@ describe('Venta a cuenta, cobros y envases', () => {
 describe('Anular una venta mayorista', () => {
   let venta;
   before(async () => {
-    venta = await vender(sinCuenta, [{ envase: 'INCLUIDO', cantidad: 1, precio: '$38.000' }],
-      { pago: 'AHORA', id_medio_pago: await idMedio('Efectivo') });
+    venta = await vender(sinCuenta, 1, '$38.000', { pago: 'AHORA', id_medio_pago: await idMedio('Efectivo') });
   });
 
   test('pide el motivo', async () => {
@@ -227,12 +219,11 @@ describe('Qué fabricar para los mayoristas', () => {
        RETURNING id_cliente`
     );
     [vuelve, noVuelve] = rows.map((r) => r.id_cliente);
-    const tres = [{ envase: 'RETORNABLE', cantidad: 3, precio: '$30.000' }];
-    const uno = [{ envase: 'RETORNABLE', cantidad: 1, precio: '$30.000' }];
-    await atrasar(await vender(vuelve, tres, { pago: 'CUENTA' }), 17);
-    await atrasar(await vender(vuelve, tres, { pago: 'CUENTA' }), 7);
-    await atrasar(await vender(noVuelve, uno, { pago: 'CUENTA' }), 40);
-    await atrasar(await vender(noVuelve, uno, { pago: 'CUENTA' }), 30);
+    const aCuenta = { pago: 'CUENTA' };
+    await atrasar(await vender(vuelve, 3, '$30.000', aCuenta), 17);
+    await atrasar(await vender(vuelve, 3, '$30.000', aCuenta), 7);
+    await atrasar(await vender(noVuelve, 1, '$30.000', aCuenta), 40);
+    await atrasar(await vender(noVuelve, 1, '$30.000', aCuenta), 30);
   });
 
   test('en 2 semanas espera 2 compras de 3 tachos y pide fabricar lo que falta', async () => {

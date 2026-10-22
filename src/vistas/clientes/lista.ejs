@@ -5,7 +5,6 @@
   <div class="botones-titulo">
     <a class="boton-secundario" href="/clientes/estadisticas">Estadísticas</a>
     <a class="boton-secundario" href="/clientes/listas">Listas de precios</a>
-    <a class="boton-secundario" href="/clientes/precios">Precios mayoristas</a>
     <a class="boton" href="/clientes/nuevo">Agregar cliente mayorista</a>
   </div>
 </div>
@@ -51,7 +50,7 @@
             <td><%= c.plazo_pago_dias === null ? '—' : c.plazo_pago_dias + ' dias' %></td>
           <% } %>
           <td class="acciones">
-            <% if (c.activo) { %><a class="enlace" href="/clientes/<%= c.id_cliente %>/vender">Vender</a><% } %>
+            <% if (c.activo) { %><a class="enlace" href="/cotizar/<%= c.id_cliente %>">Cotizar</a><% } %>
             <a class="enlace" href="/clientes/<%= c.id_cliente %>/editar">Editar</a>
             <form method="post" action="/clientes/<%= c.id_cliente %>/baja">
               <input type="hidden" name="activar" value="<%= c.activo ? '0' : '1' %>">

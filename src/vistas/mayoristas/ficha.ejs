@@ -8,7 +8,6 @@
   <div class="botones-titulo">
     <a class="boton-secundario" href="/clientes/<%= cliente.id_cliente %>/editar">Editar cliente</a>
     <% if (cliente.activo) { %>
-      <a class="boton-secundario" href="/clientes/<%= cliente.id_cliente %>/vender">Nueva venta</a>
       <a class="boton" href="/cotizar/<%= cliente.id_cliente %>">Cotizar</a>
     <% } %>
   </div>

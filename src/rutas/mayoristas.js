@@ -1,113 +1,29 @@
 'use strict';
 
 const express = require('express');
-const { consultar, conTransaccion } = require('../db');
+const { consultar } = require('../db');
 const { exigirRol } = require('../middleware/sesion');
 const { parsearMonto, MONTO_INVALIDO, aCentavos, pesos } = require('../dinero');
 
 const router = express.Router();
 
-// Venta mayorista de tachos (definida con la usuaria el 2026-10-05). Va
-// dentro de "Clientes mayoristas" y, como esa solapa, es solo de los duenos.
-// Se monta en /clientes antes que el router de clientes, para que sus
-// direcciones (/clientes/precios, ...) no las tome el /:id de clientes.
+// Lo de cada cliente mayorista despues de venderle: su ficha, cuenta y
+// envases, las estadisticas, y cada venta con su remito, cobros y anulacion.
+// Va dentro de "Clientes mayoristas" y, como esa solapa, es solo de los
+// duenos. Se vende desde Cotizar (src/rutas/cotizar.js), que desde el
+// 2026-10-22 reemplaza a la venta mayorista de antes. Se monta en /clientes
+// antes que el router de clientes, para que sus direcciones
+// (/clientes/estadisticas, ...) no las tome el /:id de clientes.
 router.use(exigirRol('administrador'));
 
-const LINEAS = [
-  { valor: 'FAMILIAR', texto: 'Familiar' },
-  { valor: 'ARTESANAL', texto: 'Artesanal' },
-];
 const ENVASES = [
   { valor: 'RETORNABLE', texto: 'Envase retornable', ayuda: 'el cliente devuelve el tacho cuando lo termina' },
   { valor: 'INCLUIDO', texto: 'Envase incluido', ayuda: 'el cliente se queda con el tacho' },
 ];
-
-// Precio sugerido vigente de cada linea y envase: { 'FAMILIAR:RETORNABLE': {precio, desde} }.
-async function preciosVigentes() {
-  const { rows } = await consultar(
-    `SELECT linea, envase, precio, fecha_vigencia_desde AS desde
-       FROM precios_mayoristas WHERE fecha_vigencia_hasta IS NULL`
-  );
-  return Object.fromEntries(rows.map((r) => [r.linea + ':' + r.envase, { precio: Number(r.precio), desde: r.desde }]));
-}
-
-// ---------------------------------------------------------------------------
-// Lista de precios mayoristas
-
-async function mostrarPrecios(res, { valores = null, errores = [], estado = 200 } = {}) {
-  const vigentes = await preciosVigentes();
-  const { rows: historial } = await consultar(
-    `SELECT pm.linea, pm.envase, pm.precio, pm.fecha_vigencia_desde AS desde, pm.fecha_vigencia_hasta AS hasta,
-            concat_ws(' ', e.nombre, e.apellido) AS quien
-       FROM precios_mayoristas pm
-       JOIN usuarios u ON u.id_usuario = pm.id_usuario
-       JOIN empleados e ON e.id_empleado = u.id_empleado
-      ORDER BY pm.id_precio_mayorista DESC
-      LIMIT 20`
-  );
-  res.status(estado).render('mayoristas/precios', { LINEAS, ENVASES, vigentes, valores, errores, historial });
-}
-
-router.get('/precios', async (req, res, siguiente) => {
-  try {
-    await mostrarPrecios(res);
-  } catch (error) {
-    siguiente(error);
-  }
-});
-
-// Guarda solo los que cambiaron. Un precio nuevo cierra el anterior y rige
-// desde hoy, como los precios de mostrador. Un campo vacio deja la linea sin
-// precio sugerido si nunca tuvo; uno que ya tenia no se puede vaciar.
-router.post('/precios', async (req, res, siguiente) => {
-  try {
-    const vigentes = await preciosVigentes();
-    const valores = {};
-    const errores = [];
-    const cambios = [];
-    for (const l of LINEAS) {
-      for (const e of ENVASES) {
-        const clave = l.valor + ':' + e.valor;
-        const texto = typeof req.body[clave] === 'string' ? req.body[clave].trim() : '';
-        valores[clave] = texto;
-        const actual = vigentes[clave];
-        if (texto === '') {
-          if (actual) errores.push('El precio de ' + l.texto.toLowerCase() + ' con ' + e.texto.toLowerCase() + ' no se puede dejar vacío: poné el nuevo precio.');
-          continue;
-        }
-        const precio = parsearMonto(texto);
-        if (precio === null) {
-          errores.push('El precio de ' + l.texto.toLowerCase() + ' con ' + e.texto.toLowerCase() + ': ' + MONTO_INVALIDO + '.');
-          continue;
-        }
-        if (!actual || aCentavos(actual.precio) !== aCentavos(precio)) cambios.push({ linea: l.valor, envase: e.valor, precio });
-      }
-    }
-    if (errores.length > 0) return mostrarPrecios(res, { valores, errores, estado: 400 });
-    if (cambios.length === 0) {
-      req.session.aviso = 'No había ningún precio para cambiar.';
-      return res.redirect('/clientes/precios');
-    }
-
-    await conTransaccion(async (ejecutar) => {
-      for (const c of cambios) {
-        await ejecutar(
-          `UPDATE precios_mayoristas SET fecha_vigencia_hasta = current_date
-            WHERE linea = $1 AND envase = $2 AND fecha_vigencia_hasta IS NULL`,
-          [c.linea, c.envase]
-        );
-        await ejecutar(
-          'INSERT INTO precios_mayoristas (linea, envase, precio, id_usuario) VALUES ($1, $2, $3, $4)',
-          [c.linea, c.envase, c.precio, req.session.usuario.id_usuario]
-        );
-      }
-    });
-    req.session.aviso = cambios.length === 1 ? 'Se guardó el precio nuevo. Rige desde hoy.' : 'Se guardaron ' + cambios.length + ' precios nuevos. Rigen desde hoy.';
-    res.redirect('/clientes/precios');
-  } catch (error) {
-    siguiente(error);
-  }
-});
+const PAGOS = [
+  { valor: 'AHORA', texto: 'Pagó ahora' },
+  { valor: 'CUENTA', texto: 'Queda a cuenta' },
+];
 
 // ---------------------------------------------------------------------------
 // Clientes, cuenta y stock
@@ -144,22 +60,6 @@ async function cuentaDe(cliente) {
     [cliente.id_cliente, cliente.plazo_pago_dias]
   );
   return { deuda: Number(r.deuda), vencido: Number(r.vencido), envases: r.envases };
-}
-
-// Sabores con tachos llenos en la sucursal, con su linea para el precio sugerido.
-async function saboresDisponibles(idSucursal) {
-  const { rows } = await consultar(
-    `SELECT s.id_sabor, s.nombre || ' (' || lower(s.linea) || ')' AS nombre, s.linea,
-            count(*)::int AS llenos, min(l.fecha_vencimiento) AS vence
-       FROM tachos t
-       JOIN lotes l ON l.id_lote = t.id_lote
-       JOIN sabores s ON s.id_sabor = l.id_sabor
-      WHERE t.id_sucursal = $1 AND t.estado = 'LLENO'
-      GROUP BY s.id_sabor, s.nombre, s.linea
-      ORDER BY s.nombre, s.linea`,
-    [idSucursal]
-  );
-  return rows;
 }
 
 // Los de siempre, mas los atados a la venta mayorista si alguna vez hay uno.
@@ -409,199 +309,6 @@ router.get('/:id', async (req, res, siguiente) => {
 });
 
 // ---------------------------------------------------------------------------
-// Vender: armar, revisar y confirmar
-//
-// Lo elegido se guarda en la sesion mientras se revisa, como en Envios. Se
-// vende desde la sucursal de trabajo: los tachos salen de ahi (los que vencen
-// primero) y la base no deja vender uno que este en otra sucursal.
-
-const PAGOS = [
-  { valor: 'AHORA', texto: 'Pagó ahora' },
-  { valor: 'CUENTA', texto: 'Queda a cuenta' },
-];
-const lista = (v) => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
-
-function borradorDe(req, cliente) {
-  const b = req.session.ventaMayorista;
-  return b && b.id_cliente === cliente.id_cliente && b.id_sucursal === req.sucursal.id_sucursal ? b : null;
-}
-
-// Controla lo elegido contra el stock y arma los renglones con numeros.
-// Lo usan revisar y confirmar, asi lo que se guarda pasa por el mismo control.
-async function controlarVenta(borrador, cliente, idSucursal) {
-  const errores = [];
-  const disponibles = await saboresDisponibles(idSucursal);
-  const renglones = [];
-  const pedidosPorSabor = {};
-  borrador.renglones.forEach((r) => {
-    const sabor = disponibles.find((s) => s.id_sabor === Number(r.id_sabor));
-    if (!sabor) { errores.push('Un sabor elegido ya no tiene tachos llenos en esta sucursal: sacalo de la lista.'); return; }
-    if (!/^\d{1,3}$/.test(r.cantidad) || Number(r.cantidad) < 1) { errores.push('La cantidad de ' + sabor.nombre + ' tiene que ser un número entero.'); return; }
-    if (!ENVASES.some((e) => e.valor === r.envase)) { errores.push('Elegí el envase de ' + sabor.nombre + '.'); return; }
-    const precio = parsearMonto(r.precio);
-    if (precio === null) { errores.push('El precio por tacho de ' + sabor.nombre + ': ' + MONTO_INVALIDO + '.'); return; }
-    pedidosPorSabor[sabor.id_sabor] = (pedidosPorSabor[sabor.id_sabor] || 0) + Number(r.cantidad);
-    renglones.push({ id_sabor: sabor.id_sabor, sabor: sabor.nombre, envase: r.envase, cantidad: Number(r.cantidad), precio });
-  });
-  for (const [idSabor, pedidos] of Object.entries(pedidosPorSabor)) {
-    const sabor = disponibles.find((s) => s.id_sabor === Number(idSabor));
-    if (pedidos > sabor.llenos) errores.push('De ' + sabor.nombre + ' hay ' + sabor.llenos + (sabor.llenos === 1 ? ' tacho lleno' : ' tachos llenos') + ': no se pueden vender ' + pedidos + '.');
-  }
-  if (borrador.renglones.length === 0) errores.push('Agregá al menos un sabor.');
-  if (!PAGOS.some((p) => p.valor === borrador.pago)) errores.push('Elegí si pagó ahora o queda a cuenta.');
-  if (borrador.pago === 'AHORA' && !(await mediosDePago()).some((m) => m.id_medio_pago === Number(borrador.id_medio_pago))) {
-    errores.push('Elegí con qué pagó.');
-  }
-  if (borrador.pago === 'CUENTA' && cliente.limite_cuenta_corriente === null) {
-    errores.push(cliente.nombre_razon_social + ' no tiene cuenta corriente habilitada. Para venderle a cuenta, cargale un límite en Editar cliente.');
-  }
-  const total = renglones.reduce((s, r) => s + aCentavos(r.precio) * r.cantidad, 0) / 100;
-  return { renglones, total, errores };
-}
-
-async function mostrarArmado(req, res, cliente, { borrador, errores = [], estado = 200 }) {
-  res.status(estado).render('mayoristas/vender', {
-    cliente, borrador, errores, ENVASES, PAGOS,
-    sabores: await saboresDisponibles(req.sucursal.id_sucursal),
-    precios: await preciosVigentes(),
-    medios: await mediosDePago(),
-    cuenta: await cuentaDe(cliente),
-  });
-}
-
-router.get('/:id/vender', async (req, res, siguiente) => {
-  try {
-    const cliente = await traerCliente(Number(req.params.id));
-    if (!cliente) return siguiente();
-    if (!cliente.activo) {
-      req.session.aviso = cliente.nombre_razon_social + ' está dado de baja: reactivalo para venderle.';
-      return res.redirect('/clientes/' + cliente.id_cliente);
-    }
-    const borrador = borradorDe(req, cliente) || { renglones: [], pago: '', id_medio_pago: '', observaciones: '' };
-    await mostrarArmado(req, res, cliente, { borrador });
-  } catch (error) {
-    siguiente(error);
-  }
-});
-
-router.post('/:id/vender', async (req, res, siguiente) => {
-  try {
-    const cliente = await traerCliente(Number(req.params.id));
-    if (!cliente || !cliente.activo) return siguiente();
-    if (Number(req.body.id_sucursal) !== req.sucursal.id_sucursal) {
-      req.session.aviso = 'Cambiaste de sucursal mientras armabas la venta: revisala de nuevo.';
-      return res.redirect('/clientes/' + cliente.id_cliente + '/vender');
-    }
-    const sabores = lista(req.body.renglon_sabor);
-    const envases = lista(req.body.renglon_envase);
-    const cantidades = lista(req.body.renglon_cantidad);
-    const precios = lista(req.body.renglon_precio);
-    const borrador = {
-      id_cliente: cliente.id_cliente,
-      id_sucursal: req.sucursal.id_sucursal,
-      renglones: sabores.map((s, i) => ({
-        id_sabor: String(s), envase: String(envases[i] || ''),
-        cantidad: String(cantidades[i] || '').trim(), precio: String(precios[i] || '').trim(),
-      })),
-      pago: typeof req.body.pago === 'string' ? req.body.pago : '',
-      id_medio_pago: typeof req.body.id_medio_pago === 'string' ? req.body.id_medio_pago : '',
-      observaciones: (typeof req.body.observaciones === 'string' ? req.body.observaciones : '').trim().slice(0, 500),
-    };
-    req.session.ventaMayorista = borrador;
-    const { errores } = await controlarVenta(borrador, cliente, req.sucursal.id_sucursal);
-    if (errores.length > 0) return mostrarArmado(req, res, cliente, { borrador, errores, estado: 400 });
-    res.redirect('/clientes/' + cliente.id_cliente + '/vender/revisar');
-  } catch (error) {
-    siguiente(error);
-  }
-});
-
-router.get('/:id/vender/revisar', async (req, res, siguiente) => {
-  try {
-    const cliente = await traerCliente(Number(req.params.id));
-    if (!cliente) return siguiente();
-    const borrador = borradorDe(req, cliente);
-    if (!borrador) return res.redirect('/clientes/' + cliente.id_cliente + '/vender');
-    const control = await controlarVenta(borrador, cliente, req.sucursal.id_sucursal);
-    if (control.errores.length > 0) return mostrarArmado(req, res, cliente, { borrador, errores: control.errores, estado: 400 });
-    // Los tachos que saldrian: los que vencen primero de cada sabor.
-    for (const r of control.renglones) {
-      const ya = control.renglones.filter((x) => x.id_sabor === r.id_sabor && x !== r && control.renglones.indexOf(x) < control.renglones.indexOf(r))
-        .reduce((s, x) => s + x.cantidad, 0);
-      const { rows } = await consultar(
-        `SELECT t.codigo_barras FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote
-          WHERE t.id_sucursal = $1 AND t.estado = 'LLENO' AND l.id_sabor = $2
-          ORDER BY l.fecha_vencimiento, t.id_tacho OFFSET $3 LIMIT $4`,
-        [req.sucursal.id_sucursal, r.id_sabor, ya, r.cantidad]
-      );
-      r.codigos = rows.map((x) => x.codigo_barras);
-    }
-    const cuenta = await cuentaDe(cliente);
-    const medio = (await mediosDePago()).find((m) => m.id_medio_pago === Number(borrador.id_medio_pago));
-    res.render('mayoristas/revisar', {
-      cliente, borrador, cuenta, ENVASES, ...control,
-      medio: medio ? medio.nombre : '',
-      superaLimite: borrador.pago === 'CUENTA' && cliente.limite_cuenta_corriente !== null
-        && cuenta.deuda + control.total > Number(cliente.limite_cuenta_corriente),
-      fecha: new Date(), vendio: req.session.usuario.nombre,
-    });
-  } catch (error) {
-    siguiente(error);
-  }
-});
-
-router.post('/:id/vender/confirmar', async (req, res, siguiente) => {
-  try {
-    const cliente = await traerCliente(Number(req.params.id));
-    if (!cliente) return siguiente();
-    const borrador = borradorDe(req, cliente);
-    if (!borrador) return res.redirect('/clientes/' + cliente.id_cliente + '/vender');
-    const control = await controlarVenta(borrador, cliente, req.sucursal.id_sucursal);
-    if (control.errores.length > 0) return mostrarArmado(req, res, cliente, { borrador, errores: control.errores, estado: 400 });
-
-    const resultado = await conTransaccion(async (ejecutar) => {
-      const { rows: [venta] } = await ejecutar(
-        `INSERT INTO ventas (id_usuario, id_cliente, canal_venta, tipo_venta, id_sucursal)
-         VALUES ($1, $2, 'MAYORISTA', 'MAYORISTA', $3) RETURNING id_venta`,
-        [req.session.usuario.id_usuario, cliente.id_cliente, req.sucursal.id_sucursal]
-      );
-      const usados = [];
-      for (const r of control.renglones) {
-        // Los que vencen primero, tomados hasta el final de la transaccion.
-        const { rows: tachos } = await ejecutar(
-          `SELECT t.id_tacho FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote
-            WHERE t.id_sucursal = $1 AND t.estado = 'LLENO' AND l.id_sabor = $2 AND NOT (t.id_tacho = ANY($3::int[]))
-            ORDER BY l.fecha_vencimiento, t.id_tacho
-            LIMIT $4
-            FOR UPDATE OF t`,
-          [req.sucursal.id_sucursal, r.id_sabor, usados, r.cantidad]
-        );
-        if (tachos.length < r.cantidad) return { error: 'Mientras revisabas se abrió, se envió o se vendió algún tacho de ' + r.sabor + ' y ya no alcanzan. Revisá las cantidades.' };
-        for (const t of tachos) {
-          usados.push(t.id_tacho);
-          await ejecutar('INSERT INTO venta_tachos (id_venta, id_tacho, envase, precio_aplicado) VALUES ($1, $2, $3, $4)',
-            [venta.id_venta, t.id_tacho, r.envase, r.precio]);
-        }
-      }
-      if (borrador.pago === 'AHORA' && control.total > 0) {
-        await ejecutar('INSERT INTO pagos_venta (id_venta, id_medio_pago, id_usuario, monto) VALUES ($1, $2, $3, $4)',
-          [venta.id_venta, Number(borrador.id_medio_pago), req.session.usuario.id_usuario, control.total]);
-      }
-      return { id: venta.id_venta };
-    });
-    if (resultado.error) {
-      req.session.aviso = resultado.error;
-      return res.redirect('/clientes/' + cliente.id_cliente + '/vender');
-    }
-    delete req.session.ventaMayorista;
-    req.session.aviso = 'Se registró la venta N° ' + resultado.id + ' a ' + cliente.nombre_razon_social + '. Imprimí el remito para que viaje con los tachos.';
-    res.redirect('/clientes/ventas/' + resultado.id);
-  } catch (error) {
-    siguiente(error);
-  }
-});
-
-// ---------------------------------------------------------------------------
 // Una venta: remito, cobros y anulacion
 
 async function traerVenta(id) {
@@ -768,10 +475,8 @@ router.post('/devoluciones/:id/anular', async (req, res, siguiente) => {
 });
 
 module.exports = router;
-module.exports.LINEAS = LINEAS;
 module.exports.ENVASES = ENVASES;
 module.exports.PAGOS = PAGOS;
-module.exports.preciosVigentes = preciosVigentes;
 module.exports.traerCliente = traerCliente;
 module.exports.cuentaDe = cuentaDe;
 module.exports.mediosDePago = mediosDePago;
