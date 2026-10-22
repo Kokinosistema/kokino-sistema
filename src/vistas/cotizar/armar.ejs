@@ -270,7 +270,9 @@
       if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(texto.value).then(listo);
       } else {
-        // Sin HTTPS el navegador no deja usar el portapapeles moderno.
+        // Sin HTTPS el navegador no deja usar el portapapeles moderno. Copia
+        // lo seleccionado, y para eso el cuadro tiene que tener el foco.
+        texto.focus();
         texto.select();
         document.execCommand('copy');
         listo();
