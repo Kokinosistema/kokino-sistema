@@ -44,8 +44,9 @@ npm run migrate:up
 npm run crear-usuario
 ```
 
-> No correr `npm run seed:precios` sobre una base en uso: vuelve los precios a
-> los de la lista original y pisa los que cargaron los dueños.
+> No correr `npm run seed:precios` ni `npm run seed:precios-mayoristas` sobre
+> una base en uso: vuelven los precios a los de la lista original y pisan los
+> que cargaron los dueños.
 
 ## 3. Dejarlo corriendo (PM2)
 

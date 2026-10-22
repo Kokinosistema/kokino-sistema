@@ -64,7 +64,8 @@ reconstruye entera desde las migraciones.
 4. Construir el esquema y cargar los datos base: `npm run migrate:up`.
    Las migraciones corren en orden y dejan la base lista desde cero, así que no
    hace falta pasarse un backup entre computadoras.
-5. Cargar los precios vigentes: `npm run seed:precios`.
+5. Cargar los precios vigentes: `npm run seed:precios` y
+   `npm run seed:precios-mayoristas`.
 
 ## Usarlo en la heladería
 
@@ -91,6 +92,7 @@ npm run migrate:up                  # aplica las migraciones pendientes
 npm run migrate:down                # revierte la última
 npm run migrate:create nombre-corto # crea una migración nueva
 npm run seed:precios                # actualiza los precios de lista
+npm run seed:precios-mayoristas     # actualiza los precios mayoristas por sabor
 ```
 
 ## Pruebas automáticas
