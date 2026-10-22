@@ -175,10 +175,11 @@ async function mediosDePago() {
 // Estadisticas (pedidas por el dueno el 2026-10-05): que sabores compra cada
 // mayorista, cual mas y cual menos, cuantos tachos por mes, y el total de
 // los mayoristas para prever que fabricar. Salen de los tachos de cada venta
-// no anulada (venta_tachos -> tacho -> lote -> sabor).
+// no anulada (venta_tachos -> tacho -> lote -> sabor). El importe de cada
+// tacho incluye el envase, si lo compro: es plata que el cliente pago.
 
 const TACHOS_VENDIDOS = `
-  SELECT v.id_venta, v.id_cliente, v.fecha_hora, l.id_sabor, vt.precio_aplicado
+  SELECT v.id_venta, v.id_cliente, v.fecha_hora, l.id_sabor, vt.precio_aplicado + vt.precio_envase AS importe
     FROM venta_tachos vt
     JOIN ventas v ON v.id_venta = vt.id_venta
     JOIN tachos t ON t.id_tacho = vt.id_tacho
@@ -192,7 +193,7 @@ const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'o
 async function tachosPorMes(idCliente) {
   const { rows } = await consultar(
     `WITH t AS (${TACHOS_VENDIDOS} AND ($1::int IS NULL OR v.id_cliente = $1))
-     SELECT m::date AS mes, count(t.id_venta)::int AS tachos, coalesce(sum(t.precio_aplicado), 0) AS total,
+     SELECT m::date AS mes, count(t.id_venta)::int AS tachos, coalesce(sum(t.importe), 0) AS total,
             m = date_trunc('month', now()) AS es_actual
        FROM generate_series(date_trunc('month', now()) - interval '11 months', date_trunc('month', now()), interval '1 month') m
        LEFT JOIN t ON date_trunc('month', t.fecha_hora) = m
@@ -349,7 +350,7 @@ router.get('/estadisticas', async (req, res, siguiente) => {
               count(t.id_venta) FILTER (WHERE t.fecha_hora >= date_trunc('month', now()))::int AS este_mes,
               count(t.id_venta) FILTER (WHERE t.fecha_hora >= date_trunc('month', now()) - interval '1 month'
                                           AND t.fecha_hora < date_trunc('month', now()))::int AS mes_pasado,
-              coalesce(sum(t.precio_aplicado) FILTER (WHERE t.fecha_hora >= date_trunc('month', now())), 0) AS total_mes,
+              coalesce(sum(t.importe) FILTER (WHERE t.fecha_hora >= date_trunc('month', now())), 0) AS total_mes,
               max(t.fecha_hora) AS ultima
          FROM clientes c
          LEFT JOIN t ON t.id_cliente = c.id_cliente

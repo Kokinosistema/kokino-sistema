@@ -164,6 +164,42 @@ describe('Anular una venta mayorista', () => {
   });
 });
 
+// El envase comprado se cobra aparte del helado (2026-10-22). Todavia no hay
+// pantalla que lo cargue, asi que la venta se arma directo en la base.
+describe('Envase cobrado aparte', () => {
+  let venta;
+  let tacho;
+
+  before(async () => {
+    const { rows: [u] } = await consultar("SELECT id_usuario FROM usuarios WHERE username = 'dueno.prueba'");
+    ({ rows: [{ id_venta: venta }] } = await consultar(
+      `INSERT INTO ventas (id_usuario, id_cliente, canal_venta, tipo_venta, id_sucursal)
+       VALUES ($1, $2, 'MAYORISTA', 'MAYORISTA', $3) RETURNING id_venta`,
+      [u.id_usuario, conCuenta, er]
+    ));
+    ({ rows: [{ id_tacho: tacho }] } = await consultar(
+      `SELECT t.id_tacho FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote
+        WHERE l.id_sabor = $1 AND t.estado = 'LLENO' AND t.id_sucursal = $2 LIMIT 1`,
+      [ddl, er]
+    ));
+  });
+
+  test('un envase prestado no se cobra', async () => {
+    await assert.rejects(
+      consultar("INSERT INTO venta_tachos (id_venta, id_tacho, envase, precio_aplicado, precio_envase) VALUES ($1, $2, 'RETORNABLE', 40000, 5000)", [venta, tacho]),
+      /venta_tachos_envase_prestado_gratis_check/
+    );
+  });
+
+  test('el total de la venta suma el helado y el envase comprado', async () => {
+    await consultar("INSERT INTO venta_tachos (id_venta, id_tacho, envase, precio_aplicado, precio_envase) VALUES ($1, $2, 'INCLUIDO', 40000, 5000)", [venta, tacho]);
+    const { rows } = await consultar('SELECT total FROM ventas_totales WHERE id_venta = $1', [venta]);
+    assert.equal(Number(rows[0].total), 45000);
+  });
+
+  after(() => consultar("UPDATE ventas SET fecha_anulacion = now(), id_usuario_anulacion = id_usuario, motivo_anulacion = 'prueba' WHERE id_venta = $1", [venta]));
+});
+
 // El pronostico usa las fechas de las compras: se venden por la pantalla y
 // despues se corren dias para atras en la base, para saber que tiene que dar.
 describe('Qué fabricar para los mayoristas', () => {
