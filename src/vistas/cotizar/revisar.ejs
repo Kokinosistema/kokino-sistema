@@ -1,0 +1,71 @@
+<%- include('../parciales/encabezado', { titulo: 'Se lo lleva - Kokino' }) %>
+
+<a class="volver no-imprimir" href="/cotizar/<%= cliente.id_cliente %>">← Volver a la cotización</a>
+<h1 class="no-imprimir">Se lo lleva</h1>
+<p class="ayuda no-imprimir">
+  Fijate que esté todo bien y elegí cómo paga. Al confirmar, estos tachos salen del stock de
+  <%= sucursal.nombre %> y la venta queda registrada.
+</p>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores no-imprimir" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<%- include('../mayoristas/_remito', { remito: {
+  numero: null, sucursal: sucursal.nombre, fecha, vendio, cliente, renglones, envases, total,
+  pago: null, observaciones: null,
+} }) %>
+
+<form method="post" action="/cotizar/<%= cliente.id_cliente %>/confirmar" class="formulario no-imprimir" id="form-confirmar">
+  <fieldset class="opciones-boton">
+    <legend>Pago</legend>
+    <div class="grupo-botones">
+      <% PAGOS.forEach(function (p) { %>
+        <label class="opcion-boton">
+          <input type="radio" name="pago" value="<%= p.valor %>" <%= valores.pago === p.valor ? 'checked' : '' %> required>
+          <span><%= p.texto %></span>
+        </label>
+      <% }) %>
+    </div>
+  </fieldset>
+  <% if (cliente.limite_cuenta_corriente === null) { %>
+    <p class="pista">Este cliente no tiene cuenta corriente habilitada: para venderle a cuenta, cargale un límite en Editar cliente.</p>
+  <% } else if (superaLimite) { %>
+    <p class="aviso-atencion">
+      Si queda a cuenta, <%= cliente.nombre_razon_social %> debería <%= pesos(cuenta.deuda + total) %>, más que su límite de
+      <%= pesos(cliente.limite_cuenta_corriente) %>. Se puede confirmar igual.
+    </p>
+  <% } %>
+
+  <fieldset class="opciones-boton" id="medio-pago" <%= valores.pago === 'AHORA' ? '' : 'hidden' %>>
+    <legend>Con qué pagó</legend>
+    <div class="grupo-botones">
+      <% medios.forEach(function (m) { %>
+        <label class="opcion-boton">
+          <input type="radio" name="id_medio_pago" value="<%= m.id_medio_pago %>" <%= String(m.id_medio_pago) === String(valores.id_medio_pago) ? 'checked' : '' %>>
+          <span><%= m.nombre %></span>
+        </label>
+      <% }) %>
+    </div>
+    <p class="pista">Si pagó una parte, elegí "Queda a cuenta" y registrá lo que pagó desde el remito.</p>
+  </fieldset>
+
+  <div class="botonera">
+    <button type="submit">Confirmar la venta</button>
+    <a class="cancelar" href="/cotizar/<%= cliente.id_cliente %>">Volver a cambiar</a>
+  </div>
+</form>
+
+<script>
+  // "Con que pago" solo se pide si pago ahora.
+  (function () {
+    var medio = document.getElementById('medio-pago');
+    document.querySelectorAll('#form-confirmar input[name=pago]').forEach(function (r) {
+      r.addEventListener('change', function () { medio.hidden = r.value !== 'AHORA' || !r.checked; });
+    });
+  })();
+</script>
+
+<%- include('../parciales/pie') %>

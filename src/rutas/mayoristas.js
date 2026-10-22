@@ -621,7 +621,7 @@ async function traerVenta(id) {
   if (!venta) return null;
   venta.total = Number(venta.total);
   const { rows: tachos } = await consultar(
-    `SELECT vt.envase, vt.precio_aplicado, t.codigo_barras, s.nombre || ' (' || lower(s.linea) || ')' AS sabor
+    `SELECT vt.envase, vt.precio_aplicado, vt.precio_envase, t.codigo_barras, s.nombre || ' (' || lower(s.linea) || ')' AS sabor
        FROM venta_tachos vt
        JOIN tachos t ON t.id_tacho = vt.id_tacho
        JOIN lotes l ON l.id_lote = t.id_lote
@@ -638,6 +638,14 @@ async function traerVenta(id) {
     r.cantidad += 1;
     r.codigos.push(t.codigo_barras);
   }
+  // Los envases cobrados aparte van en su propio renglon del remito. Las
+  // ventas anteriores al 2026-10-22 no tienen: su envase venia en el precio.
+  const conEnvase = tachos.filter((t) => Number(t.precio_envase) > 0);
+  const envases = {
+    cantidad: conEnvase.length,
+    precio: conEnvase.length > 0 ? Number(conEnvase[0].precio_envase) : 0,
+    total: conEnvase.reduce((s, t) => s + aCentavos(t.precio_envase), 0) / 100,
+  };
   const { rows: cobros } = await consultar(
     `SELECT p.monto, p.fecha_hora, m.nombre AS medio, ${NOMBRE_USUARIO('p.id_usuario')} AS quien
        FROM pagos_venta p JOIN medios_pago m ON m.id_medio_pago = p.id_medio_pago
@@ -645,7 +653,7 @@ async function traerVenta(id) {
     [id]
   );
   const cobrado = cobros.reduce((s, c) => s + aCentavos(c.monto), 0) / 100;
-  return { venta, renglones, cobros, cobrado, saldo: (aCentavos(venta.total) - aCentavos(cobrado)) / 100 };
+  return { venta, renglones, envases, cobros, cobrado, saldo: (aCentavos(venta.total) - aCentavos(cobrado)) / 100 };
 }
 
 async function mostrarVenta(res, datos, { errores = [], estado = 200, valores = {} } = {}) {
@@ -762,4 +770,8 @@ router.post('/devoluciones/:id/anular', async (req, res, siguiente) => {
 module.exports = router;
 module.exports.LINEAS = LINEAS;
 module.exports.ENVASES = ENVASES;
+module.exports.PAGOS = PAGOS;
 module.exports.preciosVigentes = preciosVigentes;
+module.exports.traerCliente = traerCliente;
+module.exports.cuentaDe = cuentaDe;
+module.exports.mediosDePago = mediosDePago;

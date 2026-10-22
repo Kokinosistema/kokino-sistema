@@ -19,7 +19,7 @@
   <div>
     <%- include('_remito', { remito: {
       numero: venta.id_venta, sucursal: venta.sucursal, fecha: venta.fecha_hora, vendio: venta.vendio,
-      cliente: venta, renglones, total: venta.total, observaciones: null,
+      cliente: venta, renglones, envases, total: venta.total, observaciones: null,
       pago: venta.fecha_anulacion ? 'venta anulada' : (saldo <= 0 ? 'pagado' : (cobrado > 0 ? 'pagó ' + pesos(cobrado) + ', debe ' + pesos(saldo) : 'a cuenta')),
     } }) %>
     <div class="acciones-ticket no-imprimir">

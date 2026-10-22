@@ -14,7 +14,10 @@
 // Datos de entrada:
 //   lista: { nombre, incluyeFamiliar, incluyeArtesanal, precios: { idSabor: precio } }
 //          Un sabor que no esta en precios no tiene precio en esa lista.
-//   renglones: [{ idSabor, sabor, linea: 'FAMILIAR' | 'ARTESANAL', tachos }]
+//   renglones: [{ idSabor, sabor, linea: 'FAMILIAR' | 'ARTESANAL', tachos, precio }]
+//              precio es opcional: el que el dueno puso para esta venta en
+//              lugar del de la lista (decidido el 2026-10-22). Solo corrige
+//              un sabor que tiene precio en la lista.
 //   precioEnvase: lo que vale el envase que el cliente compra.
 //   compraEnvases: true, false, o null si todavia no se respondio.
 //   envasesComprados: cuantos compra (nunca mas que los tachos).
@@ -37,10 +40,11 @@
     if (!incluye(lista, r.linea)) {
       return Object.assign({}, r, { estado: 'no-disponible', precioUnitario: null, subtotal: null });
     }
-    var precio = lista.precios[r.idSabor];
-    if (precio === undefined || precio === null) {
+    var deLista = lista.precios[r.idSabor];
+    if (deLista === undefined || deLista === null) {
       return Object.assign({}, r, { estado: 'sin-precio', precioUnitario: null, subtotal: null });
     }
+    var precio = r.precio === undefined || r.precio === null ? deLista : r.precio;
     return Object.assign({}, r, {
       estado: 'ok',
       precioUnitario: centavos(precio) / 100,

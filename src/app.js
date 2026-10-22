@@ -25,6 +25,7 @@ const rutasProductos = require('./rutas/productos');
 const rutasFabricacion = require('./rutas/fabricacion');
 const rutasEnvios = require('./rutas/envios');
 const rutasMayoristas = require('./rutas/mayoristas');
+const rutasCotizar = require('./rutas/cotizar');
 const rutasCostos = require('./rutas/costos');
 const rutasMercaderia = require('./rutas/mercaderia');
 const rutasStock = require('./rutas/stock');
@@ -108,6 +109,7 @@ function crearAplicacion() {
   // caer en el /:id del router de clientes.
   app.use('/clientes', rutasMayoristas);
   app.use('/clientes', rutasClientes);
+  app.use('/cotizar', rutasCotizar);
   app.use('/recetas', rutasRecetas);
   app.use('/caja', rutasCaja);
   // Vender es una sola pantalla para las dos cartas (src/cartas.js): el

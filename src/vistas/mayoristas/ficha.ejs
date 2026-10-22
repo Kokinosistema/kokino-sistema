@@ -7,7 +7,10 @@
   <h1><%= cliente.nombre_razon_social %><% if (!cliente.activo) { %> <span class="etiqueta">dado de baja</span><% } %></h1>
   <div class="botones-titulo">
     <a class="boton-secundario" href="/clientes/<%= cliente.id_cliente %>/editar">Editar cliente</a>
-    <% if (cliente.activo) { %><a class="boton" href="/clientes/<%= cliente.id_cliente %>/vender">Nueva venta</a><% } %>
+    <% if (cliente.activo) { %>
+      <a class="boton-secundario" href="/clientes/<%= cliente.id_cliente %>/vender">Nueva venta</a>
+      <a class="boton" href="/cotizar/<%= cliente.id_cliente %>">Cotizar</a>
+    <% } %>
   </div>
 </div>
 <p class="ayuda">

@@ -35,6 +35,7 @@
     sucursales: '<path d="M4 10l1.5-5h13L20 10"/><path d="M4 10c0 1.4 1.1 2.5 2.7 2.5S9.3 11.4 9.3 10c0 1.4 1.2 2.5 2.7 2.5s2.7-1.1 2.7-2.5c0 1.4 1.1 2.5 2.6 2.5S20 11.4 20 10"/><path d="M5.5 12.3V20h13v-7.7"/><path d="M10 20v-4.5h4V20"/>',
     insumos: '<path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/>',
     historial: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    cotizar: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M8 15h2M12 15h2M16 11v4"/>',
   };
   const svg = (nombre) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + iconos[nombre] + '</svg>';
   const ruta = typeof rutaActual !== 'undefined' ? rutaActual : '';
@@ -62,7 +63,7 @@
       const grupos = {
         mostrador: enGrupo(['/ventas', '/pedidosya', '/caja']),
         stock: enGrupo(['/fabricacion', '/mercaderia', '/envios', '/recetas', '/stock']),
-        negocio: enGrupo(['/historial', '/clientes', '/productos', '/insumos', '/costos', '/proveedores']),
+        negocio: enGrupo(['/cotizar', '/historial', '/clientes','/productos', '/insumos', '/costos', '/proveedores']),
         configuracion: enGrupo(['/usuarios', '/sucursales']),
       };
       const pendientesEnvio = typeof porRecibir !== 'undefined' ? porRecibir.length : 0;
@@ -104,6 +105,7 @@
       <% if (usuario.rol === 'administrador') { %>
         <%- cabeceraGrupo('negocio', 'Negocio') %>
         <div class="grupo-enlaces" id="grupo-negocio" <%= grupos.negocio ? '' : 'hidden' %>>
+          <a class="<%= activo('/cotizar') %>" href="/cotizar" title="Cotizar"><%- svg('cotizar') %> <span class="texto-menu">Cotizar</span></a>
           <a class="<%= activo('/historial') %>" href="/historial" title="Historial de ventas"><%- svg('historial') %> <span class="texto-menu">Historial de ventas</span></a>
           <a class="<%= activo('/clientes') %>" href="/clientes" title="Clientes mayoristas"><%- svg('clientes') %> <span class="texto-menu">Clientes mayoristas</span></a>
           <a class="<%= activo('/productos') %>" href="/productos" title="Productos"><%- svg('productos') %> <span class="texto-menu">Productos</span></a>

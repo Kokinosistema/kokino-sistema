@@ -154,6 +154,30 @@ describe('Calcular la cotización', () => {
   });
 });
 
+// Agregado en Kokino (2026-10-22): el dueno puede corregir el precio de un
+// renglon para esa venta, pero no inventarle precio a un sabor sin lista.
+describe('Precio corregido para una venta', () => {
+  test('el precio puesto reemplaza al de la lista', () => {
+    const c = calcularCotizacion({
+      lista: listaTerminal, precioEnvase: PRECIO_ENVASE,
+      renglones: [{ ...chocolate(2), precio: 50000 }, dulceDeLeche(1)],
+      compraEnvases: false, envasesComprados: 0,
+    });
+    assert.equal(c.renglones[0].precioUnitario, 50000);
+    assert.equal(c.total, 158000);
+  });
+
+  test('un sabor sin precio en la lista sigue sin precio aunque se le ponga uno', () => {
+    const c = calcularCotizacion({
+      lista: listaGeneral, precioEnvase: PRECIO_ENVASE,
+      renglones: [{ ...menta(1), precio: 30000 }],
+      compraEnvases: false, envasesComprados: 0,
+    });
+    assert.equal(c.renglones[0].estado, 'sin-precio');
+    assert.equal(c.total, 0);
+  });
+});
+
 describe('Texto para WhatsApp', () => {
   test('tiene la heladería y el total en negrita, el cliente, la fecha, los renglones y los envases a devolver', () => {
     const c = calcularCotizacion({

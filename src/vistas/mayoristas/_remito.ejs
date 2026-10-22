@@ -28,11 +28,21 @@
           <td class="numero"><%= pesos(r.precio * r.cantidad) %></td>
         </tr>
       <% }) %>
+      <%# El envase comprado se cobra aparte desde el 2026-10-22. %>
+      <% if (remito.envases && remito.envases.cantidad > 0) { %>
+        <tr>
+          <td>Envases comprados</td>
+          <td></td>
+          <td class="numero"><%= remito.envases.cantidad %></td>
+          <td class="numero"><%= pesos(remito.envases.precio) %></td>
+          <td class="numero"><%= pesos(remito.envases.total) %></td>
+        </tr>
+      <% } %>
       <tr class="total"><td colspan="2">Total</td><td class="numero"><%= remito.renglones.reduce((n, r) => n + r.cantidad, 0) %></td><td></td><td class="numero"><%= pesos(remito.total) %></td></tr>
     </tbody>
   </table>
 
-  <p><strong>Pago:</strong> <%= remito.pago %></p>
+  <% if (remito.pago) { %><p><strong>Pago:</strong> <%= remito.pago %></p><% } %>
   <% const retornables = remito.renglones.filter((r) => r.envase === 'RETORNABLE').reduce((n, r) => n + r.cantidad, 0); %>
   <% if (retornables > 0) { %>
     <p><strong>Envases retornables:</strong> <%= retornables %> <%= retornables === 1 ? 'tacho, a devolver' : 'tachos, a devolver' %> cuando se terminen.</p>

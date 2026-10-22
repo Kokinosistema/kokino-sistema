@@ -51,7 +51,7 @@ async function conectado(url, tarea) {
 
   const migrar = path.join(path.dirname(require.resolve('node-pg-migrate/package.json')), 'bin', 'node-pg-migrate.js');
   correr('Las migraciones', [migrar, 'up'], url);
-  for (const seed of ['precios', 'costos', 'costos_insumo']) {
+  for (const seed of ['precios', 'precios_mayoristas', 'costos', 'costos_insumo']) {
     correr('El seed ' + seed, [path.join('seeds', seed + '.js')], url);
   }
 

@@ -1,0 +1,284 @@
+<%- include('../parciales/encabezado', { titulo: 'Cotizar a ' + cliente.nombre_razon_social + ' - Kokino' }) %>
+
+<a class="volver" href="/clientes/<%= cliente.id_cliente %>">← <%= cliente.nombre_razon_social %></a>
+<h1>Cotizar a <%= cliente.nombre_razon_social %></h1>
+<p class="ayuda">
+  Cotiza con la <strong><%= listaPrecios.nombre %></strong>. Armá la cotización y mandala por WhatsApp:
+  eso no toca el stock. Cuando el cliente se la lleva, tocá <strong>Se lo lleva</strong> y los tachos
+  salen de <strong><%= sucursal.nombre %></strong>, los que vencen primero.
+</p>
+
+<% if (errores.length > 0) { %>
+  <ul class="errores" role="alert">
+    <% errores.forEach(function (e) { %><li><%= e %></li><% }) %>
+  </ul>
+<% } %>
+
+<% const textoSabor = (s) => (s.precio === null ? 'sin precio' : pesos(s.precio)) + ' · ' + s.llenos + (s.llenos === 1 ? ' lleno' : ' llenos'); %>
+<form method="post" action="/cotizar/<%= cliente.id_cliente %>" class="formulario formulario-ancho" id="form-cotizacion"
+      autocomplete="off" data-cliente="<%= cliente.nombre_razon_social %>" data-heladeria="<%= HELADERIA %>">
+  <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
+
+  <h3 class="subtitulo-form">Helado</h3>
+  <div class="fila fila-agregar">
+    <div class="campo-ancho">
+      <label for="sabor-texto">Sabor</label>
+      <div class="combo" id="combo-sabor">
+        <input type="text" id="sabor-texto" class="combo-texto" autocomplete="off"
+               role="combobox" aria-expanded="false" aria-controls="sabor-lista" aria-autocomplete="list"
+               placeholder="Buscá el sabor (por ejemplo: dulce nuez)">
+        <button type="button" class="combo-flecha" aria-label="Mostrar la lista de sabores">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <ul id="sabor-lista" class="combo-lista" role="listbox" hidden>
+          <% sabores.forEach(function (s, i) { %>
+            <li class="combo-opcion" role="option" id="sabor-opcion-<%= i %>" aria-selected="false"
+                data-valor="<%= s.id_sabor %>" data-nombre="<%= s.nombre %>" data-sabor="<%= s.sabor %>"
+                data-linea="<%= s.linea %>" data-llenos="<%= s.llenos %>">
+              <%= s.nombre %> <span class="combo-extra"><%= textoSabor(s) %></span>
+            </li>
+          <% }) %>
+          <li class="combo-vacio" role="presentation" hidden>Ningún sabor de la lista coincide con la búsqueda.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="campo-corto">
+      <label for="tachos-agregar">Tachos</label>
+      <input id="tachos-agregar" class="solo-numeros" inputmode="numeric" maxlength="3" autocomplete="off"
+             placeholder="Ej.: 2" data-mensaje="la cantidad de tachos es un número entero.">
+    </div>
+    <div class="campo-boton">
+      <button type="button" class="boton-secundario" id="agregar-sabor">Agregar</button>
+    </div>
+  </div>
+  <p class="error-campo" id="error-agregar" role="alert" hidden></p>
+
+  <table class="tabla" id="tabla-lleva">
+    <thead>
+      <tr><th>Lo que lleva</th><th class="numero">Tachos</th><th class="numero">Precio por tacho</th><th class="numero">Subtotal</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% borrador.renglones.forEach(function (r) {
+           const s = sabores.find((x) => x.id_sabor === Number(r.id_sabor));
+           if (!s) return; %>
+        <tr class="renglon" data-sabor="<%= s.id_sabor %>" data-nombre="<%= s.nombre %>" data-nombre-sabor="<%= s.sabor %>"
+            data-linea="<%= s.linea %>" data-llenos="<%= s.llenos %>">
+          <td><%= s.nombre %><input type="hidden" name="renglon_sabor" value="<%= s.id_sabor %>">
+            <br><span class="pista falta-stock" hidden></span></td>
+          <td class="numero"><input name="renglon_tachos" class="solo-numeros cantidad-corta" inputmode="numeric" maxlength="3" required
+                                    value="<%= r.tachos %>" aria-label="Tachos" data-mensaje="la cantidad de tachos es un número entero."></td>
+          <td class="numero">
+            <% if (s.precio === null) { %>
+              <span class="pista">sin precio en la lista</span><input type="hidden" name="renglon_precio" value="">
+            <% } else { %>
+              <input name="renglon_precio" class="dinero precio-renglon" inputmode="decimal" value="<%= r.precio %>"
+                     placeholder="<%= pesos(s.precio) %>" aria-label="Precio por tacho">
+            <% } %>
+          </td>
+          <td class="numero subtotal"></td>
+          <td class="acciones"><button type="button" class="enlace quitar">Quitar</button></td>
+        </tr>
+      <% }) %>
+      <tr class="sin-sabores"><td colspan="5" class="ayuda">Todavía no agregaste helado. Buscá el sabor arriba.</td></tr>
+    </tbody>
+  </table>
+  <p class="pista">El precio viene de la lista; lo podés cambiar solo para esta venta. Si lo dejás vacío, va el de la lista.</p>
+
+  <fieldset class="opciones-boton">
+    <legend>¿Compra los envases?</legend>
+    <div class="grupo-botones">
+      <label class="opcion-boton">
+        <input type="radio" name="compra_envases" value="SI" <%= borrador.compra_envases === 'SI' ? 'checked' : '' %>>
+        <span>Sí, los compra · <%= precioEnvase === null ? 'sin precio cargado' : pesos(precioEnvase) + ' cada uno' %></span>
+      </label>
+      <label class="opcion-boton">
+        <input type="radio" name="compra_envases" value="NO" <%= borrador.compra_envases === 'NO' ? 'checked' : '' %>>
+        <span>No, los devuelve · quedan prestados</span>
+      </label>
+    </div>
+  </fieldset>
+  <div id="cuantos-envases" <%= borrador.compra_envases === 'SI' ? '' : 'hidden' %>>
+    <label for="envases-comprados">Cuántos envases compra <span class="pista-inline">(uno por tacho como mucho)</span></label>
+    <input id="envases-comprados" name="envases_comprados" class="solo-numeros cantidad-corta" inputmode="numeric" maxlength="3"
+           value="<%= borrador.envases_comprados %>" data-mensaje="la cantidad de envases es un número entero.">
+  </div>
+
+  <table class="tabla">
+    <tbody>
+      <tr><td>Helado</td><td class="numero" id="total-helado">$0</td></tr>
+      <tr><td id="texto-envases">Envases comprados</td><td class="numero" id="total-envases">$0</td></tr>
+    </tbody>
+    <tfoot><tr class="total-fila"><td>Total</td><td class="numero" id="total-cotizacion">$0</td></tr></tfoot>
+  </table>
+  <p class="pista" id="prestados" hidden></p>
+  <p class="aviso-atencion" id="parcial" hidden>Hay sabores sin precio en la lista: van como "precio a confirmar" y no suman al total.</p>
+
+  <h3 class="subtitulo-form">Mandar la cotización</h3>
+  <div class="botonera">
+    <button type="button" class="boton-secundario" id="copiar">Copiar texto</button>
+    <a class="boton-secundario" id="whatsapp" href="https://wa.me/" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+  </div>
+  <label for="texto-cotizacion">Lo que se manda</label>
+  <textarea id="texto-cotizacion" rows="8" readonly></textarea>
+
+  <div class="botonera">
+    <button type="submit">Se lo lleva</button>
+    <a class="cancelar" href="/clientes/<%= cliente.id_cliente %>">Cancelar</a>
+  </div>
+  <p class="pista">Al tocar <strong>Se lo lleva</strong> revisás los tachos que salen y cómo paga antes de confirmar.</p>
+</form>
+
+<script src="/solo-numeros.js"></script>
+<script src="/combo-sabores.js"></script>
+<script src="/cotizador.js"></script>
+<script>
+  // La cotizacion se calcula con public/cotizador.js, el mismo que usa el
+  // servidor al confirmar: el total que se manda por WhatsApp es el que se
+  // guarda. Elegir un sabor que ya esta suma tachos a su renglon.
+  (function () {
+    var form = document.getElementById('form-cotizacion');
+    var LISTA = <%- JSON.stringify({ nombre: listaPrecios.nombre, incluyeFamiliar: listaPrecios.incluyeFamiliar, incluyeArtesanal: listaPrecios.incluyeArtesanal, precios: listaPrecios.precios }) %>;
+    var PRECIO_ENVASE = <%- JSON.stringify(precioEnvase) %>;
+    var SUCURSAL = <%- JSON.stringify(sucursal.nombre) %>;
+    var dinero = window.dineroKokino;
+    var cotizador = window.cotizador;
+    var cantidad = document.getElementById('tachos-agregar');
+    var error = document.getElementById('error-agregar');
+    var cuerpo = document.querySelector('#tabla-lleva tbody');
+    var sinSabores = cuerpo.querySelector('.sin-sabores');
+    var cuantosEnvases = document.getElementById('cuantos-envases');
+    var envasesComprados = document.getElementById('envases-comprados');
+    var texto = document.getElementById('texto-cotizacion');
+    var whatsapp = document.getElementById('whatsapp');
+
+    var combo = comboSabores(document.getElementById('combo-sabor'), {
+      alElegir: function () { mostrarError(''); cantidad.focus(); cantidad.select(); },
+    });
+
+    function mostrarError(m) { error.textContent = m ? 'Error: ' + m : ''; error.hidden = !m; }
+    function renglones() { return Array.prototype.slice.call(cuerpo.querySelectorAll('tr.renglon')); }
+    function compraEnvases() {
+      var r = form.querySelector('input[name=compra_envases]:checked');
+      return r ? r.value === 'SI' : null;
+    }
+
+    // Un precio vacio va con el de la lista (null para el cotizador).
+    function precioDe(tr) {
+      var campo = tr.querySelector('input.precio-renglon');
+      if (!campo || campo.value.trim() === '') return null;
+      return dinero.centavos(campo.value) / 100;
+    }
+
+    function recalcular() {
+      var trs = renglones();
+      var c = cotizador.calcularCotizacion({
+        lista: LISTA,
+        precioEnvase: PRECIO_ENVASE || 0,
+        renglones: trs.map(function (tr) {
+          return { idSabor: tr.dataset.sabor, sabor: tr.dataset.nombreSabor, linea: tr.dataset.linea,
+                   tachos: Number(tr.querySelector('[name=renglon_tachos]').value) || 0, precio: precioDe(tr) };
+        }),
+        compraEnvases: compraEnvases(),
+        envasesComprados: Number(envasesComprados.value) || 0,
+      });
+      trs.forEach(function (tr, i) {
+        var r = c.renglones[i];
+        tr.querySelector('.subtotal').textContent = r.subtotal === null ? 'precio a confirmar' : cotizador.pesos(r.subtotal);
+        var llenos = Number(tr.dataset.llenos);
+        var falta = tr.querySelector('.falta-stock');
+        falta.hidden = r.tachos <= llenos;
+        falta.textContent = 'En ' + SUCURSAL + (llenos === 0 ? ' no hay tachos llenos' : ' hay ' + llenos + (llenos === 1 ? ' lleno' : ' llenos')) + ': se puede cotizar, pero no confirmar.';
+      });
+      sinSabores.hidden = trs.length > 0;
+      document.getElementById('total-helado').textContent = cotizador.pesos(c.total - c.totalEnvases);
+      document.getElementById('texto-envases').textContent = c.envasesComprados
+        ? c.envasesComprados + (c.envasesComprados === 1 ? ' envase comprado' : ' envases comprados') : 'Envases comprados';
+      document.getElementById('total-envases').textContent = cotizador.pesos(c.totalEnvases);
+      document.getElementById('total-cotizacion').textContent = cotizador.pesos(c.total);
+      var prestados = document.getElementById('prestados');
+      prestados.hidden = !c.envasesPrestados;
+      prestados.textContent = 'Envases prestados a devolver: ' + c.envasesPrestados + '.';
+      document.getElementById('parcial').hidden = !c.esParcial;
+      texto.value = trs.length === 0 ? ''
+        : cotizador.textoWhatsApp(c, { heladeria: form.dataset.heladeria, cliente: form.dataset.cliente, fecha: new Date() });
+      whatsapp.href = 'https://wa.me/?text=' + encodeURIComponent(texto.value);
+    }
+
+    function agregar() {
+      var o = combo.elegida();
+      if (!o) { mostrarError('elegí un sabor de la lista.'); document.getElementById('sabor-texto').focus(); return; }
+      var n = Number(cantidad.value);
+      if (!cantidad.value || n < 1) { mostrarError('poné cuántos tachos de ' + o.dataset.nombre + ' lleva.'); cantidad.focus(); return; }
+      var existente = renglones().find(function (tr) { return tr.dataset.sabor === o.dataset.valor; });
+      if (existente) {
+        var campo = existente.querySelector('[name=renglon_tachos]');
+        campo.value = (Number(campo.value) || 0) + n;
+      } else {
+        cuerpo.insertBefore(renglonNuevo(o, n), sinSabores);
+      }
+      mostrarError('');
+      combo.limpiar(); cantidad.value = '';
+      recalcular();
+      document.getElementById('sabor-texto').focus();
+    }
+
+    function renglonNuevo(o, n) {
+      var tr = document.createElement('tr');
+      tr.className = 'renglon';
+      tr.dataset.sabor = o.dataset.valor; tr.dataset.nombre = o.dataset.nombre; tr.dataset.nombreSabor = o.dataset.sabor;
+      tr.dataset.linea = o.dataset.linea; tr.dataset.llenos = o.dataset.llenos;
+      var precioLista = LISTA.precios[o.dataset.valor];
+      tr.innerHTML = '<td><span class="nombre"></span><input type="hidden" name="renglon_sabor"><br><span class="pista falta-stock" hidden></span></td>'
+        + '<td class="numero"><input name="renglon_tachos" class="solo-numeros cantidad-corta" inputmode="numeric" maxlength="3" required aria-label="Tachos" data-mensaje="la cantidad de tachos es un número entero."></td>'
+        + '<td class="numero">' + (precioLista === undefined
+          ? '<span class="pista">sin precio en la lista</span><input type="hidden" name="renglon_precio" value="">'
+          : '<input name="renglon_precio" class="dinero precio-renglon" inputmode="decimal" aria-label="Precio por tacho">') + '</td>'
+        + '<td class="numero subtotal"></td>'
+        + '<td class="acciones"><button type="button" class="enlace quitar">Quitar</button></td>';
+      tr.querySelector('.nombre').textContent = o.dataset.nombre;
+      tr.querySelector('[name=renglon_sabor]').value = o.dataset.valor;
+      tr.querySelector('[name=renglon_tachos]').value = n;
+      var precio = tr.querySelector('input.precio-renglon');
+      if (precio) { precio.value = dinero.pesos(Math.round(precioLista * 100)); precio.placeholder = precio.value; }
+      return tr;
+    }
+
+    document.getElementById('agregar-sabor').addEventListener('click', agregar);
+    cantidad.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); agregar(); } });
+    cuerpo.addEventListener('click', function (e) {
+      if (!e.target.classList.contains('quitar')) return;
+      e.target.closest('tr').remove();
+      recalcular();
+    });
+    form.addEventListener('input', recalcular);
+    form.addEventListener('change', recalcular);
+
+    // "Cuantos envases" solo se pide si los compra; de entrada, uno por tacho.
+    form.querySelectorAll('input[name=compra_envases]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        cuantosEnvases.hidden = compraEnvases() !== true;
+        if (compraEnvases() && !envasesComprados.value) {
+          envasesComprados.value = renglones().reduce(function (s, tr) { return s + (Number(tr.querySelector('[name=renglon_tachos]').value) || 0); }, 0) || '';
+        }
+        recalcular();
+      });
+    });
+
+    document.getElementById('copiar').addEventListener('click', function () {
+      var boton = this;
+      function listo() { boton.textContent = 'Copiado'; setTimeout(function () { boton.textContent = 'Copiar texto'; }, 2000); }
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(texto.value).then(listo);
+      } else {
+        // Sin HTTPS el navegador no deja usar el portapapeles moderno.
+        texto.select();
+        document.execCommand('copy');
+        listo();
+      }
+    });
+
+    recalcular();
+  })();
+</script>
+
+<%- include('../parciales/pie') %>
