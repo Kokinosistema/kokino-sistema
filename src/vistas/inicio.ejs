@@ -40,17 +40,6 @@
 
 <% if (mostrador) { %>
   <%- include('parciales/mostrador') %>
-<% } else { %>
-<section class="tarjetas">
-  <% sucursales.forEach(function (s) { %>
-    <article class="tarjeta">
-      <h2><%= s.nombre %></h2>
-      <p><%= s.direccion %></p>
-      <p class="dato"><%= s.empleados %> empleados activos</p>
-    </article>
-  <% }) %>
-</section>
-
 <% } %>
 
 <%- include('parciales/pie') %>

@@ -230,10 +230,8 @@ main { padding: 24px; max-width: 1180px; width: 100%; }
 /* Un formulario dentro de un panel usa sus filas, pero no repite la tarjeta. */
 .panel .formulario { background: none; box-shadow: none; padding: 0; margin-bottom: 20px; }
 
-.tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px; margin: 16px 0 24px; }
 .tarjeta { margin: 0; }
 .tarjeta p { margin: 2px 0; color: var(--text-secondary); font-size: 13px; }
-.dato { color: var(--text-primary) !important; font-weight: 700; }
 
 /* ---------- Tablas ---------- */
 

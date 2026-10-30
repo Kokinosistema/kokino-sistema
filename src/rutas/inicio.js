@@ -12,18 +12,6 @@ const router = express.Router();
 // antes de construir cualquier otra pantalla encima.
 router.get('/', async (req, res, siguiente) => {
   try {
-    // La sucursal de trabajo: la del empleado, o la que el dueno eligio
-    // arriba. Esa regla ya quedo escrita en un solo lugar, src/sucursales.js.
-    const { rows } = await consultar(
-      `SELECT s.nombre,
-              s.direccion,
-              (SELECT count(*) FROM empleados e
-                WHERE e.id_sucursal_asignada = s.id_sucursal AND e.activo)::int AS empleados
-         FROM sucursales s
-        WHERE s.id_sucursal = $1`,
-      [req.sucursal.id_sucursal]
-    );
-
     // Las metricas de ventas son solo para los duenos: a los empleados ni se
     // les calculan.
     const metricas = req.session.usuario.rol === 'administrador'
@@ -49,7 +37,7 @@ router.get('/', async (req, res, siguiente) => {
       mostrador = { caja: caja || null, alertas: await alertasDeStock(req.sucursal.id_sucursal) };
     }
 
-    res.render('inicio', { sucursales: rows, metricas, avisoCopias, mostrador });
+    res.render('inicio', { metricas, avisoCopias, mostrador });
   } catch (error) {
     siguiente(error);
   }
