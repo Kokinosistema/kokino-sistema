@@ -97,7 +97,7 @@
             <td class="numero"><%= s.en_pozo %></td>
             <td class="numero <%= s.llenos === 0 ? 'alerta' : '' %>"><%= s.llenos %></td>
             <td class="numero"><%= Number(s.litros) %> L</td>
-            <td><%= s.proximo_vencimiento ? s.proximo_vencimiento.toLocaleDateString('es-AR') : '—' %></td>
+            <td><%= s.proximo_vencimiento ? s.proximo_vencimiento.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—' %></td>
             <td class="acciones">
               <form method="post" action="/fabricacion/cambiar-tacho">
                 <input type="hidden" name="id_sucursal" value="<%= sucursal.id_sucursal %>">
@@ -132,7 +132,7 @@
           <% historial.forEach(function (h) { %>
             <% const n = h.es_helado ? Number(h.cantidad_real) / LITROS_POR_TACHO : Number(h.cantidad_real); %>
             <tr>
-              <td><%= h.fecha_produccion.toLocaleDateString('es-AR') %></td>
+              <td><%= h.fecha_produccion.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) %></td>
               <td><%= h.que %></td>
               <td class="numero"><%= n %> <%= h.es_helado ? (n === 1 ? 'tacho' : 'tachos') : h.unidad %></td>
               <td><%= h.es_pote ? 'No lleva' : (h.con_receta ? 'Sí' : 'Sin receta: no descontó insumos') %></td>
