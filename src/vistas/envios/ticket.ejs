@@ -37,6 +37,18 @@
   </section>
 <% } %>
 
+<% if (agregadosAlRecibir.length > 0) { %>
+  <section class="panel no-imprimir">
+    <h2>Lo que llegó sin estar en el ticket</h2>
+    <p class="ayuda">Lo agregó <%= envio.recibio %> al recibir. Se tomaron de <%= envio.origen %> los tachos que vencían primero.</p>
+    <ul>
+      <% agregadosAlRecibir.forEach(function (t) { %>
+        <li>Tacho <%= t.codigo_barras %> de <%= t.sabor %></li>
+      <% }) %>
+    </ul>
+  </section>
+<% } %>
+
 <%- include('_ticket', { ticket: {
   numero: envio.id_traslado, origen: envio.origen, destino: envio.destino, fecha: envio.fecha_envio, armo: envio.armo,
   renglones, productos, observaciones: envio.observaciones, recibido: envio.estado === 'RECIBIDO',

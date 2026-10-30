@@ -13,7 +13,8 @@ const router = express.Router();
 //     los que vencen primero) y productos de produccion propia.
 //   - Se revisan en un ticket imprimible y se envian: quedan en camino.
 //   - En el destino se controla contra el ticket y se marca que llego; ahi
-//     se mueve el stock (lo hace la base: cerrar_traslado).
+//     se mueve el stock (lo hace la base: cerrar_traslado). Lo que llego
+//     sin estar en el ticket se informa por sabor y cantidad (2026-10-30).
 //   - Mientras esta en camino, el origen lo puede cancelar.
 //
 // No lleva exigirRol: arman y reciben los encargados de cada sucursal y los
@@ -35,10 +36,10 @@ async function destinos(req) {
   return rows;
 }
 
-// Lo que se puede enviar desde la sucursal: tachos llenos por sabor, y
-// productos propios con stock, descontando lo que ya esta en camino.
-async function disponible(idSucursal) {
-  const { rows: sabores } = await consultar(
+// Los tachos llenos de la sucursal, por sabor. Los que van en un envio en
+// camino no cuentan: ya no estan LLENO sino EN_CAMINO.
+async function saboresLlenos(idSucursal) {
+  const { rows } = await consultar(
     `SELECT s.id_sabor, s.nombre || ' (' || lower(s.linea) || ')' AS nombre, count(*)::int AS llenos,
             min(l.fecha_vencimiento) AS vence
        FROM tachos t
@@ -49,6 +50,27 @@ async function disponible(idSucursal) {
       ORDER BY s.nombre, s.linea`,
     [idSucursal]
   );
+  return rows;
+}
+
+// Los tachos llenos de un sabor que vencen primero, tomados hasta el final
+// de la transaccion para que nadie los abra o los envie a la vez.
+async function tachosQueVencenPrimero(ejecutar, idSucursal, idSabor, cantidad) {
+  const { rows } = await ejecutar(
+    `SELECT t.id_tacho FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote
+      WHERE t.id_sucursal = $1 AND t.estado = 'LLENO' AND l.id_sabor = $2
+      ORDER BY l.fecha_vencimiento, t.id_tacho
+      LIMIT $3
+      FOR UPDATE OF t`,
+    [idSucursal, idSabor, cantidad]
+  );
+  return rows;
+}
+
+// Lo que se puede enviar desde la sucursal: tachos llenos por sabor, y
+// productos propios con stock, descontando lo que ya esta en camino.
+async function disponible(idSucursal) {
+  const sabores = await saboresLlenos(idSucursal);
   const { rows: productos } = await consultar(
     `SELECT p.id_producto, p.nombre, lower(u.abreviatura) AS unidad,
             coalesce((SELECT sum(m.cantidad) FROM movimientos_producto m
@@ -202,16 +224,7 @@ router.post('/enviar', async (req, res, siguiente) => {
         [req.sucursal.id_sucursal, elegido.id_destino, req.session.usuario.id_usuario, elegido.observaciones || null]
       );
       for (const [idSabor, cantidad] of Object.entries(elegido.sabores)) {
-        // Los que vencen primero, tomados hasta el final de la transaccion
-        // para que nadie los abra o los envie a la vez.
-        const { rows: tachos } = await ejecutar(
-          `SELECT t.id_tacho FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote
-            WHERE t.id_sucursal = $1 AND t.estado = 'LLENO' AND l.id_sabor = $2
-            ORDER BY l.fecha_vencimiento, t.id_tacho
-            LIMIT $3
-            FOR UPDATE OF t`,
-          [req.sucursal.id_sucursal, idSabor, cantidad]
-        );
+        const tachos = await tachosQueVencenPrimero(ejecutar, req.sucursal.id_sucursal, idSabor, cantidad);
         if (tachos.length < cantidad) return { error: 'Mientras revisabas se abrió o se envió algún tacho y ya no alcanzan. Revisá las cantidades.' };
         for (const t of tachos) {
           await ejecutar('INSERT INTO traslado_tachos (id_traslado, id_tacho) VALUES ($1, $2)', [envio.id_traslado, t.id_tacho]);
@@ -252,7 +265,7 @@ async function traerEnvio(req, id) {
   if (!envio) return null;
   if (envio.id_sucursal_origen !== req.sucursal.id_sucursal && envio.id_sucursal_destino !== req.sucursal.id_sucursal) return null;
   const { rows: tachos } = await consultar(
-    `SELECT tt.id_tacho, tt.recibido, tt.motivo_faltante, t.codigo_barras, l.fecha_vencimiento,
+    `SELECT tt.id_tacho, tt.recibido, tt.motivo_faltante, tt.agregado_al_recibir, t.codigo_barras, l.fecha_vencimiento,
             s.nombre || ' (' || lower(s.linea) || ')' AS sabor
        FROM traslado_tachos tt
        JOIN tachos t ON t.id_tacho = tt.id_tacho
@@ -271,15 +284,17 @@ async function traerEnvio(req, id) {
       ORDER BY p.nombre`,
     [id]
   );
-  // Agrupados por sabor para el ticket.
+  // Agrupados por sabor para el ticket. El ticket es lo que viajo con la
+  // mercaderia: lo agregado al recibir va aparte.
   const renglones = [];
-  for (const t of tachos) {
+  for (const t of tachos.filter((x) => !x.agregado_al_recibir)) {
     let r = renglones.find((x) => x.sabor === t.sabor);
     if (!r) { r = { sabor: t.sabor, cantidad: 0, tachos: [] }; renglones.push(r); }
     r.cantidad += 1;
     r.tachos.push(t);
   }
-  return { envio, tachos, renglones, productos };
+  const agregadosAlRecibir = tachos.filter((x) => x.agregado_al_recibir);
+  return { envio, tachos, renglones, agregadosAlRecibir, productos };
 }
 
 router.get('/:id', async (req, res, siguiente) => {
@@ -296,9 +311,43 @@ router.get('/:id', async (req, res, siguiente) => {
   }
 });
 
-// Recibir: en el destino se marca que llego de cada renglon.
-async function mostrarRecepcion(res, datos, errores = [], estado = 200) {
-  res.status(estado).render('envios/recibir', { ...datos, errores });
+// Recibir: en el destino se marca que llego de cada renglon, y se agrega lo
+// que llego sin estar en el ticket. Para eso se ofrecen los sabores que el
+// origen tiene en tachos llenos.
+async function mostrarRecepcion(res, datos, { errores = [], estado = 200, agregados = [] } = {}) {
+  res.status(estado).render('envios/recibir', {
+    ...datos, errores, agregados, saboresParaAgregar: await saboresLlenos(datos.envio.id_sucursal_origen),
+  });
+}
+
+// Lo que llego sin estar en el ticket: renglones de sabor y cantidad. Se
+// controla contra los tachos llenos del origen; un sabor repetido se suma.
+// Devuelve los renglones tal como vinieron, para volver a mostrarlos si hay
+// errores, y la cantidad por sabor, para tomar los tachos.
+function leerAgregados(req, envio, sabores, errores) {
+  const idsSabor = [].concat(req.body.agregado_sabor || []);
+  const cantidades = [].concat(req.body.agregado_cantidad || []);
+  const renglones = [];
+  const porSabor = new Map();
+  idsSabor.forEach((texto, i) => {
+    const valor = (cantidades[i] || '').trim();
+    renglones.push({ id_sabor: texto, cantidad: valor });
+    if (texto === '' && valor === '') return;
+    const sabor = sabores.find((s) => s.id_sabor === Number(texto));
+    if (texto === '') { errores.push('Elegí el sabor de lo que llegó sin estar en el ticket.'); return; }
+    if (!sabor) { errores.push('Uno de los sabores agregados ya no tiene tachos llenos en ' + envio.origen + '.'); return; }
+    if (!/^\d{1,3}$/.test(valor) || Number(valor) === 0) {
+      errores.push('Poné cuántos tachos de ' + sabor.nombre + ' llegaron sin estar en el ticket.');
+      return;
+    }
+    porSabor.set(sabor, (porSabor.get(sabor) || 0) + Number(valor));
+  });
+  for (const [sabor, cantidad] of porSabor) {
+    if (cantidad > sabor.llenos) {
+      errores.push('De ' + sabor.nombre + ' quedan ' + sabor.llenos + ' tachos llenos en ' + envio.origen + ': no pueden haber llegado ' + cantidad + ' de más.');
+    }
+  }
+  return { renglones, porSabor };
 }
 
 router.get('/:id/recibir', async (req, res, siguiente) => {
@@ -346,27 +395,49 @@ router.post('/:id/recibir', async (req, res, siguiente) => {
       p.cantidad_recibida = texto; p.motivo_faltante = motivo;
       return { id: p.id_producto, recibida, motivo };
     });
-    if (errores.length > 0) return mostrarRecepcion(res, datos, errores, 400);
+    const agregados = leerAgregados(req, envio, await saboresLlenos(envio.id_sucursal_origen), errores);
+    if (errores.length > 0) return mostrarRecepcion(res, datos, { errores, estado: 400, agregados: agregados.renglones });
 
-    await conTransaccion(async (ejecutar) => {
-      for (const m of marcasTachos) {
-        await ejecutar('UPDATE traslado_tachos SET recibido = $1, motivo_faltante = $2 WHERE id_traslado = $3 AND id_tacho = $4',
-          [m.llego, m.llego ? null : m.motivo, envio.id_traslado, m.id]);
-      }
-      for (const m of marcasProductos) {
-        await ejecutar('UPDATE traslado_productos SET cantidad_recibida = $1, motivo_faltante = $2 WHERE id_traslado = $3 AND id_producto = $4',
-          [m.recibida, m.motivo || null, envio.id_traslado, m.id]);
-      }
-      // Al pasar a RECIBIDO la base mueve el stock (cerrar_traslado).
-      await ejecutar(
-        "UPDATE traslados SET estado = 'RECIBIDO', fecha_recepcion = now(), id_usuario_recepcion = $1 WHERE id_traslado = $2",
-        [req.session.usuario.id_usuario, envio.id_traslado]
-      );
-    });
+    try {
+      await conTransaccion(async (ejecutar) => {
+        for (const m of marcasTachos) {
+          await ejecutar('UPDATE traslado_tachos SET recibido = $1, motivo_faltante = $2 WHERE id_traslado = $3 AND id_tacho = $4',
+            [m.llego, m.llego ? null : m.motivo, envio.id_traslado, m.id]);
+        }
+        for (const m of marcasProductos) {
+          await ejecutar('UPDATE traslado_productos SET cantidad_recibida = $1, motivo_faltante = $2 WHERE id_traslado = $3 AND id_producto = $4',
+            [m.recibida, m.motivo || null, envio.id_traslado, m.id]);
+        }
+        // Lo que llego de mas sale del origen como al armar: los que vencen
+        // primero. Entra ya recibido. Si no alcanzan, se lanza el error para
+        // que la transaccion se deshaga entera.
+        for (const [sabor, cantidad] of agregados.porSabor) {
+          const tachos = await tachosQueVencenPrimero(ejecutar, envio.id_sucursal_origen, sabor.id_sabor, cantidad);
+          if (tachos.length < cantidad) {
+            throw Object.assign(new Error('Mientras recibías se abrió o se envió algún tacho de ' + sabor.nombre + ' en ' + envio.origen
+              + ' y ya no alcanzan para lo que llegó de más. Revisá las cantidades.'), { paraMostrar: true });
+          }
+          for (const t of tachos) {
+            await ejecutar('INSERT INTO traslado_tachos (id_traslado, id_tacho, recibido, agregado_al_recibir) VALUES ($1, $2, true, true)',
+              [envio.id_traslado, t.id_tacho]);
+          }
+        }
+        // Al pasar a RECIBIDO la base mueve el stock (cerrar_traslado).
+        await ejecutar(
+          "UPDATE traslados SET estado = 'RECIBIDO', fecha_recepcion = now(), id_usuario_recepcion = $1 WHERE id_traslado = $2",
+          [req.session.usuario.id_usuario, envio.id_traslado]
+        );
+      });
+    } catch (error) {
+      if (!error.paraMostrar) throw error;
+      return mostrarRecepcion(res, datos, { errores: [error.message], estado: 409, agregados: agregados.renglones });
+    }
 
     const faltaron = marcasTachos.filter((m) => !m.llego).length;
+    const sumados = [...agregados.porSabor.values()].reduce((total, cantidad) => total + cantidad, 0);
     req.session.aviso = 'Se recibió el envío N° ' + envio.id_traslado + '. Lo que llegó ya está en el stock de ' + req.sucursal.nombre + '.'
-      + (faltaron === 1 ? ' Quedó registrado el tacho que no llegó.' : faltaron > 1 ? ' Quedaron registrados los ' + faltaron + ' tachos que no llegaron.' : '');
+      + (faltaron === 1 ? ' Quedó registrado el tacho que no llegó.' : faltaron > 1 ? ' Quedaron registrados los ' + faltaron + ' tachos que no llegaron.' : '')
+      + (sumados === 1 ? ' Se sumó el tacho que no estaba en el ticket.' : sumados > 1 ? ' Se sumaron los ' + sumados + ' tachos que no estaban en el ticket.' : '');
     res.redirect('/envios/' + envio.id_traslado);
   } catch (error) {
     siguiente(error);

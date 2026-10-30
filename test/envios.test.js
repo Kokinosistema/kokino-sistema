@@ -1,8 +1,9 @@
 'use strict';
 
 // Envios de la fabrica (Entre Rios) a Alem: armar, enviar, recibir con
-// faltantes y cancelar. Usa Sambayon y el Palito bombon, que no usa ninguna
-// otra prueba.
+// faltantes, recibir lo que llego sin estar en el ticket y cancelar. Usa
+// Sambayon, Chocolate amargo y el Palito bombon, que no usa ninguna otra
+// prueba.
 
 const { describe, test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,14 +15,15 @@ let alem; // empleado de Alem
 let er;
 let idAlem;
 let sambayon;
+let chocolate;
 let palito;
 
-async function estadoTachos() {
+async function estadoTachos(sabor = sambayon) {
   const { rows } = await consultar(
     `SELECT s.nombre AS sucursal, t.estado, count(*)::int AS n
        FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote JOIN sucursales s ON s.id_sucursal = t.id_sucursal
       WHERE l.id_sabor = $1 GROUP BY s.nombre, t.estado ORDER BY 1, 2`,
-    [sambayon]
+    [sabor]
   );
   return rows.map((r) => r.sucursal + ' ' + r.estado + ' ' + r.n);
 }
@@ -52,6 +54,7 @@ before(async () => {
   er = await idSucursal('Entre Ríos');
   idAlem = await idSucursal('Alem');
   sambayon = await idSabor('Sambayón', 'ARTESANAL');
+  chocolate = await idSabor('Chocolate amargo', 'ARTESANAL');
   palito = await idProducto('Palito bombón');
   await producir(fabrica, er, 'sabor:' + sambayon, 3);
   await producir(fabrica, er, 'producto:' + palito, 20);
@@ -149,5 +152,90 @@ describe('Cancelar un envío', () => {
     await fabrica.enviar('/envios/' + numero + '/cancelar', { motivo: 'se armó por error' });
     assert.equal(await fabrica.aviso('/envios'), 'Se canceló el envío N° ' + numero + '. Sus tachos vuelven a estar disponibles en Entre Ríos.');
     assert.deepEqual(await estadoTachos(), ['Alem LLENO 1', 'Entre Ríos FALTANTE 1', 'Entre Ríos LLENO 1']);
+  });
+});
+
+// El ticket dice 1 de Sambayon, pero en la camioneta tambien iban 2 de
+// Chocolate amargo. Alem los agrega al recibir: salen de Entre Rios los que
+// vencen primero. Del chocolate hay 1 tacho de hace 3 dias y 2 de hoy.
+describe('Lo que llegó sin estar en el ticket', () => {
+  let numero;
+  let tachoDelTicket;
+  const haceTresDias = new Date(Date.now() - 3 * 86400000).toLocaleDateString('sv-SE');
+
+  before(async () => {
+    await producir(fabrica, er, 'sabor:' + chocolate, 1, haceTresDias);
+    await producir(fabrica, er, 'sabor:' + chocolate, 2);
+    await producir(fabrica, er, 'sabor:' + sambayon, 1);
+    numero = await enviar({ ['sabor_' + sambayon]: '1' });
+    ({ rows: [{ id_tacho: tachoDelTicket }] } = await consultar('SELECT id_tacho FROM traslado_tachos WHERE id_traslado = $1', [numero]));
+  });
+
+  test('ofrece los sabores que el origen tiene en tachos llenos', async () => {
+    const { html } = await alem.abrir('/envios/' + numero + '/recibir');
+    assert.match(html.replace(/\s+/g, ' '), /Chocolate amargo \(artesanal\) · 3 disponibles/);
+  });
+
+  test('pide el sabor y la cantidad, y un renglón vacío no cuenta', async () => {
+    const r = await alem.enviar('/envios/' + numero + '/recibir', [
+      ['llego_' + tachoDelTicket, '1'],
+      ['agregado_sabor', String(chocolate)], ['agregado_cantidad', ''],
+      ['agregado_sabor', ''], ['agregado_cantidad', '1'],
+      ['agregado_sabor', ''], ['agregado_cantidad', ''],
+    ]);
+    assert.equal(r.estado, 400);
+    assert.deepEqual(erroresDe(r.html), [
+      'Poné cuántos tachos de Chocolate amargo (artesanal) llegaron sin estar en el ticket.',
+      'Elegí el sabor de lo que llegó sin estar en el ticket.',
+    ]);
+  });
+
+  test('no puede llegar de más lo que el origen no tiene, y si hay errores no se guarda nada', async () => {
+    // Un sabor repetido se suma: 2 + 2 son 4, y en Entre Rios hay 3.
+    const r = await alem.enviar('/envios/' + numero + '/recibir', [
+      ['llego_' + tachoDelTicket, '1'],
+      ['agregado_sabor', String(chocolate)], ['agregado_cantidad', '2'],
+      ['agregado_sabor', String(chocolate)], ['agregado_cantidad', '2'],
+    ]);
+    assert.equal(r.estado, 400);
+    assert.deepEqual(erroresDe(r.html), ['De Chocolate amargo (artesanal) quedan 3 tachos llenos en Entre Ríos: no pueden haber llegado 4 de más.']);
+    // Lo cargado vuelve a aparecer, para no tener que escribirlo de nuevo.
+    assert.equal(r.html.match(/name="agregado_cantidad"[^>]*value="2"/g).length, 2);
+    const { rows: [envio] } = await consultar('SELECT estado FROM traslados WHERE id_traslado = $1', [numero]);
+    assert.equal(envio.estado, 'EN_CAMINO');
+    assert.deepEqual(await estadoTachos(chocolate), ['Entre Ríos LLENO 3']);
+  });
+
+  test('lo agregado sale del origen, los que vencen primero, y suma en el destino', async () => {
+    const r = await alem.enviar('/envios/' + numero + '/recibir', [
+      ['llego_' + tachoDelTicket, '1'],
+      ['agregado_sabor', String(chocolate)], ['agregado_cantidad', '2'],
+      ['agregado_sabor', ''], ['agregado_cantidad', ''],
+    ]);
+    assert.equal(r.estado, 302);
+    assert.equal(await alem.aviso('/envios'), 'Se recibió el envío N° ' + numero + '. Lo que llegó ya está en el stock de Alem. Se sumaron los 2 tachos que no estaban en el ticket.');
+    assert.deepEqual(await estadoTachos(chocolate), ['Alem LLENO 2', 'Entre Ríos LLENO 1']);
+    // En Entre Rios queda uno de hoy: el de hace tres dias vencia primero y viajo.
+    const { rows: quedan } = await consultar(
+      `SELECT to_char(l.fecha_elaboracion, 'YYYY-MM-DD') AS elaborado
+         FROM tachos t JOIN lotes l ON l.id_lote = t.id_lote
+        WHERE l.id_sabor = $1 AND t.id_sucursal = $2`,
+      [chocolate, er]
+    );
+    assert.notEqual(quedan[0].elaborado, haceTresDias);
+    const { rows: [marcas] } = await consultar(
+      'SELECT count(*) FILTER (WHERE agregado_al_recibir)::int AS agregados, count(*)::int AS total FROM traslado_tachos WHERE id_traslado = $1',
+      [numero]
+    );
+    assert.deepEqual(marcas, { agregados: 2, total: 3 });
+  });
+
+  test('el ticket muestra lo agregado aparte de lo que viajó', async () => {
+    const { html } = await fabrica.abrir('/envios/' + numero);
+    const ticket = /<article class="ticket">[\s\S]*<\/article>/.exec(html)[0];
+    assert.doesNotMatch(ticket, /Chocolate amargo/);
+    assert.match(ticket, /Sambayón/);
+    assert.match(html, /Lo que llegó sin estar en el ticket/);
+    assert.equal(html.match(/<li>Tacho .+ de Chocolate amargo \(artesanal\)<\/li>/g).length, 2);
   });
 });

@@ -4,6 +4,7 @@
 <p class="ayuda">
   Controlá la mercadería contra el ticket que viene de <%= envio.origen %>. Destildá los tachos que no
   llegaron y corregí la cantidad de los productos si llegaron menos; en los dos casos escribí qué pasó.
+  Si llegó helado que no estaba en el ticket, agregalo abajo.
   Al confirmar, lo que llegó pasa al stock de <%= sucursal.nombre %>.
 </p>
 
@@ -60,6 +61,41 @@
     </table>
   <% } %>
 
+  <h2>¿Llegó algo que no estaba en el ticket?</h2>
+  <% if (saboresParaAgregar.length > 0) { %>
+    <p class="ayuda">Si llegaron tachos de más, elegí el sabor y cuántos. Se descuentan de <%= envio.origen %>: los que vencen primero.</p>
+    <table class="tabla">
+      <thead><tr><th>Sabor</th><th class="numero">Tachos</th><th></th></tr></thead>
+      <tbody id="cuerpo-agregados">
+        <% (agregados.length > 0 ? agregados : [{ id_sabor: '', cantidad: '' }]).forEach(function (a) { %>
+          <tr class="renglon">
+            <td>
+              <select name="agregado_sabor" aria-label="Sabor que llegó sin estar en el ticket">
+                <option value="">Elegí el sabor</option>
+                <% saboresParaAgregar.forEach(function (s) { %>
+                  <option value="<%= s.id_sabor %>" <%= String(a.id_sabor) === String(s.id_sabor) ? 'selected' : '' %>>
+                    <%= s.nombre %> · <%= s.llenos %> <%= s.llenos === 1 ? 'disponible' : 'disponibles' %>
+                  </option>
+                <% }) %>
+              </select>
+            </td>
+            <td class="numero">
+              <input name="agregado_cantidad" class="solo-numeros cantidad-corta" inputmode="numeric" maxlength="3" autocomplete="off"
+                     data-mensaje="la cantidad es un número entero." value="<%= a.cantidad %>" aria-label="Cuántos tachos de ese sabor llegaron de más">
+            </td>
+            <td class="acciones"><button type="button" class="enlace quitar">Quitar</button></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <button type="button" id="agregar-sabor" class="boton-secundario">+ Agregar otro sabor</button>
+  <% } else { %>
+    <p class="ayuda">
+      En <%= envio.origen %> no quedan tachos llenos cargados en el sistema, así que no hay de dónde descontar.
+      Si llegó helado de más, avisales: puede que falte registrar su producción.
+    </p>
+  <% } %>
+
   <button type="submit">Confirmar lo que llegó</button>
   <a class="boton-secundario" href="/envios/<%= envio.id_traslado %>">Volver</a>
 </form>
@@ -81,6 +117,37 @@
       }
       (marca || cantidad).addEventListener(marca ? 'change' : 'input', actualizar);
       actualizar();
+    });
+  })();
+
+  // Renglones de lo que llegó de más, como los ingredientes de una receta:
+  // se clona el último vacío. Validar y descontar lo hace el servidor.
+  (function () {
+    var cuerpo = document.getElementById('cuerpo-agregados');
+    var agregar = document.getElementById('agregar-sabor');
+    if (!cuerpo || !agregar) return;
+
+    function vaciar(renglon) {
+      renglon.querySelector('select').selectedIndex = 0;
+      renglon.querySelector('input').value = '';
+      renglon.querySelectorAll('.error-campo').forEach(function (cartel) { cartel.remove(); });
+      return renglon;
+    }
+
+    agregar.addEventListener('click', function () {
+      var nuevo = vaciar(cuerpo.querySelector('.renglon:last-child').cloneNode(true));
+      cuerpo.appendChild(nuevo);
+      nuevo.querySelector('select').focus();
+    });
+
+    cuerpo.addEventListener('click', function (evento) {
+      if (!evento.target.classList.contains('quitar')) return;
+      // Siempre queda un renglón, aunque sea vacío, para tener qué clonar.
+      if (cuerpo.querySelectorAll('.renglon').length === 1) {
+        vaciar(cuerpo.querySelector('.renglon'));
+        return;
+      }
+      evento.target.closest('.renglon').remove();
     });
   })();
 </script>
