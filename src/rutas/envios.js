@@ -67,11 +67,10 @@ async function tachosQueVencenPrimero(ejecutar, idSucursal, idSabor, cantidad) {
   return rows;
 }
 
-// Lo que se puede enviar desde la sucursal: tachos llenos por sabor, y
-// productos propios con stock, descontando lo que ya esta en camino.
-async function disponible(idSucursal) {
-  const sabores = await saboresLlenos(idSucursal);
-  const { rows: productos } = await consultar(
+// Los productos propios con stock en la sucursal, descontando lo que ya esta
+// en camino.
+async function productosDisponibles(idSucursal) {
+  const { rows } = await consultar(
     `SELECT p.id_producto, p.nombre, lower(u.abreviatura) AS unidad,
             coalesce((SELECT sum(m.cantidad) FROM movimientos_producto m
                        WHERE m.id_producto = p.id_producto AND m.id_sucursal = $1), 0)
@@ -85,7 +84,12 @@ async function disponible(idSucursal) {
       ORDER BY p.nombre`,
     [idSucursal]
   );
-  return { sabores, productos: productos.filter((p) => Number(p.disponible) > 0) };
+  return rows.filter((p) => Number(p.disponible) > 0);
+}
+
+// Lo que se puede enviar desde la sucursal.
+async function disponible(idSucursal) {
+  return { sabores: await saboresLlenos(idSucursal), productos: await productosDisponibles(idSucursal) };
 }
 
 async function envios(idSucursal, estados, limite) {
@@ -275,8 +279,8 @@ async function traerEnvio(req, id) {
       ORDER BY s.nombre, s.linea, l.fecha_vencimiento, t.id_tacho`,
     [id]
   );
-  const { rows: productos } = await consultar(
-    `SELECT tp.id_producto, tp.cantidad, tp.cantidad_recibida, tp.motivo_faltante, p.nombre, lower(u.abreviatura) AS unidad
+  const { rows: todosLosProductos } = await consultar(
+    `SELECT tp.id_producto, tp.cantidad, tp.cantidad_recibida, tp.motivo_faltante, tp.agregado_al_recibir, p.nombre, lower(u.abreviatura) AS unidad
        FROM traslado_productos tp
        JOIN productos p ON p.id_producto = tp.id_producto
        JOIN unidades_medida u ON u.id_unidad = p.id_unidad_medida
@@ -284,8 +288,8 @@ async function traerEnvio(req, id) {
       ORDER BY p.nombre`,
     [id]
   );
-  // Agrupados por sabor para el ticket. El ticket es lo que viajo con la
-  // mercaderia: lo agregado al recibir va aparte.
+  // El ticket es lo que viajo con la mercaderia: lo agregado al recibir va
+  // aparte. Los tachos del ticket, agrupados por sabor.
   const renglones = [];
   for (const t of tachos.filter((x) => !x.agregado_al_recibir)) {
     let r = renglones.find((x) => x.sabor === t.sabor);
@@ -293,8 +297,13 @@ async function traerEnvio(req, id) {
     r.cantidad += 1;
     r.tachos.push(t);
   }
-  const agregadosAlRecibir = tachos.filter((x) => x.agregado_al_recibir);
-  return { envio, tachos, renglones, agregadosAlRecibir, productos };
+  return {
+    envio, renglones,
+    tachos: tachos.filter((x) => !x.agregado_al_recibir),
+    tachosAgregados: tachos.filter((x) => x.agregado_al_recibir),
+    productos: todosLosProductos.filter((x) => !x.agregado_al_recibir),
+    productosAgregados: todosLosProductos.filter((x) => x.agregado_al_recibir),
+  };
 }
 
 router.get('/:id', async (req, res, siguiente) => {
@@ -312,42 +321,57 @@ router.get('/:id', async (req, res, siguiente) => {
 });
 
 // Recibir: en el destino se marca que llego de cada renglon, y se agrega lo
-// que llego sin estar en el ticket. Para eso se ofrecen los sabores que el
-// origen tiene en tachos llenos.
-async function mostrarRecepcion(res, datos, { errores = [], estado = 200, agregados = [] } = {}) {
+// que llego sin estar en el ticket. Para eso se ofrece lo que el origen
+// tiene: sabores en tachos llenos y productos disponibles.
+async function mostrarRecepcion(res, datos, { errores = [], estado = 200, agregados = { sabores: [], productos: [] } } = {}) {
   res.status(estado).render('envios/recibir', {
-    ...datos, errores, agregados, saboresParaAgregar: await saboresLlenos(datos.envio.id_sucursal_origen),
+    ...datos, errores, agregados,
+    saboresParaAgregar: await saboresLlenos(datos.envio.id_sucursal_origen),
+    productosParaAgregar: await productosDisponibles(datos.envio.id_sucursal_origen),
   });
 }
 
-// Lo que llego sin estar en el ticket: renglones de sabor y cantidad. Se
-// controla contra los tachos llenos del origen; un sabor repetido se suma.
-// Devuelve los renglones tal como vinieron, para volver a mostrarlos si hay
-// errores, y la cantidad por sabor, para tomar los tachos.
-function leerAgregados(req, envio, sabores, errores) {
-  const idsSabor = [].concat(req.body.agregado_sabor || []);
-  const cantidades = [].concat(req.body.agregado_cantidad || []);
+// Lo que cambia entre agregar helado y agregar productos: los campos del
+// formulario, cuanto tiene el origen de cada opcion y los textos de error.
+const AGREGAR_SABORES = {
+  campo: 'agregado_sabor', id: 'id_sabor', tope: (s) => s.llenos,
+  sinElegir: 'Elegí el sabor de lo que llegó sin estar en el ticket.',
+  sinStock: (origen) => 'Uno de los sabores agregados ya no tiene tachos llenos en ' + origen + '.',
+  sinCantidad: (s) => 'Poné cuántos tachos de ' + s.nombre + ' llegaron sin estar en el ticket.',
+  deMas: (s, origen, cantidad) => 'De ' + s.nombre + ' quedan ' + s.llenos + ' tachos llenos en ' + origen + ': no pueden haber llegado ' + cantidad + ' de más.',
+};
+const AGREGAR_PRODUCTOS = {
+  campo: 'agregado_producto', id: 'id_producto', tope: (p) => Number(p.disponible),
+  sinElegir: 'Elegí el producto de lo que llegó sin estar en el ticket.',
+  sinStock: (origen) => 'Uno de los productos agregados ya no tiene stock disponible en ' + origen + '.',
+  sinCantidad: (p) => 'Poné cuánto llegó de ' + p.nombre + ' sin estar en el ticket.',
+  deMas: (p, origen, cantidad) => 'De ' + p.nombre + ' hay ' + Number(p.disponible) + ' disponibles en ' + origen + ': no pueden haber llegado ' + cantidad + ' de más.',
+};
+
+// Lo que llego sin estar en el ticket: renglones de opcion (sabor o
+// producto) y cantidad. Un renglon vacio no cuenta, una opcion repetida se
+// suma, y no puede llegar mas de lo que tiene el origen. Devuelve los
+// renglones tal como vinieron, para volver a mostrarlos si hay errores, y la
+// cantidad por opcion, para guardarla.
+function leerAgregados(req, envio, opciones, que, errores) {
+  const ids = [].concat(req.body[que.campo] || []);
+  const cantidades = [].concat(req.body[que.campo + '_cantidad'] || []);
   const renglones = [];
-  const porSabor = new Map();
-  idsSabor.forEach((texto, i) => {
+  const porOpcion = new Map();
+  ids.forEach((texto, i) => {
     const valor = (cantidades[i] || '').trim();
-    renglones.push({ id_sabor: texto, cantidad: valor });
+    renglones.push({ id: texto, cantidad: valor });
     if (texto === '' && valor === '') return;
-    const sabor = sabores.find((s) => s.id_sabor === Number(texto));
-    if (texto === '') { errores.push('Elegí el sabor de lo que llegó sin estar en el ticket.'); return; }
-    if (!sabor) { errores.push('Uno de los sabores agregados ya no tiene tachos llenos en ' + envio.origen + '.'); return; }
-    if (!/^\d{1,3}$/.test(valor) || Number(valor) === 0) {
-      errores.push('Poné cuántos tachos de ' + sabor.nombre + ' llegaron sin estar en el ticket.');
-      return;
-    }
-    porSabor.set(sabor, (porSabor.get(sabor) || 0) + Number(valor));
+    const opcion = opciones.find((o) => o[que.id] === Number(texto));
+    if (texto === '') { errores.push(que.sinElegir); return; }
+    if (!opcion) { errores.push(que.sinStock(envio.origen)); return; }
+    if (!/^\d{1,3}$/.test(valor) || Number(valor) === 0) { errores.push(que.sinCantidad(opcion)); return; }
+    porOpcion.set(opcion, (porOpcion.get(opcion) || 0) + Number(valor));
   });
-  for (const [sabor, cantidad] of porSabor) {
-    if (cantidad > sabor.llenos) {
-      errores.push('De ' + sabor.nombre + ' quedan ' + sabor.llenos + ' tachos llenos en ' + envio.origen + ': no pueden haber llegado ' + cantidad + ' de más.');
-    }
+  for (const [opcion, cantidad] of porOpcion) {
+    if (cantidad > que.tope(opcion)) errores.push(que.deMas(opcion, envio.origen, cantidad));
   }
-  return { renglones, porSabor };
+  return { renglones, porOpcion };
 }
 
 router.get('/:id/recibir', async (req, res, siguiente) => {
@@ -387,16 +411,21 @@ router.post('/:id/recibir', async (req, res, siguiente) => {
       const texto = (req.body['recibido_' + p.id_producto] || '').trim();
       const motivo = (req.body['motivo_producto_' + p.id_producto] || '').trim().slice(0, 300);
       const recibida = /^\d{1,3}$/.test(texto) ? Number(texto) : null;
-      if (recibida === null || recibida > Number(p.cantidad)) {
+      if (recibida === null) {
         errores.push('De ' + p.nombre + ' se enviaron ' + Number(p.cantidad) + ': poné cuántos llegaron (de 0 a ' + Number(p.cantidad) + ').');
+      } else if (recibida > Number(p.cantidad)) {
+        errores.push('De ' + p.nombre + ' se enviaron ' + Number(p.cantidad) + ': si llegaron más, poné ' + Number(p.cantidad)
+          + ' y agregá el resto abajo, en lo que llegó sin estar en el ticket.');
       } else if (recibida < Number(p.cantidad) && !motivo) {
         errores.push('De ' + p.nombre + ' llegaron menos de los enviados: escribí el motivo.');
       }
       p.cantidad_recibida = texto; p.motivo_faltante = motivo;
       return { id: p.id_producto, recibida, motivo };
     });
-    const agregados = leerAgregados(req, envio, await saboresLlenos(envio.id_sucursal_origen), errores);
-    if (errores.length > 0) return mostrarRecepcion(res, datos, { errores, estado: 400, agregados: agregados.renglones });
+    const sabores = leerAgregados(req, envio, await saboresLlenos(envio.id_sucursal_origen), AGREGAR_SABORES, errores);
+    const productosDeMas = leerAgregados(req, envio, await productosDisponibles(envio.id_sucursal_origen), AGREGAR_PRODUCTOS, errores);
+    const agregados = { sabores: sabores.renglones, productos: productosDeMas.renglones };
+    if (errores.length > 0) return mostrarRecepcion(res, datos, { errores, estado: 400, agregados });
 
     try {
       await conTransaccion(async (ejecutar) => {
@@ -405,13 +434,15 @@ router.post('/:id/recibir', async (req, res, siguiente) => {
             [m.llego, m.llego ? null : m.motivo, envio.id_traslado, m.id]);
         }
         for (const m of marcasProductos) {
-          await ejecutar('UPDATE traslado_productos SET cantidad_recibida = $1, motivo_faltante = $2 WHERE id_traslado = $3 AND id_producto = $4',
+          await ejecutar(
+            `UPDATE traslado_productos SET cantidad_recibida = $1, motivo_faltante = $2
+              WHERE id_traslado = $3 AND id_producto = $4 AND NOT agregado_al_recibir`,
             [m.recibida, m.motivo || null, envio.id_traslado, m.id]);
         }
-        // Lo que llego de mas sale del origen como al armar: los que vencen
-        // primero. Entra ya recibido. Si no alcanzan, se lanza el error para
-        // que la transaccion se deshaga entera.
-        for (const [sabor, cantidad] of agregados.porSabor) {
+        // Los tachos que llegaron de mas salen del origen como al armar: los
+        // que vencen primero. Entran ya recibidos. Si no alcanzan, se lanza
+        // el error para que la transaccion se deshaga entera.
+        for (const [sabor, cantidad] of sabores.porOpcion) {
           const tachos = await tachosQueVencenPrimero(ejecutar, envio.id_sucursal_origen, sabor.id_sabor, cantidad);
           if (tachos.length < cantidad) {
             throw Object.assign(new Error('Mientras recibías se abrió o se envió algún tacho de ' + sabor.nombre + ' en ' + envio.origen
@@ -422,6 +453,14 @@ router.post('/:id/recibir', async (req, res, siguiente) => {
               [envio.id_traslado, t.id_tacho]);
           }
         }
+        // Los productos que llegaron de mas: un renglon ya recibido completo.
+        // Al cerrar el envio salen del origen y entran al destino como el resto.
+        for (const [producto, cantidad] of productosDeMas.porOpcion) {
+          await ejecutar(
+            `INSERT INTO traslado_productos (id_traslado, id_producto, cantidad, cantidad_recibida, agregado_al_recibir)
+             VALUES ($1, $2, $3, $3, true)`,
+            [envio.id_traslado, producto.id_producto, cantidad]);
+        }
         // Al pasar a RECIBIDO la base mueve el stock (cerrar_traslado).
         await ejecutar(
           "UPDATE traslados SET estado = 'RECIBIDO', fecha_recepcion = now(), id_usuario_recepcion = $1 WHERE id_traslado = $2",
@@ -430,14 +469,16 @@ router.post('/:id/recibir', async (req, res, siguiente) => {
       });
     } catch (error) {
       if (!error.paraMostrar) throw error;
-      return mostrarRecepcion(res, datos, { errores: [error.message], estado: 409, agregados: agregados.renglones });
+      return mostrarRecepcion(res, datos, { errores: [error.message], estado: 409, agregados });
     }
 
     const faltaron = marcasTachos.filter((m) => !m.llego).length;
-    const sumados = [...agregados.porSabor.values()].reduce((total, cantidad) => total + cantidad, 0);
+    const sumados = [...sabores.porOpcion.values()].reduce((total, cantidad) => total + cantidad, 0);
+    const productosSumados = productosDeMas.porOpcion.size;
     req.session.aviso = 'Se recibió el envío N° ' + envio.id_traslado + '. Lo que llegó ya está en el stock de ' + req.sucursal.nombre + '.'
       + (faltaron === 1 ? ' Quedó registrado el tacho que no llegó.' : faltaron > 1 ? ' Quedaron registrados los ' + faltaron + ' tachos que no llegaron.' : '')
-      + (sumados === 1 ? ' Se sumó el tacho que no estaba en el ticket.' : sumados > 1 ? ' Se sumaron los ' + sumados + ' tachos que no estaban en el ticket.' : '');
+      + (sumados === 1 ? ' Se sumó el tacho que no estaba en el ticket.' : sumados > 1 ? ' Se sumaron los ' + sumados + ' tachos que no estaban en el ticket.' : '')
+      + (productosSumados === 1 ? ' Se sumó el producto que no estaba en el ticket.' : productosSumados > 1 ? ' Se sumaron los productos que no estaban en el ticket.' : '');
     res.redirect('/envios/' + envio.id_traslado);
   } catch (error) {
     siguiente(error);

@@ -4,7 +4,7 @@
 <p class="ayuda">
   Controlá la mercadería contra el ticket que viene de <%= envio.origen %>. Destildá los tachos que no
   llegaron y corregí la cantidad de los productos si llegaron menos; en los dos casos escribí qué pasó.
-  Si llegó helado que no estaba en el ticket, agregalo abajo.
+  Si llegó helado o productos que no estaban en el ticket, agregalos abajo.
   Al confirmar, lo que llegó pasa al stock de <%= sucursal.nombre %>.
 </p>
 
@@ -62,37 +62,81 @@
   <% } %>
 
   <h2>¿Llegó algo que no estaba en el ticket?</h2>
+
+  <h3>Helado</h3>
   <% if (saboresParaAgregar.length > 0) { %>
     <p class="ayuda">Si llegaron tachos de más, elegí el sabor y cuántos. Se descuentan de <%= envio.origen %>: los que vencen primero.</p>
-    <table class="tabla">
-      <thead><tr><th>Sabor</th><th class="numero">Tachos</th><th></th></tr></thead>
-      <tbody id="cuerpo-agregados">
-        <% (agregados.length > 0 ? agregados : [{ id_sabor: '', cantidad: '' }]).forEach(function (a) { %>
-          <tr class="renglon">
-            <td>
-              <select name="agregado_sabor" aria-label="Sabor que llegó sin estar en el ticket">
-                <option value="">Elegí el sabor</option>
-                <% saboresParaAgregar.forEach(function (s) { %>
-                  <option value="<%= s.id_sabor %>" <%= String(a.id_sabor) === String(s.id_sabor) ? 'selected' : '' %>>
-                    <%= s.nombre %> · <%= s.llenos %> <%= s.llenos === 1 ? 'disponible' : 'disponibles' %>
-                  </option>
-                <% }) %>
-              </select>
-            </td>
-            <td class="numero">
-              <input name="agregado_cantidad" class="solo-numeros cantidad-corta" inputmode="numeric" maxlength="3" autocomplete="off"
-                     data-mensaje="la cantidad es un número entero." value="<%= a.cantidad %>" aria-label="Cuántos tachos de ese sabor llegaron de más">
-            </td>
-            <td class="acciones"><button type="button" class="enlace quitar">Quitar</button></td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
-    <button type="button" id="agregar-sabor" class="boton-secundario">+ Agregar otro sabor</button>
+    <div class="agregados">
+      <table class="tabla">
+        <thead><tr><th>Sabor</th><th class="numero">Tachos</th><th></th></tr></thead>
+        <tbody>
+          <% (agregados.sabores.length > 0 ? agregados.sabores : [{ id: '', cantidad: '' }]).forEach(function (a) { %>
+            <tr class="renglon">
+              <td>
+                <select name="agregado_sabor" aria-label="Sabor que llegó sin estar en el ticket">
+                  <option value="">Elegí el sabor</option>
+                  <% saboresParaAgregar.forEach(function (s) { %>
+                    <option value="<%= s.id_sabor %>" <%= String(a.id) === String(s.id_sabor) ? 'selected' : '' %>>
+                      <%= s.nombre %> · <%= s.llenos %> <%= s.llenos === 1 ? 'disponible' : 'disponibles' %>
+                    </option>
+                  <% }) %>
+                </select>
+              </td>
+              <td class="numero">
+                <input name="agregado_sabor_cantidad" class="solo-numeros cantidad-corta" inputmode="numeric" maxlength="3" autocomplete="off"
+                       data-mensaje="la cantidad es un número entero." value="<%= a.cantidad %>" aria-label="Cuántos tachos de ese sabor llegaron de más">
+              </td>
+              <td class="acciones"><button type="button" class="enlace quitar">Quitar</button></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <button type="button" class="boton-secundario agregar-renglon">+ Agregar otro sabor</button>
+    </div>
   <% } else { %>
     <p class="ayuda">
       En <%= envio.origen %> no quedan tachos llenos cargados en el sistema, así que no hay de dónde descontar.
       Si llegó helado de más, avisales: puede que falte registrar su producción.
+    </p>
+  <% } %>
+
+  <h3>Productos</h3>
+  <% if (productosParaAgregar.length > 0) { %>
+    <p class="ayuda">
+      Si llegaron productos que no estaban en el ticket, o más de los que dice, elegí el producto y cuánto llegó de más.
+      Se descuentan de <%= envio.origen %>.
+    </p>
+    <div class="agregados">
+      <table class="tabla">
+        <thead><tr><th>Producto</th><th class="numero">Cantidad</th><th></th></tr></thead>
+        <tbody>
+          <% (agregados.productos.length > 0 ? agregados.productos : [{ id: '', cantidad: '' }]).forEach(function (a) { %>
+            <tr class="renglon">
+              <td>
+                <select name="agregado_producto" aria-label="Producto que llegó sin estar en el ticket">
+                  <option value="">Elegí el producto</option>
+                  <% productosParaAgregar.forEach(function (p) { %>
+                    <option value="<%= p.id_producto %>" <%= String(a.id) === String(p.id_producto) ? 'selected' : '' %>>
+                      <%= p.nombre %> · <%= Number(p.disponible) %> <%= p.unidad %> <%= Number(p.disponible) === 1 ? 'disponible' : 'disponibles' %>
+                    </option>
+                  <% }) %>
+                </select>
+              </td>
+              <td class="numero">
+                <input name="agregado_producto_cantidad" class="solo-numeros cantidad-corta" inputmode="numeric" maxlength="3" autocomplete="off"
+                       data-mensaje="la cantidad es un número entero." value="<%= a.cantidad %>" aria-label="Cuánto llegó de más de ese producto">
+              </td>
+              <td class="acciones"><button type="button" class="enlace quitar">Quitar</button></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <button type="button" class="boton-secundario agregar-renglon">+ Agregar otro producto</button>
+    </div>
+  <% } else { %>
+    <p class="ayuda">
+      En <%= envio.origen %> no hay productos con stock cargado en el sistema, así que no hay de dónde descontar.
+      Si llegaron productos de más, avisales: puede que falte registrar su producción.
     </p>
   <% } %>
 
@@ -120,12 +164,12 @@
     });
   })();
 
-  // Renglones de lo que llegó de más, como los ingredientes de una receta:
-  // se clona el último vacío. Validar y descontar lo hace el servidor.
-  (function () {
-    var cuerpo = document.getElementById('cuerpo-agregados');
-    var agregar = document.getElementById('agregar-sabor');
-    if (!cuerpo || !agregar) return;
+  // Renglones de lo que llegó de más (helado y productos), como los
+  // ingredientes de una receta: se clona el último vacío. Validar y
+  // descontar lo hace el servidor.
+  document.querySelectorAll('.agregados').forEach(function (bloque) {
+    var cuerpo = bloque.querySelector('tbody');
+    var agregar = bloque.querySelector('.agregar-renglon');
 
     function vaciar(renglon) {
       renglon.querySelector('select').selectedIndex = 0;
@@ -149,7 +193,7 @@
       }
       evento.target.closest('.renglon').remove();
     });
-  })();
+  });
 </script>
 
 <%- include('../parciales/pie') %>

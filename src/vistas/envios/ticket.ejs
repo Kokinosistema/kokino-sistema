@@ -37,13 +37,19 @@
   </section>
 <% } %>
 
-<% if (agregadosAlRecibir.length > 0) { %>
+<% if (tachosAgregados.length > 0 || productosAgregados.length > 0) { %>
   <section class="panel no-imprimir">
     <h2>Lo que llegó sin estar en el ticket</h2>
-    <p class="ayuda">Lo agregó <%= envio.recibio %> al recibir. Se tomaron de <%= envio.origen %> los tachos que vencían primero.</p>
+    <p class="ayuda">
+      Lo agregó <%= envio.recibio %> al recibir y salió del stock de <%= envio.origen %>.
+      <% if (tachosAgregados.length > 0) { %>Del helado se tomaron los tachos que vencían primero.<% } %>
+    </p>
     <ul>
-      <% agregadosAlRecibir.forEach(function (t) { %>
+      <% tachosAgregados.forEach(function (t) { %>
         <li>Tacho <%= t.codigo_barras %> de <%= t.sabor %></li>
+      <% }) %>
+      <% productosAgregados.forEach(function (p) { %>
+        <li><%= p.nombre %>: <%= Number(p.cantidad) %> <%= p.unidad %></li>
       <% }) %>
     </ul>
   </section>
