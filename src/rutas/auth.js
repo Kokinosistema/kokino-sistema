@@ -31,7 +31,7 @@ router.post('/login', async (req, res, siguiente) => {
   try {
     // Bloqueado por demasiados intentos (ver src/intentos.js): ni se mira la
     // contrasena, asi probar mientras dura el bloqueo no sirve de nada.
-    const minutos = intentos.minutosBloqueado(username);
+    const minutos = await intentos.minutosBloqueado(username);
     if (minutos > 0) {
       return res.status(429).render('login', {
         error: 'Demasiados intentos con este usuario. Probá de nuevo en ' + minutos + (minutos === 1 ? ' minuto.' : ' minutos.'),
@@ -68,14 +68,14 @@ router.post('/login', async (req, res, siguiente) => {
     );
 
     if (!usuario || !coincide) {
-      intentos.anotarFallo(username);
+      await intentos.anotarFallo(username);
       return res.status(401).render('login', { error: ERROR_CREDENCIALES, username });
     }
 
     // Renovar el id de sesion al entrar cierra la puerta a que alguien deje
     // preparada una sesion vacia en la maquina del local y despues la reuse ya
     // logueada. En un mostrador con una PC compartida esto no es teorico.
-    intentos.olvidar(username);
+    await intentos.olvidar(username);
     req.session.regenerate((err) => {
       if (err) return siguiente(err);
 

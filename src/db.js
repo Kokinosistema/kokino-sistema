@@ -8,14 +8,31 @@
 // de pagar el saludo a PostgreSQL en cada consulta.
 const { Pool } = require('pg');
 
-// Cada conexion trabaja en hora argentina (la misma TZ que el servidor, ver
-// server.js): "hoy", "esta semana" y las fechas que se guardan no dependen de
-// como este configurado PostgreSQL donde se instale.
-const ZONA_HORARIA = process.env.ZONA_HORARIA || 'America/Argentina/Tucuman';
+// La hora argentina de la base la fija la migracion
+// 1793400000000_zona-horaria-de-la-base: "hoy", "esta semana" y las fechas que
+// se guardan no dependen de como este configurado PostgreSQL donde se instale.
+// Antes se pedia en cada conexion, pero el pooler de Supabase no deja mandar
+// esa opcion al conectarse.
+//
+// En Vercel cada copia del sistema atiende pocas visitas a la vez y la que
+// reparte las conexiones es Supabase, asi que alcanzan pocas por copia.
+const enVercel = Boolean(process.env.VERCEL);
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  options: '-c timezone=' + ZONA_HORARIA,
+  max: enVercel ? 3 : 10,
+  idleTimeoutMillis: enVercel ? 5000 : 10000,
 });
+
+// Si una conexion que estaba esperando se corta (pasa en la nube cuando la
+// base o la red la cierran), el pool la descarta y abre otra cuando haga
+// falta. Sin esto, ese corte tiraria el servidor entero.
+pool.on('error', (error) => {
+  console.error('Se corto una conexion con la base:', error.message);
+});
+
+// Vercel congela el sistema entre visita y visita; esto le avisa que cierre
+// las conexiones que quedaron sin usar antes de congelarlo.
+if (enVercel) require('@vercel/functions').attachDatabasePool(pool);
 
 // Todas las consultas pasan por aca para tener un solo lugar donde agregar
 // log, metricas o reintentos el dia que hagan falta.

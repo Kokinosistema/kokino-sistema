@@ -40,6 +40,7 @@ describe('Login', () => {
 });
 
 describe('Límite de intentos de login', () => {
+  const intentos = require('../src/intentos');
   const USUARIO = 'alem.prueba';
   const CLAVE = 'clave-de-prueba-2';
   const intentar = (nav, username, contrasena) => nav.enviar('/login', { username, contrasena });
@@ -73,15 +74,32 @@ describe('Límite de intentos de login', () => {
     assert.equal((await intentar(nav, 'no.existe.tampoco', 'mal')).estado, 429);
   });
 
-  test('el bloqueo se levanta solo a los 5 minutos', () => {
+  test('el bloqueo se levanta solo a los 5 minutos', async () => {
     // Con una hora inventada, para no esperar 5 minutos de verdad.
-    const intentos = require('../src/intentos');
     const t = Date.parse('2026-01-01T10:00:00');
-    for (let i = 0; i < intentos.MAXIMO; i++) intentos.anotarFallo('reloj.prueba', t);
-    assert.equal(intentos.minutosBloqueado('reloj.prueba', t), 5);
-    assert.equal(intentos.minutosBloqueado('reloj.prueba', t + 4 * 60000 + 1), 1);
-    assert.equal(intentos.minutosBloqueado('reloj.prueba', t + 5 * 60000), 0);
+    for (let i = 0; i < intentos.MAXIMO; i++) await intentos.anotarFallo('reloj.prueba', t);
+    assert.equal(await intentos.minutosBloqueado('reloj.prueba', t), 5);
+    assert.equal(await intentos.minutosBloqueado('reloj.prueba', t + 4 * 60000 + 1), 1);
+    assert.equal(await intentos.minutosBloqueado('reloj.prueba', t + 5 * 60000), 0);
   });
+
+  test('pasados los 15 minutos, los errores viejos no cuentan', async () => {
+    const t = Date.parse('2026-01-01T12:00:00');
+    for (let i = 0; i < intentos.MAXIMO - 1; i++) await intentos.anotarFallo('ventana.prueba', t);
+    await intentos.anotarFallo('ventana.prueba', t + 15 * 60000);
+    assert.equal(await intentos.minutosBloqueado('ventana.prueba', t + 15 * 60000), 0);
+  });
+
+  test('el bloqueo se comparte entre copias del sistema, porque se guarda en la base', async () => {
+    const t = Date.now();
+    for (let i = 0; i < intentos.MAXIMO; i++) await intentos.anotarFallo('compartido.prueba', t);
+    const { consultar } = require('../src/db');
+    const { rows: [f] } = await consultar("SELECT veces FROM intentos_login WHERE usuario = 'compartido.prueba'");
+    assert.equal(f.veces, intentos.MAXIMO);
+  });
+
+  // Que el bloqueo de estas pruebas no moleste a las que entran despues.
+  after(() => intentos.olvidar(USUARIO));
 });
 
 // Que cada pantalla del menu abra para un dueno. Parece obvio, pero un error

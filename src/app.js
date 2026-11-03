@@ -40,9 +40,15 @@ function crearAplicacion() {
   // Todas las vistas muestran la plata igual: $17.500 o $17.500,15.
   app.locals.pesos = pesos;
 
+  // Publicado, siempre se entra por HTTPS: en una PC del local, cuando se
+  // pone NODE_ENV=produccion; en Vercel, siempre (salvo con "vercel dev",
+  // que corre en la compu sin HTTPS).
+  const conHttps = process.env.NODE_ENV === 'produccion'
+    || ['production', 'preview'].includes(process.env.VERCEL_ENV);
+
   // Detras de un proxy con HTTPS (como los servicios en la nube), para que la
   // cookie segura funcione y la IP sea la del cliente.
-  if (process.env.NODE_ENV === 'produccion') app.set('trust proxy', 1);
+  if (conHttps) app.set('trust proxy', 1);
 
   // Para saber desde afuera si el sistema esta andando (el administrador de
   // procesos o el servicio de hosting lo consultan): responde "ok" si la base
@@ -75,7 +81,7 @@ function crearAplicacion() {
       cookie: {
         httpOnly: true,   // el JavaScript de la pagina no puede leerla
         sameSite: 'lax',  // no viaja desde otro sitio
-        secure: process.env.NODE_ENV === 'produccion', // solo por HTTPS al publicar
+        secure: conHttps, // solo por HTTPS al publicar
         maxAge: 12 * 60 * 60 * 1000, // 12 horas: cubre un turno entero
       },
     })

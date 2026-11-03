@@ -18,6 +18,9 @@ function carpetaDeCopias() {
 
 // null si esta todo bien; si no, un texto para mostrar.
 function avisoDeCopias() {
+  // En Vercel no hay carpeta propia donde guardarlas: las copias las hace
+  // Supabase (ver docs/VERCEL-SUPABASE.md) y este aviso no aplica.
+  if (process.env.VERCEL) return null;
   let estado;
   try {
     estado = JSON.parse(fs.readFileSync(path.join(carpetaDeCopias(), ARCHIVO_ESTADO), 'utf8'));
