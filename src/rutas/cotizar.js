@@ -4,7 +4,7 @@ const express = require('express');
 const { consultar, conTransaccion } = require('../db');
 const { exigirRol } = require('../middleware/sesion');
 const { parsearMonto, MONTO_INVALIDO } = require('../dinero');
-const { calcularCotizacion } = require('../../public/cotizador');
+const { calcularCotizacion } = require('../cotizador');
 const { ENVASES, PAGOS, traerCliente, cuentaDe, mediosDePago } = require('./mayoristas');
 
 const router = express.Router();
@@ -19,7 +19,7 @@ router.use(exigirRol('administrador'));
 const HELADERIA = 'Heladería Kokino';
 
 // La lista del cliente (la suya, o la general si no tiene) con sus precios
-// vigentes, en el formato que usa public/cotizador.js.
+// vigentes, en el formato que usa src/cotizador.js.
 async function listaDe(cliente) {
   const { rows: [lista] } = await consultar(
     `SELECT id_lista_precios, nombre, incluye_familiar, incluye_artesanal

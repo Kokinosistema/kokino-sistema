@@ -65,6 +65,11 @@ function crearAplicacion() {
   // Los formularios HTML mandan los datos en este formato, no en JSON.
   app.use(express.urlencoded({ extended: false }));
   app.use(express.static(path.join(__dirname, '..', 'public')));
+  // El cotizador lo usan el navegador y el servidor (src/rutas/cotizar.js).
+  // No va en public/: en Vercel, un archivo de public/ que el servidor carga
+  // con require no se sirve como estatico y el pedido cae en el login. Va
+  // antes del login porque la pagina lo pide con <script>.
+  app.get('/cotizador.js', (req, res) => res.sendFile(path.join(__dirname, 'cotizador.js')));
 
   app.use(
     session({
