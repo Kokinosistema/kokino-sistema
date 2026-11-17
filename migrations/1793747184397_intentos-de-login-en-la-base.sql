@@ -18,6 +18,10 @@ COMMENT ON TABLE intentos_login IS
 COMMENT ON COLUMN intentos_login.desde IS 'Primer error de la ventana en la que se cuentan.';
 COMMENT ON COLUMN intentos_login.hasta IS 'Hasta cuándo está bloqueado; null si todavía no llegó al límite.';
 
+-- La migracion de RLS ya corrio: esta tabla nace despues, hay que protegerla aca.
+ALTER TABLE intentos_login ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE intentos_login FROM anon, authenticated;
+
 -- Down Migration
 
 DROP TABLE intentos_login;

@@ -6,18 +6,13 @@
 -- vale para todas las conexiones: las del sistema, las de los seeds y las de
 -- quien se conecte a mano.
 --
--- Se aplica a las conexiones que se abren despues de esta migracion.
+-- En Supabase, ALTER DATABASE lo tiene que correr el rol postgres (kokino_app
+-- no es dueno de la base). Se aplico una vez a mano:
+--   ALTER DATABASE postgres SET timezone = 'America/Argentina/Tucuman';
+-- Esta migracion queda registrada para que el historial coincida.
 
-DO $$
-BEGIN
-  EXECUTE format('ALTER DATABASE %I SET timezone = %L', current_database(), 'America/Argentina/Tucuman');
-END
-$$;
+SELECT 1;
 
 -- Down Migration
 
-DO $$
-BEGIN
-  EXECUTE format('ALTER DATABASE %I RESET timezone', current_database());
-END
-$$;
+SELECT 1;
