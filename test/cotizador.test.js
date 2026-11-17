@@ -1,13 +1,13 @@
 'use strict';
 
-// Reglas del cotizador mayorista (public/cotizador.js). Son las pruebas del
+// Reglas del cotizador mayorista (src/cotizador.js). Son las pruebas del
 // Sistema Rody pasadas a Kokino, con los mismos precios reales del Excel
 // "Precios 22/04/26 Terminal": si dan lo mismo que alla, el calculo se
 // traslado bien. No usan la base.
 
 const { describe, test } = require('node:test');
 const assert = require('node:assert/strict');
-const { calcularCotizacion, textoWhatsApp, pesos } = require('../public/cotizador');
+const { calcularCotizacion, textoWhatsApp, pesos } = require('../src/cotizador');
 const dinero = require('../src/dinero');
 
 const listaTerminal = {
@@ -222,7 +222,7 @@ describe('Texto para WhatsApp', () => {
   });
 });
 
-// El formato de plata esta repetido en public/cotizador.js porque el de
+// El formato de plata esta repetido en src/cotizador.js porque el de
 // src/dinero.js no llega al navegador: los dos tienen que dar lo mismo.
 test('el formato de plata del cotizador es el mismo que el del resto del sistema', () => {
   for (const monto of [0, 5000, 41000, 352000, 1234567.89, '58000.00', 0.5, -2500]) {
