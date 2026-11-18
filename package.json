@@ -10,9 +10,10 @@
     "migrate:down": "node-pg-migrate down --envPath .env",
     "seed:precios": "node --env-file=.env seeds/precios.js",
     "seed:precios-mayoristas": "node --env-file=.env seeds/precios_mayoristas.js",
-    "seed:costos":"node --env-file=.env seeds/costos.js",
+    "seed:costos": "node --env-file=.env seeds/costos.js",
     "seed:costos-insumo": "node --env-file=.env seeds/costos_insumo.js",
     "start": "node --env-file-if-exists=.env server.js",
+    "vercel-build": "node scripts/migrar-en-vercel.js",
     "dev": "node --env-file=.env --watch server.js",
     "crear-usuario": "node --env-file-if-exists=.env scripts/crear-usuario.js",
     "copia": "node --env-file=.env scripts/copia-de-seguridad.js",
@@ -30,6 +31,7 @@
     "dotenv": "^17.4.2"
   },
   "dependencies": {
+    "@vercel/functions": "^3.10.6",
     "bcrypt": "^6.0.0",
     "connect-pg-simple": "^10.0.0",
     "ejs": "^6.0.1",
