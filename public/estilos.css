@@ -181,9 +181,14 @@ a { color: var(--brand-pressed); }
 .elegir-sucursal { margin: 0 auto 0 0; }
 .elegir-sucursal label { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; }
 .elegir-sucursal select {
-  width: auto; margin: 0; padding: 5px 30px 5px 12px;
+  width: auto; margin: 0; padding: 5px 40px 5px 12px;
   background-color: var(--bg-active); border-color: var(--brand-primary);
   color: var(--brand-pressed); font-family: var(--font-head); font-weight: 700; font-size: 14px;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%232E7F6C' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
 }
 .quien { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .avatar {
@@ -338,7 +343,7 @@ label {
   margin-top: 14px;
   font-family: var(--font-head);
   font-weight: 700;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 input, select, textarea {
@@ -351,6 +356,16 @@ input, select, textarea {
   font-family: var(--font-body);
   font-size: 14px;
   color: var(--text-primary);
+}
+/* Flecha propia: aire a la derecha para que no quede pegada al borde. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%232E7F6C' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
 }
 input:focus, select:focus, textarea:focus {
   outline: 3px solid var(--bg-active);
@@ -395,16 +410,38 @@ input:focus, select:focus, textarea:focus {
 .combo-opcion:hover, .combo-opcion.activa { background: var(--bg-active); color: var(--brand-pressed); }
 .combo-vacio { padding: 8px 12px; color: var(--status-error); font-size: 13px; font-weight: 700; }
 input.con-error, input.con-error:focus { border-color: var(--status-error); }
-/* Campo de contrasena con el ojito para verla (ver-contrasena.js). La caja del
-   login toma el ancho de sus campos: el margen negativo descuenta el lugar
-   extra del ojito para que la caja no se agrande ni se achique. */
-.campo-contrasena { position: relative; display: inline-block; width: 100%; vertical-align: top; }
-.campo-contrasena input { padding-right: 44px; margin-right: -32px; }
+/* Campo de contrasena con el ojito para verla (ver-contrasena.js). El input
+   ocupa todo el ancho; el ojito va centrado adentro, sin ensanchar la caja. */
+.campo-contrasena {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+}
+.campo-contrasena input {
+  margin-top: 0;
+  padding-right: 44px;
+}
 .campo-contrasena .ver-contrasena {
-  position: absolute; right: 4px; top: 4px; bottom: 0;
-  width: 38px; display: grid; place-items: center;
-  background: none; border: 0; padding: 0; margin: 0;
-  color: var(--brand-pressed); cursor: pointer;
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: var(--brand-pressed);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.campo-contrasena .ver-contrasena:focus-visible {
+  outline: 3px solid var(--bg-active);
+  outline-offset: 1px;
 }
 /* Casilla de verificacion con su texto al lado, no un campo a todo el ancho. */
 label.casilla { display: flex; align-items: center; gap: 8px; margin-top: 34px; font-size: 14px; color: var(--text-primary); }
@@ -426,7 +463,7 @@ form > button[type="submit"]:not(.enlace):not(.salir) { margin-top: 20px; }
 
 .filtro { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
 .filtro label { margin-top: 0; }
-.filtro select { width: auto; min-width: 200px; background: var(--bg-panel); border-color: var(--border-soft); }
+.filtro select { width: auto; min-width: 200px; background-color: var(--bg-panel); border-color: var(--border-soft); }
 
 .tabla-ingredientes select, .tabla-ingredientes input { margin-top: 0; }
 .tabla-ingredientes input.chico { max-width: 110px; }
@@ -455,6 +492,7 @@ form > button[type="submit"]:not(.enlace):not(.salir) { margin-top: 20px; }
 }
 .aviso::before { background: var(--brand-pressed); }
 .error::before, .errores::before { background: var(--status-error); }
+.aviso-atencion { background: var(--calor-1); }
 .aviso-atencion::before { background: var(--status-warning); }
 .errores { list-style: none; }
 .errores li + li { margin-top: 4px; }
@@ -567,7 +605,7 @@ form.producto { margin: 0; display: flex; }
 fieldset.opciones-boton { border: 0; padding: 0; margin: 14px 0 0; min-width: 0; }
 fieldset.opciones-boton legend {
   padding: 0; margin-bottom: 6px;
-  font-family: var(--font-head); font-weight: 700; font-size: 12px; color: var(--text-secondary);
+  font-family: var(--font-head); font-weight: 700; font-size: 14px; color: var(--text-secondary);
 }
 .grupo-botones { display: flex; flex-wrap: wrap; gap: 8px; }
 label.opcion-boton { display: inline-flex; margin: 0; position: relative; font-size: inherit; color: inherit; }
@@ -622,7 +660,16 @@ label.opcion-boton input:focus-visible + span { outline: 3px solid var(--bg-acti
 
 /* ---------- Login y pantallas sueltas ---------- */
 
-.pantalla-suelta { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.pantalla-suelta {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  /* Lavado suave de marca: mismo teal del app, sin otra tarjeta detras. */
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(70, 189, 162, 0.22), transparent 70%),
+    linear-gradient(180deg, var(--bg-active) 0%, var(--bg-base) 55%);
+}
 .caja-login {
   width: 100%;
   max-width: 420px;
@@ -633,19 +680,35 @@ label.opcion-boton input:focus-visible + span { outline: 3px solid var(--bg-acti
   text-align: center;
 }
 .caja-login form { text-align: left; }
-.caja-login .logo-grande { width: 176px; height: 176px; display: block; margin: 0 auto 8px; }
+.caja-login > form:first-of-type { margin-top: 24px; }
+.caja-login .logo-grande,
+.caja-login .logo-mediano {
+  width: 112px;
+  height: 112px;
+  display: block;
+  margin: 0 auto 16px;
+}
 .caja-login h1 { margin: 0 0 8px; }
+.caja-login .ayuda { margin: 0; }
+.caja-login .error { margin: 16px 0 0; text-align: left; }
+.caja-login form > label:first-of-type { margin-top: 0; }
 .caja-login button[type="submit"] { width: 100%; margin-top: 24px; }
-/* contain: que el texto se acomode al ancho de la caja en vez de ensancharla. */
-.caja-login .olvido { margin-top: 16px; contain: inline-size; }
+/* Nota secundaria: no pelea con el CTA. contain evita que ensanche la caja. */
+.caja-login .olvido {
+  margin: 24px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  opacity: 0.85;
+  contain: inline-size;
+}
 
 /* Plazo del pronostico de mayoristas: el elegido lleno, los otros con borde. */
 .elegir-plazo { display: flex; gap: 8px; flex-wrap: wrap; }
 .elegir-plazo a { margin-top: 0; text-decoration: none; padding: 6px 14px; font-size: 14px; }
 
 /* Elegir sucursal al entrar: un boton grande por sucursal. */
-.caja-login .logo-mediano { width: 112px; height: 112px; display: block; margin: 0 auto 8px; }
-.opciones-sucursal { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.opciones-sucursal { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 0; }
 .caja-login .opciones-sucursal button[type="submit"] {
   flex: 1 1 140px;
   margin-top: 0;
@@ -948,14 +1011,19 @@ label.opcion-turno span { border-radius: var(--radius-md); }
 .alternar-menu { margin-right: 4px; }
 .elegir-sucursal { margin: 0 auto 0 0; }
 .elegir-sucursal label { gap: 10px; font-size: 15px; font-weight: 700; color: var(--text-primary); }
-.elegir-sucursal select { font-size: 19px; padding: 6px 36px 6px 14px; min-height: 44px; }
+.elegir-sucursal select {
+  font-size: 17px;
+  padding: 6px 48px 6px 14px;
+  min-height: 44px;
+  background-position: right 16px center;
+}
 .cabecera .sucursal {
-  margin-right: auto; font-size: 19px; padding: 6px 14px;
+  margin-right: auto; font-size: 17px; padding: 6px 14px;
   display: flex; align-items: center; gap: 10px;
 }
 .rotulo-sucursal { font-size: 15px; color: var(--text-primary); }
 @media (max-width: 860px) {
-  .elegir-sucursal select, .cabecera .sucursal { font-size: 17px; }
+  .elegir-sucursal select, .cabecera .sucursal { font-size: 15px; }
 }
 
 /* Menú en grupos (Mostrador, Stock y fábrica, Negocio, Configuración). */
